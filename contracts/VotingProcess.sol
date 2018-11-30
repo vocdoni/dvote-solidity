@@ -39,4 +39,21 @@ contract VotingProcess {
     {
         return keccak256(abi.encodePacked(organizer, name));
     }
+
+    function getProcessMetadata(bytes32 processId) public view
+        returns (
+        string memory name,
+        uint256 startBlock,
+        uint256 endBlock,
+        bytes32 censusMerkleRoot,
+        string memory voteEncryptionKey)
+    {
+        return(
+            processes[processId].name,
+            processes[processId].startBlock,
+            processes[processId].endBlock,
+            processes[processId].censusMerkleRoot,
+            processes[processId].voteEncryptionKey
+        );
+    }
 }
