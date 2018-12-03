@@ -12,6 +12,7 @@ contract VotingProcess {
     }
 
     mapping (bytes32 => Process) public processes;
+    bytes32[] public index;
 
     constructor() public {
        
@@ -32,12 +33,26 @@ contract VotingProcess {
         processes[processId].endBlock = endBlock;
         processes[processId].censusMerkleRoot = censusMerkleRoot;
         processes[processId].voteEncryptionKey = voteEncryptionKey;
+
+        index.push(processId);
     }
 
     function getProcessId(address organizer, string memory name) public pure
         returns (bytes32)
     {
         return keccak256(abi.encodePacked(organizer, name));
+    }
+
+    function getProcessesLength() public view
+        returns (uint256)
+    {
+        return index.length;
+    }
+
+    function getProcessIdByIndex(uint256 processIndex) public view
+        returns (bytes32)
+    {
+        return index[processIndex];
     }
 
     function getProcessMetadata(bytes32 processId) public view
