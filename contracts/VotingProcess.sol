@@ -15,7 +15,7 @@ contract VotingProcess {
     bytes32[] public index;
 
     constructor() public {
-       
+        
     }
 
     function createProcess(
@@ -28,6 +28,7 @@ contract VotingProcess {
     {
 
         bytes32 processId = getProcessId(msg.sender, name);
+        processes[processId].name = name;
         processes[processId].organizer = msg.sender;
         processes[processId].startBlock = startBlock;
         processes[processId].endBlock = endBlock;
