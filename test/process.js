@@ -1,6 +1,6 @@
 var VotingProcess = artifacts.require("VotingProcess")
 
-contract('VotingProcess', function (accounts) {
+contract('VotingProcess', async (accounts) => {
     it("Checks no process exists", function () {
         return VotingProcess.deployed().then(function (instance) {
             return instance.getProcessesLength({ from: accounts[0] })
@@ -21,10 +21,21 @@ contract('VotingProcess', function (accounts) {
 
     it("Creates a new process", async () => {
         let instance = await VotingProcess.deployed()
-        await instance.createProcess(input.name, input.startBlock, input.endBlock, input.censusMerkleRoot, input.voteEncryptionKey, { from: organizerAddress })
+        await instance.createProcess(
+            input.name,
+            input.startBlock,
+            input.endBlock,
+            input.censusMerkleRoot,
+            input.voteEncryptionKey,
+            { from: organizerAddress })
+
         let processesLength = await instance.getProcessesLength({ from: organizerAddress })
         assert.equal(processesLength.valueOf(), 1, "Only one process exists")
+
+        let processIdByIndex = await instance.getProcessIdByIndex(0, { from: organizerAddress })
+
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
+        assert.equal(processIdByIndex, processId, "The processId should be the same")
         let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
 
         assert.equal(processMetadata.name, input.name, "The name should match the input")
