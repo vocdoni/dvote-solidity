@@ -69,6 +69,25 @@ contract VotingProcess {
         processes[processId].voteEncryptionPrivateKey = voteEncryptionPrivateKey;
     }
 
+    function registerRelay(bytes32 processId, address relayAddress)
+        public onlyOrganizer(processId)
+    {
+        processes[processId].registeredRelays.push(relayAddress);
+    }
+
+    function getRelaysLength(bytes32 processId) public view
+        returns (uint256)
+    {
+        return processes[processId].registeredRelays.length;
+    }
+
+    function getRelayByIndex(bytes32 processId, uint256 index) public view
+        returns (address)
+    {
+        return processes[processId].registeredRelays[index];
+    }
+
+
     function addVotesBatch(bytes32 processId, bytes32 votesBatch)
         public onlyRunningProcess(processId)
     {
