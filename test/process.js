@@ -1,5 +1,7 @@
-var VotingProcess = artifacts.require("VotingProcess")
+//TODO missing tests to garantee that transaction are done at the correct blocks
+//(check startBlock and endBlock), not implementing yet for ease of testing.
 
+var VotingProcess = artifacts.require("VotingProcess")
 contract('VotingProcess', function (accounts) {
 
     let organizerAddress = accounts[0]
@@ -14,7 +16,7 @@ contract('VotingProcess', function (accounts) {
     input = {
         name: "This is a process name",
         startBlock: 0,
-        endBlock: 0,
+        endBlock: 1,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
         voteEncryptionPrivateKey: "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
@@ -53,13 +55,13 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should empty until the process is finished")
     })
 
-    it("Only Organization can finish the process", async () => {
+    it("Only Organization can publish the voteEncryptionPrivateKey", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
         
         let error = null
         try {
-            await instance.finishProcess( processId, input.voteEncryptionPrivateKey, { from: randomAddress })
+            await instance.publishVoteEncryptionPrivateKey( processId, input.voteEncryptionPrivateKey, { from: randomAddress })
         }
         catch(_error){
             error = _error
@@ -70,12 +72,11 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should still be empty")
     })
 
-    it("Organization finishes the process", async () => {
+    it("Organization publishes the voteEncryptionPrivateKey", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
-        await instance.finishProcess( processId, input.voteEncryptionPrivateKey, { from: organizerAddress })
+        await instance.publishVoteEncryptionPrivateKey( processId, input.voteEncryptionPrivateKey, { from: organizerAddress })
         let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
         assert.equal(processMetadata.voteEncryptionPrivateKey, input.voteEncryptionPrivateKey, "The voteEncryptionPrivateKey should match the input")
-       
     })
 })

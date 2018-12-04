@@ -11,6 +11,8 @@ contract VotingProcess {
         bytes32 censusMerkleRoot;
 
         string voteEncryptionPrivateKey;
+
+        mapping(address => bytes32) votesBatches;
     }
 
     mapping (bytes32 => Process) public processes;
@@ -25,6 +27,17 @@ contract VotingProcess {
         _;
     }
 
+    modifier onlyRunningProcess (bytes32 processId) {
+        require (block.number > processes[processId].startBlock, "Process has not started yet");
+        require (block.number < processes[processId].endBlock, "Process has finished already");
+        _;
+    }
+
+    modifier onlyFinishedProcess (bytes32 processId) {
+        require (block.number > processes[processId].endBlock, "Process still running");
+        _;
+    }
+
     function createProcess(
         string memory name,
         uint256 startBlock,
@@ -33,6 +46,9 @@ contract VotingProcess {
         string memory voteEncryptionPublicKey)
         public
     {
+        //Todo (not implemnting to faciltate testing)
+        //prevent publishing if startBlock is due
+        //prevent publishing if endBlock is smaller than startBlock
 
         bytes32 processId = getProcessId(msg.sender, name);
         processes[processId].name = name;
@@ -45,12 +61,11 @@ contract VotingProcess {
         index.push(processId);
     }
 
-    function finishProcess(bytes32 processId, string memory voteEncryptionPrivateKey)
-        public onlyOrganizer (processId) 
+    function publishVoteEncryptionPrivateKey(bytes32 processId, string memory voteEncryptionPrivateKey)
+        public onlyOrganizer (processId) onlyFinishedProcess(processId) 
     {
         //Todo
         //Rename to publishVotePrivateKey?
-        //Verify currentBlock > endBlock
         //Verify voteEncryptionPrivateKey matches voteEncryptionPublicKey
         processes[processId].voteEncryptionPrivateKey = voteEncryptionPrivateKey;
     }
