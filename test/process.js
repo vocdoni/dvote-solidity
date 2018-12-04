@@ -16,6 +16,7 @@ contract('VotingProcess', function (accounts) {
         endBlock: 0,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        voteEncryptionPrivateKey: "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     }
 
     it("Creates a new process", async () => {
@@ -47,5 +48,21 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.endBlock, input.endBlock.valueOf(), "The endBlock should match the input")
         assert.equal(processMetadata.censusMerkleRoot, input.censusMerkleRoot, "The censusMerkleRoot should match the input")
         assert.equal(processMetadata.voteEncryptionPublicKey, input.voteEncryptionPublicKey, "The voteEncryptionPublicKey should match the input")
+        
+        assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should empty until the process is finished")
     })
-});
+
+    it("Finishes the process", async () => {
+        let instance = await VotingProcess.deployed()
+        let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
+        await instance.finishProcess(
+            processId,
+            input.voteEncryptionPrivateKey,
+            { from: organizerAddress })
+
+        let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
+
+        assert.equal(processMetadata.voteEncryptionPrivateKey, input.voteEncryptionPrivateKey, "The voteEncryptionPrivateKey should match the input")
+       
+    })
+})
