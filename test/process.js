@@ -15,7 +15,7 @@ contract('VotingProcess', function (accounts) {
         startBlock: 0,
         endBlock: 0,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        voteEncryptionKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     }
 
     it("Creates a new process", async () => {
@@ -25,7 +25,7 @@ contract('VotingProcess', function (accounts) {
             input.startBlock,
             input.endBlock,
             input.censusMerkleRoot,
-            input.voteEncryptionKey,
+            input.voteEncryptionPublicKey,
             { from: organizerAddress })
 
         let processesLength = await instance.getProcessesLength({ from: organizerAddress })
@@ -46,6 +46,6 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.startBlock, input.startBlock.valueOf(), "The startBlock should match the input")
         assert.equal(processMetadata.endBlock, input.endBlock.valueOf(), "The endBlock should match the input")
         assert.equal(processMetadata.censusMerkleRoot, input.censusMerkleRoot, "The censusMerkleRoot should match the input")
-        assert.equal(processMetadata.voteEncryptionKey, input.voteEncryptionKey, "The voteEncryptionKey should match the input")
+        assert.equal(processMetadata.voteEncryptionPublicKey, input.voteEncryptionPublicKey, "The voteEncryptionPublicKey should match the input")
     })
 });

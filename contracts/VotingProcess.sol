@@ -7,7 +7,7 @@ contract VotingProcess {
         string name;
         uint256 startBlock;
         uint256 endBlock;
-        string voteEncryptionKey;
+        string voteEncryptionPublicKey;
         bytes32 censusMerkleRoot;
     }
 
@@ -23,7 +23,7 @@ contract VotingProcess {
         uint256 startBlock,
         uint256 endBlock,
         bytes32 censusMerkleRoot,
-        string memory voteEncryptionKey)
+        string memory voteEncryptionPublicKey)
         public
     {
 
@@ -33,7 +33,7 @@ contract VotingProcess {
         processes[processId].startBlock = startBlock;
         processes[processId].endBlock = endBlock;
         processes[processId].censusMerkleRoot = censusMerkleRoot;
-        processes[processId].voteEncryptionKey = voteEncryptionKey;
+        processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
 
         index.push(processId);
     }
@@ -62,14 +62,14 @@ contract VotingProcess {
         uint256 startBlock,
         uint256 endBlock,
         bytes32 censusMerkleRoot,
-        string memory voteEncryptionKey)
+        string memory voteEncryptionPublicKey)
     {
         return(
             processes[processId].name,
             processes[processId].startBlock,
             processes[processId].endBlock,
             processes[processId].censusMerkleRoot,
-            processes[processId].voteEncryptionKey
+            processes[processId].voteEncryptionPublicKey
         );
     }
 }
