@@ -49,6 +49,7 @@ contract VotingProcess {
         onlyOrganizer (processId) public
     {
         //Todo
+        //Rename to publishVotePrivateKey?
         //Verify currentBlock > endBlock
         //Verify voteEncryptionPrivateKey matches voteEncryptionPublicKey
         processes[processId].voteEncryptionPrivateKey = voteEncryptionPrivateKey;
@@ -78,14 +79,16 @@ contract VotingProcess {
         uint256 startBlock,
         uint256 endBlock,
         bytes32 censusMerkleRoot,
-        string memory voteEncryptionPublicKey)
+        string memory voteEncryptionPublicKey,
+        string memory voteEncryptionPrivateKey)
     {
         return(
             processes[processId].name,
             processes[processId].startBlock,
             processes[processId].endBlock,
             processes[processId].censusMerkleRoot,
-            processes[processId].voteEncryptionPublicKey
+            processes[processId].voteEncryptionPublicKey,
+            processes[processId].voteEncryptionPrivateKey
         );
     }
 }
