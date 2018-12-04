@@ -3,16 +3,15 @@ pragma solidity ^0.5.0;
 contract VotingProcess {
 
     struct Process {
-        address organizer;
-        string name;
-        uint256 startBlock;
-        uint256 endBlock;
-        string voteEncryptionPublicKey;
-        bytes32 censusMerkleRoot;
-
-        string voteEncryptionPrivateKey;
-
-        mapping(address => bytes32) votesBatches;
+        address organizer; //address of the createor of the process
+        string name; //name of the process.
+        uint256 startBlock; //Only after this block, votesBatches will be accepted
+        uint256 endBlock; // After this block no more votesBatches will be accepted
+        string voteEncryptionPublicKey; //Key used by the voter to encrypt her vote
+        string voteEncryptionPrivateKey; //Key used by the verifier to decrypt voters votes. Only public at the end of the process
+        bytes32 censusMerkleRoot; //Hash of the MerkleTree of census. Used by the voter and the verifiers to shee if a voter can vote
+        address[] registeredRelays; //List of relays than can add votesBatches
+        mapping(address => bytes32[]) votesBatches; //List of votesBatches hashes by organized by the relay that added them
     }
 
     mapping (bytes32 => Process) public processes;
@@ -65,9 +64,28 @@ contract VotingProcess {
         public onlyOrganizer (processId) onlyFinishedProcess(processId) 
     {
         //Todo
-        //Rename to publishVotePrivateKey?
         //Verify voteEncryptionPrivateKey matches voteEncryptionPublicKey
         processes[processId].voteEncryptionPrivateKey = voteEncryptionPrivateKey;
+    }
+
+    function addVotesBatchHash(bytes32 processId, bytes32 batchHash)
+        public onlyRunningProcess(processId)
+    {
+        //Todo
+        //Verify sender is a registered relay
+        processes[processId].votesBatches[msg.sender].push(batchHash);
+    }
+
+    function getRelayVotesBatchesLength(bytes32 processId, address relayAddress) public view
+        returns (uint256)
+    {
+        return processes[processId].votesBatches[relayAddress].length;
+    }
+
+    function getVotesBatchHash(bytes32 processId, address relayAddress, uint256 index ) public view
+        returns (bytes32)
+    {
+        return processes[processId].votesBatches[relayAddress][index];
     }
 
     function getProcessId(address organizer, string memory name) public pure
