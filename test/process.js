@@ -3,6 +3,7 @@ var VotingProcess = artifacts.require("VotingProcess")
 contract('VotingProcess', function (accounts) {
 
     let organizerAddress = accounts[0]
+    let randomAddress = accounts[1]
 
     it("Checks no process exists", async () => {
         let instance = await VotingProcess.deployed()
@@ -52,16 +53,28 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should empty until the process is finished")
     })
 
-    it("Finishes the process", async () => {
+    it("Only Organization can finish the process", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
-        await instance.finishProcess(
-            processId,
-            input.voteEncryptionPrivateKey,
-            { from: organizerAddress })
+        
+        let error = null
+        try {
+            await instance.finishProcess( processId, input.voteEncryptionPrivateKey, { from: randomAddress })
+        }
+        catch(_error){
+            error = _error
+        }
 
+        assert.isNotNull(error, "If msg.sender is no organizer should revert")
         let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
+        assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should still be empty")
+    })
 
+    it("Organization finishes the process", async () => {
+        let instance = await VotingProcess.deployed()
+        let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
+        await instance.finishProcess( processId, input.voteEncryptionPrivateKey, { from: organizerAddress })
+        let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
         assert.equal(processMetadata.voteEncryptionPrivateKey, input.voteEncryptionPrivateKey, "The voteEncryptionPrivateKey should match the input")
        
     })
