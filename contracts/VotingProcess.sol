@@ -21,7 +21,7 @@ contract VotingProcess {
     }
 
     modifier onlyOrganizer (bytes32 processId) {
-        require(msg.sender == processes[processId].organizer, "msg.sender is not organizer");
+        require (msg.sender == processes[processId].organizer, "msg.sender is not organizer");
         _;
     }
 
@@ -46,7 +46,7 @@ contract VotingProcess {
     }
 
     function finishProcess(bytes32 processId, string memory voteEncryptionPrivateKey)
-        onlyOrganizer (processId) public
+        public onlyOrganizer (processId) 
     {
         //Todo
         //Rename to publishVotePrivateKey?
