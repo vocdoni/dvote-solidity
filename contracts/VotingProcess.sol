@@ -15,7 +15,7 @@ contract VotingProcess {
     }
 
     mapping (bytes32 => Process) public processes;
-    bytes32[] public index;
+    bytes32[] public processesIndex;
 
     constructor() public {
         
@@ -28,7 +28,8 @@ contract VotingProcess {
 
     modifier onlyRunningProcess (bytes32 processId) {
         require (block.number > processes[processId].startBlock, "Process has not started yet");
-        require (block.number < processes[processId].endBlock, "Process has finished already");
+        //Todo enable this:
+        //require (block.number < processes[processId].endBlock, "Process has finished already");
         _;
     }
 
@@ -57,7 +58,7 @@ contract VotingProcess {
         processes[processId].censusMerkleRoot = censusMerkleRoot;
         processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
 
-        index.push(processId);
+        processesIndex.push(processId);
     }
 
     function publishVoteEncryptionPrivateKey(bytes32 processId, string memory voteEncryptionPrivateKey)
@@ -68,21 +69,21 @@ contract VotingProcess {
         processes[processId].voteEncryptionPrivateKey = voteEncryptionPrivateKey;
     }
 
-    function addVotesBatchHash(bytes32 processId, bytes32 batchHash)
+    function addVotesBatch(bytes32 processId, bytes32 votesBatch)
         public onlyRunningProcess(processId)
     {
         //Todo
         //Verify sender is a registered relay
-        processes[processId].votesBatches[msg.sender].push(batchHash);
+        processes[processId].votesBatches[msg.sender].push(votesBatch);
     }
 
     function getRelayVotesBatchesLength(bytes32 processId, address relayAddress) public view
         returns (uint256)
-    {
+{
         return processes[processId].votesBatches[relayAddress].length;
     }
 
-    function getVotesBatchHash(bytes32 processId, address relayAddress, uint256 index ) public view
+    function getVotesBatch(bytes32 processId, address relayAddress, uint256 index ) public view
         returns (bytes32)
     {
         return processes[processId].votesBatches[relayAddress][index];
@@ -97,13 +98,13 @@ contract VotingProcess {
     function getProcessesLength() public view
         returns (uint256)
     {
-        return index.length;
+        return processesIndex.length;
     }
 
     function getProcessIdByIndex(uint256 processIndex) public view
         returns (bytes32)
     {
-        return index[processIndex];
+        return processesIndex[processIndex];
     }
 
     function getProcessMetadata(bytes32 processId) public view
