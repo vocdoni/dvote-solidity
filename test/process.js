@@ -57,6 +57,22 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should empty until the process is finished")
     })
 
+    it("Register relay", async () => {
+        let instance = await VotingProcess.deployed()
+        let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
+
+        let relaysLength = await instance.getRelaysLength(processId, { from: randomAddress })
+        assert.equal(relaysLength, 0, "No registered relay should exist")
+
+        await instance.registerRelay(processId, relayAddress, { from: organizerAddress })
+
+        relaysLength = await instance.getRelaysLength(processId, { from: randomAddress })
+        assert.equal(relaysLength, 1, "One registered relay should exist")
+
+        let registeredRelayAddress = await instance.getRelayByIndex(processId, 0, { from: randomAddress })
+        assert.equal(registeredRelayAddress, relayAddress, "Added votesBatch should match the stored one")
+    })
+
     it("Relay adds votesBatch", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
