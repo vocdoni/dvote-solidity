@@ -1,15 +1,14 @@
 var VotingProcess = artifacts.require("VotingProcess")
 
-contract('VotingProcess', async (accounts) => {
-    it("Checks no process exists", function () {
-        return VotingProcess.deployed().then(function (instance) {
-            return instance.getProcessesLength({ from: accounts[0] })
-        }).then(function (processesLength) {
-            assert.equal(processesLength.valueOf(), 0, "processess index should be empty")
-        });
-    });
+contract('VotingProcess', function (accounts) {
 
     let organizerAddress = accounts[0]
+
+    it("Checks no process exists", async () => {
+        let instance = await VotingProcess.deployed()
+        let processesLength = await instance.getProcessesLength({ from: accounts[0] })
+        assert.equal(processesLength.valueOf(), 0, "processess index should be empty")
+    });
 
     input = {
         name: "This is a process name",
@@ -36,6 +35,11 @@ contract('VotingProcess', async (accounts) => {
 
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
         assert.equal(processIdByIndex, processId, "The processId should be the same")
+    })
+
+    it("Metadata is stored correctly", async () => {
+        let instance = await VotingProcess.deployed()
+        let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
         let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
 
         assert.equal(processMetadata.name, input.name, "The name should match the input")
