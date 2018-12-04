@@ -9,6 +9,8 @@ contract VotingProcess {
         uint256 endBlock;
         string voteEncryptionPublicKey;
         bytes32 censusMerkleRoot;
+
+        string voteEncryptionPrivateKey;
     }
 
     mapping (bytes32 => Process) public processes;
@@ -16,6 +18,11 @@ contract VotingProcess {
 
     constructor() public {
         
+    }
+
+    modifier onlyOrganizer (bytes32 processId) {
+        require(msg.sender == processes[processId].organizer, "msg.sender is not organizer");
+        _;
     }
 
     function createProcess(
@@ -36,6 +43,15 @@ contract VotingProcess {
         processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
 
         index.push(processId);
+    }
+
+    function finishProcess(bytes32 processId, string memory voteEncryptionPrivateKey)
+        onlyOrganizer (processId) public
+    {
+        //Todo
+        //Verify currentBlock > endBlock
+        //Verify voteEncryptionPrivateKey matches voteEncryptionPublicKey
+        processes[processId].voteEncryptionPrivateKey = voteEncryptionPrivateKey;
     }
 
     function getProcessId(address organizer, string memory name) public pure
