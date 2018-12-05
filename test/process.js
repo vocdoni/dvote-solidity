@@ -62,6 +62,30 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.voteEncryptionPublicKey, input.voteEncryptionPublicKey, "The voteEncryptionPublicKey should match the input")
     })
 
+    it("Can't create/override the same process again", async () => {
+        let instance = await VotingProcess.deployed()
+
+        let error = null
+        try {
+            await instance.publishVoteEncryptionPrivateKey(processId, input.voteEncryptionPrivateKey, { from: randomAddress })
+            await instance.createProcess(
+                input.name,
+                input.startBlock,
+                input.endBlock,
+                input.censusMerkleRoot,
+                input.question,
+                input.votingOptions,
+                input.voteEncryptionPublicKey,
+                { from: organizerAddress })
+                
+            }
+            catch (_error) {
+                error = _error
+            }
+            
+            assert.isNotNull(error, "If process already exists should fail")
+    })
+
     it("Register relay", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })

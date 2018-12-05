@@ -3,6 +3,7 @@ pragma solidity ^0.5.0;
 contract VotingProcess {
 
     struct Process {
+        bool exists;
         address organizer; //address of the createor of the process
         string name; //name of the process.
         uint256 startBlock; //Only after this block, votesBatches will be accepted
@@ -53,8 +54,9 @@ contract VotingProcess {
         //Todo (not implemnting to faciltate testing)
         //prevent publishing if startBlock is due
         //prevent publishing if endBlock is smaller than startBlock
-
+        
         bytes32 processId = getProcessId(msg.sender, name);
+        require(processes[processId].exists == false, "ProccesId already exists");
         processes[processId].name = name;
         processes[processId].organizer = msg.sender;
         processes[processId].startBlock = startBlock;
@@ -63,7 +65,7 @@ contract VotingProcess {
         processes[processId].question = question;
         processes[processId].votingOptions = votingOptions;
         processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
-
+        processes[processId].exists = true;
         processesIndex.push(processId);
     }
 
