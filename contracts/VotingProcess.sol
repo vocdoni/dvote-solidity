@@ -10,6 +10,8 @@ contract VotingProcess {
         string voteEncryptionPublicKey; //Key used by the voter to encrypt her vote
         string voteEncryptionPrivateKey; //Key used by the verifier to decrypt voters votes. Only public at the end of the process
         bytes32 censusMerkleRoot; //Hash of the MerkleTree of census. Used by the voter and the verifiers to shee if a voter can vote
+        bytes32[] votingOptions;
+        string question;
         address[] registeredRelays; //List of relays than can add votesBatches
         mapping(address => bytes32[]) votesBatches; //List of votesBatches hashes by organized by the relay that added them
     }
@@ -43,6 +45,8 @@ contract VotingProcess {
         uint256 startBlock,
         uint256 endBlock,
         bytes32 censusMerkleRoot,
+        string memory question,
+        bytes32[] memory votingOptions,
         string memory voteEncryptionPublicKey)
         public
     {
@@ -56,10 +60,21 @@ contract VotingProcess {
         processes[processId].startBlock = startBlock;
         processes[processId].endBlock = endBlock;
         processes[processId].censusMerkleRoot = censusMerkleRoot;
+        processes[processId].question = question;
+        processes[processId].votingOptions = votingOptions;
         processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
 
         processesIndex.push(processId);
     }
+
+    function setVotingQuestion(bytes32 processId, string memory voteEncryptionPrivateKey)
+        public onlyOrganizer (processId) onlyFinishedProcess(processId) 
+    {
+        //Todo
+        //Verify voteEncryptionPrivateKey matches voteEncryptionPublicKey
+        processes[processId].voteEncryptionPrivateKey = voteEncryptionPrivateKey;
+    }
+
 
     function publishVoteEncryptionPrivateKey(bytes32 processId, string memory voteEncryptionPrivateKey)
         public onlyOrganizer (processId) onlyFinishedProcess(processId) 
@@ -132,18 +147,27 @@ contract VotingProcess {
         uint256 startBlock,
         uint256 endBlock,
         bytes32 censusMerkleRoot,
-        string memory voteEncryptionPublicKey,
-        string memory voteEncryptionPrivateKey)
-    {
+        string memory question,
+        bytes32[] memory votingOptions,
+        string memory voteEncryptionPublicKey)
+        {
         return(
             processes[processId].name,
             processes[processId].startBlock,
             processes[processId].endBlock,
             processes[processId].censusMerkleRoot,
-            processes[processId].voteEncryptionPublicKey,
-            processes[processId].voteEncryptionPrivateKey
+            processes[processId].question,
+            processes[processId].votingOptions,
+            processes[processId].voteEncryptionPublicKey
         );
     }
+
+    function getVoteEncryptionPrivateKey(bytes32 processId) public view
+        returns (string memory)
+    {
+        return processes[processId].voteEncryptionPrivateKey;
+    }
+
 
     function getNullVotesBatchValue() public pure
         returns (bytes32)

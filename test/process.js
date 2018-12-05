@@ -20,6 +20,8 @@ contract('VotingProcess', function (accounts) {
         endBlock: 1,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        question:"Blue pill or red pill?",
+        votingOptions:["0x0000000000000000000000000000000000000000000000000000000000000000", "0x1111111111111111111111111111111111111111111111111111111111111111"],
         voteEncryptionPrivateKey: "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
         votesBatch1: "0x1111111111111111111111111111111111111111111111111111111111111111",
     }
@@ -31,6 +33,8 @@ contract('VotingProcess', function (accounts) {
             input.startBlock,
             input.endBlock,
             input.censusMerkleRoot,
+            input.question,
+            input.votingOptions,
             input.voteEncryptionPublicKey,
             { from: organizerAddress })
 
@@ -52,9 +56,10 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.startBlock, input.startBlock.valueOf(), "The startBlock should match the input")
         assert.equal(processMetadata.endBlock, input.endBlock.valueOf(), "The endBlock should match the input")
         assert.equal(processMetadata.censusMerkleRoot, input.censusMerkleRoot, "The censusMerkleRoot should match the input")
+        assert.equal(processMetadata.question, input.question, "The question should match the input")
+        assert.equal(processMetadata.votingOptions[0], input.votingOptions[0], "The votingOptions[0] should match the input")
+        assert.equal(processMetadata.votingOptions[1], input.votingOptions[1], "The votingOptions[1] should match the input")
         assert.equal(processMetadata.voteEncryptionPublicKey, input.voteEncryptionPublicKey, "The voteEncryptionPublicKey should match the input")
-
-        assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should empty until the process is finished")
     })
 
     it("Register relay", async () => {
@@ -112,16 +117,16 @@ contract('VotingProcess', function (accounts) {
         }
 
         assert.isNotNull(error, "If msg.sender is no organizer should revert")
-        let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
-        assert.equal(processMetadata.voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should still be empty")
+        let voteEncryptionPrivateKey = await instance.getVoteEncryptionPrivateKey(processId, { from: organizerAddress })
+        assert.equal(voteEncryptionPrivateKey, "", "The voteEncryptionPrivateKey should still be empty")
     })
 
     it("Organization publishes the voteEncryptionPrivateKey", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
         await instance.publishVoteEncryptionPrivateKey(processId, input.voteEncryptionPrivateKey, { from: organizerAddress })
-        let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
-        assert.equal(processMetadata.voteEncryptionPrivateKey, input.voteEncryptionPrivateKey, "The voteEncryptionPrivateKey should match the input")
+        let voteEncryptionPrivateKey = await instance.getVoteEncryptionPrivateKey(processId, { from: organizerAddress })
+        assert.equal(voteEncryptionPrivateKey, input.voteEncryptionPrivateKey, "The voteEncryptionPrivateKey should match the input")
     })
 
     it("Value of nullVotesBatch is the expected", async () => {
