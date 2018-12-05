@@ -73,6 +73,7 @@ contract VotingProcess {
         public onlyOrganizer(processId)
     {
         processes[processId].registeredRelays.push(relayAddress);
+        processes[processId].votesBatches[relayAddress].push(getNullVotesBatchValue()); //This is so we can check on chain ifa relay is registred
     }
 
     function getRelaysLength(bytes32 processId) public view
@@ -87,18 +88,17 @@ contract VotingProcess {
         return processes[processId].registeredRelays[index];
     }
 
-
     function addVotesBatch(bytes32 processId, bytes32 votesBatch)
         public onlyRunningProcess(processId)
     {
         //Todo
-        //Verify sender is a registered relay
+        require(isRelayRegistered(processId, msg.sender) == true, "Relay is not registered");
         processes[processId].votesBatches[msg.sender].push(votesBatch);
     }
 
     function getRelayVotesBatchesLength(bytes32 processId, address relayAddress) public view
         returns (uint256)
-{
+    {
         return processes[processId].votesBatches[relayAddress].length;
     }
 
@@ -143,5 +143,17 @@ contract VotingProcess {
             processes[processId].voteEncryptionPublicKey,
             processes[processId].voteEncryptionPrivateKey
         );
+    }
+
+    function getNullVotesBatchValue() public pure
+        returns (bytes32)
+    {
+        return 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    }
+
+    function isRelayRegistered(bytes32 processId, address relayAddress) public view
+        returns (bool)
+    {
+        processes[processId].votesBatches[relayAddress][0] == getNullVotesBatchValue();
     }
 }
