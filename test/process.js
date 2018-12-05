@@ -20,8 +20,8 @@ contract('VotingProcess', function (accounts) {
         endBlock: 1,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-        question:"Blue pill or red pill?",
-        votingOptions:["0x0000000000000000000000000000000000000000000000000000000000000000", "0x1111111111111111111111111111111111111111111111111111111111111111"],
+        question: "Blue pill or red pill?",
+        votingOptions: ["0x0000000000000000000000000000000000000000000000000000000000000000", "0x1111111111111111111111111111111111111111111111111111111111111111"],
         voteEncryptionPrivateKey: "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
         votesBatch1: "0x1111111111111111111111111111111111111111111111111111111111111111",
     }
@@ -77,13 +77,12 @@ contract('VotingProcess', function (accounts) {
                 input.votingOptions,
                 input.voteEncryptionPublicKey,
                 { from: organizerAddress })
-                
-            }
-            catch (_error) {
-                error = _error
-            }
-            
-            assert.isNotNull(error, "If process already exists should fail")
+        }
+        catch (_error) {
+            error = _error
+        }
+
+        assert.isNotNull(error, "If process already exists should fail")
     })
 
     it("Register relay", async () => {
@@ -108,6 +107,20 @@ contract('VotingProcess', function (accounts) {
         assert.equal(registeredRelayAddress, relayAddress, "Added votesBatch should match the stored one")
     })
 
+    it("Can't register the same relay again", async () => {
+        let instance = await VotingProcess.deployed()
+        let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
+
+        try {
+            await instance.registerRelay(processId, relayAddress, { from: organizerAddress })
+        }
+        catch (_error) {
+            error = _error
+        }
+
+        assert.isNotNull(error, "If relay is registred already, should fail")
+    })
+
     it("Relay adds votesBatch", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
@@ -116,7 +129,7 @@ contract('VotingProcess', function (accounts) {
         assert.equal(votesBatchLength, 1, "One votesBatch should exist (signaling the relay is registered)")
 
         let votesBatch = await instance.getVotesBatch(processId, relayAddress, 0)
-        let nullVotesBatch = await instance.getNullVotesBatchValue( { from: randomAddress })
+        let nullVotesBatch = await instance.getNullVotesBatchValue({ from: randomAddress })
         assert.equal(votesBatch, nullVotesBatch, "The existing votesBatch should be equal to then nullVotesBatch value")
 
         await instance.addVotesBatch(processId, input.votesBatch1, { from: relayAddress })
@@ -155,7 +168,7 @@ contract('VotingProcess', function (accounts) {
 
     it("Value of nullVotesBatch is the expected", async () => {
         let instance = await VotingProcess.deployed()
-        let nullVotesBatch = await instance.getNullVotesBatchValue( { from: randomAddress })
+        let nullVotesBatch = await instance.getNullVotesBatchValue({ from: randomAddress })
         assert.equal(nullVotesBatch, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, "nullVotesBatch is always 0xFFFFF...")
     })
 })

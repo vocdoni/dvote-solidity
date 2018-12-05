@@ -89,6 +89,7 @@ contract VotingProcess {
     function registerRelay(bytes32 processId, address relayAddress)
         public onlyOrganizer(processId)
     {
+        require(isRelayRegistered(processId, relayAddress) == false, "Can't register an exsiting relay");
         processes[processId].registeredRelays.push(relayAddress);
         processes[processId].votesBatches[relayAddress].push(getNullVotesBatchValue()); //This is so we can check on chain ifa relay is registred
     }
