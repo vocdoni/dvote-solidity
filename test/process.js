@@ -64,10 +64,16 @@ contract('VotingProcess', function (accounts) {
         let relaysLength = await instance.getRelaysLength(processId, { from: randomAddress })
         assert.equal(relaysLength, 0, "No registered relay should exist")
 
+        let relayIsRegistered = await instance.isRelayRegistered(processId, relayAddress, { from: randomAddress })
+        assert.isFalse(relayIsRegistered, "This relay should not be registered")
+
         await instance.registerRelay(processId, relayAddress, { from: organizerAddress })
 
         relaysLength = await instance.getRelaysLength(processId, { from: randomAddress })
         assert.equal(relaysLength, 1, "One registered relay should exist")
+
+        relayIsRegistered = await instance.isRelayRegistered(processId, relayAddress, { from: randomAddress })
+        assert.isTrue(relayIsRegistered, "This relay should be registered")
 
         let registeredRelayAddress = await instance.getRelayByIndex(processId, 0, { from: randomAddress })
         assert.equal(registeredRelayAddress, relayAddress, "Added votesBatch should match the stored one")
@@ -78,14 +84,18 @@ contract('VotingProcess', function (accounts) {
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
 
         let votesBatchLength = await instance.getRelayVotesBatchesLength(processId, relayAddress, { from: randomAddress })
-        assert.equal(votesBatchLength, 0, "No votesBatch should exist")
+        assert.equal(votesBatchLength, 1, "One votesBatch should exist (signaling the relay is registered)")
+
+        let votesBatch = await instance.getVotesBatch(processId, relayAddress, 0)
+        let nullVotesBatch = await instance.getNullVotesBatchValue( { from: randomAddress })
+        assert.equal(votesBatch, nullVotesBatch, "The existing votesBatch should be equal to then nullVotesBatch value")
 
         await instance.addVotesBatch(processId, input.votesBatch1, { from: relayAddress })
 
         votesBatchLength = await instance.getRelayVotesBatchesLength(processId, relayAddress, { from: randomAddress })
-        assert.equal(votesBatchLength, 1, "One votesBatch should exist")
+        assert.equal(votesBatchLength, 2, "Two votesBatch should exist")
 
-        let votesBatch1 = await instance.getVotesBatch(processId, relayAddress, 0)
+        let votesBatch1 = await instance.getVotesBatch(processId, relayAddress, 1)
         assert.equal(votesBatch1, input.votesBatch1, "Added votesBatch should match the stored one")
     })
 
@@ -113,4 +123,11 @@ contract('VotingProcess', function (accounts) {
         let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
         assert.equal(processMetadata.voteEncryptionPrivateKey, input.voteEncryptionPrivateKey, "The voteEncryptionPrivateKey should match the input")
     })
+
+    it("Value of nullVotesBatch is the expected", async () => {
+        let instance = await VotingProcess.deployed()
+        let nullVotesBatch = await instance.getNullVotesBatchValue( { from: randomAddress })
+        assert.equal(nullVotesBatch, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, "nullVotesBatch is always 0xFFFFF...")
+    })
 })
+
