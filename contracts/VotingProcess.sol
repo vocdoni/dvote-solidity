@@ -154,6 +154,11 @@ contract VotingProcess {
     function isRelayRegistered(bytes32 processId, address relayAddress) public view
         returns (bool)
     {
-        processes[processId].votesBatches[relayAddress][0] == getNullVotesBatchValue();
+        if(processes[processId].votesBatches[relayAddress].length == 0)
+        {
+            return false;
+        }
+        
+        return true;
     }
 }
