@@ -1,0 +1,27 @@
+{
+  "name": "dvote-smart-contracts",
+  "version": "1.0.0",
+  "description": "Solidity smart contracts implementing the voting functionality",
+  "main": "truffle.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "ganache": "./node_modules/ganache-cli/cli.js",
+    "truffle": "./node_modules/truffle/build/cli.bundled.js",
+    "test": "./node_modules/truffle/build/cli.bundled.js test",
+    "build": "./node_modules/truffle/build/cli.bundled.js build",
+    "migrate": "./node_modules/truffle/build/cli.bundled.js migrate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vocdoni/dvote-smart-contracts.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "homepage": "https://github.com/vocdoni/dvote-smart-contracts#readme",
+  "dependencies": {
+    "ganache-cli": "^6.2.3",
+    "truffle": "^5.0.0-beta.2"
+  }
+}
