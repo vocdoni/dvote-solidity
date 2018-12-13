@@ -11,7 +11,7 @@
     "truffle": "./node_modules/truffle/build/cli.bundled.js",
     "test": "./node_modules/truffle/build/cli.bundled.js test",
     "build": "./node_modules/truffle/build/cli.bundled.js build",
-    "migrate": "./node_modules/truffle/build/cli.bundled.js migrate"
+    "migrate": "./node_modules/truffle/build/cli.bundled.js migrate --reset"
   },
   "repository": {
     "type": "git",
