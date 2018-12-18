@@ -45,6 +45,9 @@ contract('VotingProcess', function (accounts) {
 
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
         assert.equal(processIdByIndex, processId, "The processId should be the same")
+
+        let processesIdByOrganizer = await instance.getProcessesIdByOrganizer(organizerAddress);
+        assert.deepEqual(processesIdByOrganizer, [processId]);
     })
 
     it("Metadata is stored correctly", async () => {

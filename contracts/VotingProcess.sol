@@ -20,6 +20,8 @@ contract VotingProcess {
     mapping (bytes32 => Process) public processes;
     bytes32[] public processesIndex;
 
+    mapping (address => bytes32[]) public organizerProcesses;
+
     constructor() public {
         
     }
@@ -67,6 +69,8 @@ contract VotingProcess {
         processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
         processes[processId].exists = true;
         processesIndex.push(processId);
+
+        organizerProcesses[msg.sender].push(processId);
     }
 
     function setVotingQuestion(bytes32 processId, string memory voteEncryptionPrivateKey)
@@ -187,5 +191,11 @@ contract VotingProcess {
         }
         
         return true;
+    }
+
+    function getProcessesIdByOrganizer(address organizer) external view 
+        returns (bytes32[] memory)
+    {
+        return organizerProcesses[organizer];
     }
 }
