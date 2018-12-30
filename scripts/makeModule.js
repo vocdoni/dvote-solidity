@@ -38,15 +38,22 @@ const jsonToJs = function (contract) {
     return serialized
 }
 
-let write = (fileName, str) => {
-    // console.log(str)
-    let path = libDirectory + "/" + fileName + ".js"
+const write = (path, str) => {
     fs.writeFile(path, str, function (err) {
         if (err)
             return console.log(err);
         else
-            console.log(' - Created  ' + path);
+            console.log('Output: ' + path);
     });
+}
+
+const makeIndex = () => {
+    let str = ""
+    for (let contractName of contractsToExport) {
+        str += "module.exports." + contractName + " = require('./" + contractName + ".js')\n";
+    }
+    let path = libDirectory + "/index.js"
+    write(path, str)
 }
 
 const run = function () {
@@ -55,8 +62,12 @@ const run = function () {
 
     for (let contractName of contractsToExport) {
         let serialized = jsonToJs(contractName)
-        write(contractName, serialized)
+        let path = libDirectory + "/" + contractName + ".js"
+        write(path, serialized)
     }
+
+    makeIndex()
+
 }
 
 run()
