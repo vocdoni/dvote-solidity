@@ -2,4 +2,8 @@ build
 src
 scripts
 test
+contracts
+migrations
+truffle-config.json
+truffle.js
 .vscode
