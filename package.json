@@ -1,8 +1,8 @@
 {
   "name": "dvote-smart-contracts",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Solidity smart contracts implementing the voting functionality",
-  "main": "truffle.js",
+  "main": "./lib/index.js",
   "directories": {
     "test": "test"
   },
@@ -12,7 +12,8 @@
     "test": "./node_modules/truffle/build/cli.bundled.js test",
     "build": "./node_modules/truffle/build/cli.bundled.js build",
     "migrate": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
-    "makeModule": "node ./scripts/makeModule.js"
+    "makeModule": "node ./scripts/makeModule.js",
+    "prepublishOnly": "npm test && npm run makeModule"
   },
   "repository": {
     "type": "git",
