@@ -3,7 +3,6 @@ const serialize = require("serialize-to-js").serializeToModule
 const contractsDirectory = __dirname + "/../build/contracts/"
 const contractsToExport = ["VotingEntity", "VotingProcess"]
 const propertiesToExport = ["abi", "bytecode"] //https://github.com/trufflesuite/truffle-contract-schema
-
 const libDirectory = __dirname + "/../lib"
 
 const deleteLibDirectory = function () {
@@ -43,7 +42,7 @@ const write = (path, str) => {
         if (err)
             return console.log(err);
         else
-            console.log('Output: ' + path);
+            console.log('  Output: ' + path);
     });
 }
 
@@ -57,6 +56,7 @@ const makeIndex = () => {
 }
 
 const run = function () {
+    console.log("Making module...")
     deleteLibDirectory()
     makeLibDirectory()
 
@@ -67,7 +67,6 @@ const run = function () {
     }
 
     makeIndex()
-
 }
 
 run()

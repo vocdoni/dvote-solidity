@@ -19,6 +19,8 @@ contract('VotingProcess', function (accounts) {
         startBlock: 0,
         endBlock: 1,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        censusFranchiseProofUrl:"http://vocdoni.io/getFranchiseProof",    
+        censusRequestUrl:"http://vocdoni.io/requestCenus",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
         question: "Blue pill or red pill?",
         votingOptions: ["0x0000000000000000000000000000000000000000000000000000000000000000", "0x1111111111111111111111111111111111111111111111111111111111111111"],
@@ -33,6 +35,8 @@ contract('VotingProcess', function (accounts) {
             input.startBlock,
             input.endBlock,
             input.censusMerkleRoot,
+            input.censusFranchiseProofUrl,
+            input.censusRequestUrl,
             input.question,
             input.votingOptions,
             input.voteEncryptionPublicKey,
@@ -50,7 +54,7 @@ contract('VotingProcess', function (accounts) {
         assert.deepEqual(processesIdByOrganizer, [processId]);
     })
 
-    it("Metadata is stored correctly", async () => {
+    it("Process metadata is stored correctly", async () => {
         let instance = await VotingProcess.deployed()
         let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
         let processMetadata = await instance.getProcessMetadata(processId, { from: organizerAddress })
@@ -58,11 +62,20 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processMetadata.name, input.name, "The name should match the input")
         assert.equal(processMetadata.startBlock, input.startBlock.valueOf(), "The startBlock should match the input")
         assert.equal(processMetadata.endBlock, input.endBlock.valueOf(), "The endBlock should match the input")
-        assert.equal(processMetadata.censusMerkleRoot, input.censusMerkleRoot, "The censusMerkleRoot should match the input")
         assert.equal(processMetadata.question, input.question, "The question should match the input")
         assert.equal(processMetadata.votingOptions[0], input.votingOptions[0], "The votingOptions[0] should match the input")
         assert.equal(processMetadata.votingOptions[1], input.votingOptions[1], "The votingOptions[1] should match the input")
         assert.equal(processMetadata.voteEncryptionPublicKey, input.voteEncryptionPublicKey, "The voteEncryptionPublicKey should match the input")
+    })
+
+    it("Census metadata is stored correctly", async () => {
+        let instance = await VotingProcess.deployed()
+        let processId = await instance.getProcessId(organizerAddress, input.name, { from: organizerAddress })
+
+        let censusMetadata = await instance.getCensusMetadata(processId, { from: organizerAddress })
+        assert.equal(censusMetadata.censusMerkleRoot, input.censusMerkleRoot, "The censusMerkleRoot should match the input")
+        assert.equal(censusMetadata.censusFranchiseProofUrl, input.censusFranchiseProofUrl, "The censusFranchiseProofUrl should match the input")
+        assert.equal(censusMetadata.censusRequestUrl, input.censusRequestUrl, "The censusRequestUrl should match the input")
     })
 
     it("Can't create/override the same process again", async () => {
@@ -76,6 +89,8 @@ contract('VotingProcess', function (accounts) {
                 input.startBlock,
                 input.endBlock,
                 input.censusMerkleRoot,
+                input.censusFranchiseProofUrl,
+                input.censusRequestUrl,
                 input.question,
                 input.votingOptions,
                 input.voteEncryptionPublicKey,
