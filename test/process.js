@@ -19,7 +19,8 @@ contract('VotingProcess', function (accounts) {
         startBlock: 0,
         endBlock: 1,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        censusFranchiseProofUrl:"http://vocdoni.io/",       
+        censusFranchiseProofUrl:"http://vocdoni.io/getFranchiseProof",    
+        censusRequestUrl:"http://vocdoni.io/requestCenus",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
         question: "Blue pill or red pill?",
         votingOptions: ["0x0000000000000000000000000000000000000000000000000000000000000000", "0x1111111111111111111111111111111111111111111111111111111111111111"],
@@ -35,6 +36,7 @@ contract('VotingProcess', function (accounts) {
             input.endBlock,
             input.censusMerkleRoot,
             input.censusFranchiseProofUrl,
+            input.censusRequestUrl,
             input.question,
             input.votingOptions,
             input.voteEncryptionPublicKey,
@@ -73,6 +75,7 @@ contract('VotingProcess', function (accounts) {
         let censusMetadata = await instance.getCensusMetadata(processId, { from: organizerAddress })
         assert.equal(censusMetadata.censusMerkleRoot, input.censusMerkleRoot, "The censusMerkleRoot should match the input")
         assert.equal(censusMetadata.censusFranchiseProofUrl, input.censusFranchiseProofUrl, "The censusFranchiseProofUrl should match the input")
+        assert.equal(censusMetadata.censusRequestUrl, input.censusRequestUrl, "The censusRequestUrl should match the input")
     })
 
     it("Can't create/override the same process again", async () => {
@@ -87,6 +90,7 @@ contract('VotingProcess', function (accounts) {
                 input.endBlock,
                 input.censusMerkleRoot,
                 input.censusFranchiseProofUrl,
+                input.censusRequestUrl,
                 input.question,
                 input.votingOptions,
                 input.voteEncryptionPublicKey,
