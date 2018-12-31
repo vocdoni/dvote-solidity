@@ -2,23 +2,28 @@ pragma solidity ^0.5.0;
 
 contract VotingProcess {
 
+    struct QuestionDetails{ //This was split out of Process because of the "Stack to deep" error
+        string question; //Question that will be asked
+        bytes32[] votingOptions;// List of the different options that the client can choose to respon to the "Question"
+    }
+
     struct Process {
         bool exists;
         address organizer; //address of the createor of the process
         string name; //name of the process.
         uint256 startBlock; //Only after this block, votesBatches will be accepted
         uint256 endBlock; // After this block no more votesBatches will be accepted
+        QuestionDetails questionDetails;
         string voteEncryptionPublicKey; //Key used by the voter to encrypt her vote
         string voteEncryptionPrivateKey; //Key used by the verifier to decrypt voters votes. Only public at the end of the process
         bytes32 censusMerkleRoot; //Hash of the MerkleTree of census. Used by the voter and the verifiers to shee if a voter can vote
         string censusFranchiseProofUrl; //URL (http or IPFS) that the client can use to fetch its franchiseProof
-        bytes32[] votingOptions;// List of the different options that the client can choose to respon to the "Question"
-        string question; //Question that will be asked
+        string censusRequestUrl; //URL that the client can use to request to have her identity added to the census
         address[] registeredRelays; //List of relays than can add votesBatches
         mapping(address => bytes32[]) votesBatches; //List of votesBatches hashes by organized by the relay that added them
     }
 
-    mapping (bytes32 => Process) public processes;
+    mapping (bytes32 => Process) processes; //"public" removed because of this: https://ethereum.stackexchange.com/questions/63149/nested-structs-that-are-part-of-a-mapping-broken-in-solidity-0-5-0/63152#63152
     bytes32[] public processesIndex;
 
     mapping (address => bytes32[]) public organizerProcesses;
@@ -50,12 +55,13 @@ contract VotingProcess {
         uint256 endBlock,
         bytes32 censusMerkleRoot,
         string memory censusFranchiseProofUrl,
+        string memory censusRequestUrl,
         string memory question,
         bytes32[] memory votingOptions,
         string memory voteEncryptionPublicKey)
         public
     {
-        //Todo (not implemnting to faciltate testing)
+        //Todo (not implementing it yet in order to faciltate testing)
         //prevent publishing if startBlock is due
         //prevent publishing if endBlock is smaller than startBlock
         
@@ -67,8 +73,11 @@ contract VotingProcess {
         processes[processId].endBlock = endBlock;
         processes[processId].censusMerkleRoot = censusMerkleRoot;
         processes[processId].censusFranchiseProofUrl = censusFranchiseProofUrl;
-        processes[processId].question = question;
-        processes[processId].votingOptions = votingOptions;
+        processes[processId].censusRequestUrl = censusRequestUrl;
+
+        processes[processId].questionDetails.question = question;
+        processes[processId].questionDetails.votingOptions = votingOptions;
+
         processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
         processes[processId].exists = true;
         processesIndex.push(processId);
@@ -164,18 +173,23 @@ contract VotingProcess {
             processes[processId].name,
             processes[processId].startBlock,
             processes[processId].endBlock,
-            processes[processId].question,
-            processes[processId].votingOptions,
+            processes[processId].questionDetails.question,
+            processes[processId].questionDetails.votingOptions,
             processes[processId].voteEncryptionPublicKey
         );
     }
 
     function getCensusMetadata(bytes32 processId) public view
-        returns ( bytes32 censusMerkleRoot, string memory censusFranchiseProofUrl)
+        returns (
+            bytes32 censusMerkleRoot,
+            string memory censusFranchiseProofUrl,
+            string memory censusRequestUrl
+            )
     {
         return(
             processes[processId].censusMerkleRoot,
-            processes[processId].censusFranchiseProofUrl
+            processes[processId].censusFranchiseProofUrl,
+            processes[processId].censusRequestUrl
         );
     }
 
