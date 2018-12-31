@@ -11,8 +11,9 @@ contract VotingProcess {
         string voteEncryptionPublicKey; //Key used by the voter to encrypt her vote
         string voteEncryptionPrivateKey; //Key used by the verifier to decrypt voters votes. Only public at the end of the process
         bytes32 censusMerkleRoot; //Hash of the MerkleTree of census. Used by the voter and the verifiers to shee if a voter can vote
-        bytes32[] votingOptions;
-        string question;
+        string censusFranchiseProofUrl; //URL (http or IPFS) that the client can use to fetch its franchiseProof
+        bytes32[] votingOptions;// List of the different options that the client can choose to respon to the "Question"
+        string question; //Question that will be asked
         address[] registeredRelays; //List of relays than can add votesBatches
         mapping(address => bytes32[]) votesBatches; //List of votesBatches hashes by organized by the relay that added them
     }
@@ -48,6 +49,7 @@ contract VotingProcess {
         uint256 startBlock,
         uint256 endBlock,
         bytes32 censusMerkleRoot,
+        string memory censusFranchiseProofUrl,
         string memory question,
         bytes32[] memory votingOptions,
         string memory voteEncryptionPublicKey)
@@ -64,6 +66,7 @@ contract VotingProcess {
         processes[processId].startBlock = startBlock;
         processes[processId].endBlock = endBlock;
         processes[processId].censusMerkleRoot = censusMerkleRoot;
+        processes[processId].censusFranchiseProofUrl = censusFranchiseProofUrl;
         processes[processId].question = question;
         processes[processId].votingOptions = votingOptions;
         processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
@@ -153,7 +156,6 @@ contract VotingProcess {
         string memory name,
         uint256 startBlock,
         uint256 endBlock,
-        bytes32 censusMerkleRoot,
         string memory question,
         bytes32[] memory votingOptions,
         string memory voteEncryptionPublicKey)
@@ -162,10 +164,18 @@ contract VotingProcess {
             processes[processId].name,
             processes[processId].startBlock,
             processes[processId].endBlock,
-            processes[processId].censusMerkleRoot,
             processes[processId].question,
             processes[processId].votingOptions,
             processes[processId].voteEncryptionPublicKey
+        );
+    }
+
+    function getCensusMetadata(bytes32 processId) public view
+        returns ( bytes32 censusMerkleRoot, string memory censusFranchiseProofUrl)
+    {
+        return(
+            processes[processId].censusMerkleRoot,
+            processes[processId].censusFranchiseProofUrl
         );
     }
 
@@ -174,7 +184,6 @@ contract VotingProcess {
     {
         return processes[processId].voteEncryptionPrivateKey;
     }
-
 
     function getNullVotesBatchValue() public pure
         returns (bytes32)
