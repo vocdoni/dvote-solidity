@@ -12,6 +12,8 @@
  *   },
  */
 
+var HDWalletProvider = require("truffle-hdwallet-provider");
+
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // to customize your Truffle configuration!
@@ -20,6 +22,13 @@ module.exports = {
       host: "127.0.0.1",
       port: 8545,
       network_id: "*" // Match any network id
+    },
+    test: {
+      provider: function() { 
+        return new HDWalletProvider("perfect kite link property simple eight welcome spring enforce universe barely cargo", 
+          'http://node.testnet.vocdoni.io:8545') 
+      },
+      network_id: "1714"
     }
   },
   compilers: {

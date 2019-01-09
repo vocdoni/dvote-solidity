@@ -13,5 +13,11 @@ or using a shortcut for some common tasks
     `npm run build`
     `npm run migrate`
 
+## Testing
+We can run stuff in a remote network (as the testing one) with:
+    `./node_modules/truffle/build/cli.bundled.js test --network test`
+or using a stupid-named shortcut
+    `npm run testintest`
+
 ### pragma solidity ^0.5.0;
 `0.5.0` version of Solc was recently released. This version includes a lot of improvements over the previous release, but it has [breaking changes](https://solidity.readthedocs.io/en/latest/050-breaking-changes.html).
