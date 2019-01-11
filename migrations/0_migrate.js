@@ -3,6 +3,6 @@ var VotingEntity = artifacts.require("VotingEntity");
 
 module.exports = function(deployer) {
   // deployment steps
-  deployer.deploy(VotingProcess);
-  deployer.deploy(VotingEntity);
+  console.log(deployer.deploy(VotingProcess));
+  console.log(deployer.deploy(VotingEntity));
 };
