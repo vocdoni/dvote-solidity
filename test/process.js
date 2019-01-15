@@ -9,8 +9,8 @@ contract('VotingProcess', function (accounts) {
     let relayAddress = accounts[2]
 
     it("Checks no process exists", async () => {
-        let instance = await VotingProcess.deployed()
-        global.console.log("VotingProcess contract address" + instance.address);
+        let instance = await VotingProcess.deployed();
+        global.console.log("VotingProcess contract address: " + instance.address);
         let processesLength = await instance.getProcessesLength({ from: accounts[0] })
         assert.equal(processesLength.valueOf(), 0, "processess index should be empty")
     });

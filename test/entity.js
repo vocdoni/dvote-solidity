@@ -2,7 +2,7 @@ var VotingEntity = artifacts.require("VotingEntity")
 contract('VotingEntity', function (accounts) {
     it("Checks no entity exists", async () => {
         let instance = await VotingEntity.deployed();
-        global.console.log("VotingEntity contract address" + instance.address);
+        global.console.log("VotingEntity contract address: " + instance.address);
         let entitiesLength = await instance.getEntitiesLength({ from: accounts[0] });
         assert.equal(entitiesLength.valueOf(), 0, "Entities index should be empty");
     });
