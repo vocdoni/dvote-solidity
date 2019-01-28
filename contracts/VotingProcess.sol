@@ -17,7 +17,7 @@ contract VotingProcess {
         string voteEncryptionPublicKey; //Key used by the voter to encrypt her vote
         string voteEncryptionPrivateKey; //Key used by the verifier to decrypt voters votes. Only public at the end of the process
         bytes32 censusMerkleRoot; //Hash of the MerkleTree of census. Used by the voter and the verifiers to shee if a voter can vote
-        string censusFranchiseProofUrl; //URL (http or IPFS) that the client can use to fetch its franchiseProof
+        string censusProofUrl; //URL (http or IPFS) that the client can use to fetch its franchiseProof
         string censusRequestUrl; //URL that the client can use to request to have her identity added to the census
         address[] registeredRelays; //List of relays than can add votesBatches
         mapping(address => bytes32[]) votesBatches; //List of votesBatches hashes by organized by the relay that added them
@@ -54,7 +54,7 @@ contract VotingProcess {
         uint256 startBlock,
         uint256 endBlock,
         bytes32 censusMerkleRoot,
-        string memory censusFranchiseProofUrl,
+        string memory censusProofUrl,
         string memory censusRequestUrl,
         string memory question,
         bytes32[] memory votingOptions,
@@ -72,7 +72,7 @@ contract VotingProcess {
         processes[processId].startBlock = startBlock;
         processes[processId].endBlock = endBlock;
         processes[processId].censusMerkleRoot = censusMerkleRoot;
-        processes[processId].censusFranchiseProofUrl = censusFranchiseProofUrl;
+        processes[processId].censusProofUrl = censusProofUrl;
         processes[processId].censusRequestUrl = censusRequestUrl;
 
         processes[processId].questionDetails.question = question;
@@ -182,13 +182,13 @@ contract VotingProcess {
     function getCensusMetadata(bytes32 processId) public view
         returns (
             bytes32 censusMerkleRoot,
-            string memory censusFranchiseProofUrl,
+            string memory censusProofUrl,
             string memory censusRequestUrl
             )
     {
         return(
             processes[processId].censusMerkleRoot,
-            processes[processId].censusFranchiseProofUrl,
+            processes[processId].censusProofUrl,
             processes[processId].censusRequestUrl
         );
     }

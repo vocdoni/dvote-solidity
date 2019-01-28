@@ -20,7 +20,7 @@ contract('VotingProcess', function (accounts) {
         startBlock: 0,
         endBlock: 1,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        censusFranchiseProofUrl:"http://vocdoni.io/getFranchiseProof",    
+        censusProofUrl:"http://vocdoni.io/getCensusProof",    
         censusRequestUrl:"http://vocdoni.io/requestCenus",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
         question: "Blue pill or red pill?",
@@ -36,7 +36,7 @@ contract('VotingProcess', function (accounts) {
             input.startBlock,
             input.endBlock,
             input.censusMerkleRoot,
-            input.censusFranchiseProofUrl,
+            input.censusProofUrl,
             input.censusRequestUrl,
             input.question,
             input.votingOptions,
@@ -75,7 +75,7 @@ contract('VotingProcess', function (accounts) {
 
         let censusMetadata = await instance.getCensusMetadata(processId, { from: organizerAddress })
         assert.equal(censusMetadata.censusMerkleRoot, input.censusMerkleRoot, "The censusMerkleRoot should match the input")
-        assert.equal(censusMetadata.censusFranchiseProofUrl, input.censusFranchiseProofUrl, "The censusFranchiseProofUrl should match the input")
+        assert.equal(censusMetadata.censusProofUrl, input.censusProofUrl, "The censusProofUrl should match the input")
         assert.equal(censusMetadata.censusRequestUrl, input.censusRequestUrl, "The censusRequestUrl should match the input")
     })
 
@@ -90,7 +90,7 @@ contract('VotingProcess', function (accounts) {
                 input.startBlock,
                 input.endBlock,
                 input.censusMerkleRoot,
-                input.censusFranchiseProofUrl,
+                input.censusProofUrl,
                 input.censusRequestUrl,
                 input.question,
                 input.votingOptions,
