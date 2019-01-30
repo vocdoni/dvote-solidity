@@ -8,8 +8,8 @@ contract('VotingEntity', function (accounts) {
     });
 
     const entityInput = {
-        name: "The Entity Name",
-        censusRequestUrl: "http://census.vocdoni.io:3000/census-register/"
+        name: "The Entity",
+        censusRequestUrl: "http://organization.testnet.vocdoni.io/census-register/"
     };
 
     it("Creates a new entity and checks its data", async () => {
