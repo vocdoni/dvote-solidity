@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "ganache": "./node_modules/ganache-cli/cli.js",
+    "ganache": "./node_modules/ganache-cli/cli.js -d",
     "truffle": "./node_modules/truffle/build/cli.bundled.js",
     "test": "./node_modules/truffle/build/cli.bundled.js test",
     "testintest": "./node_modules/truffle/build/cli.bundled.js test --network test",
