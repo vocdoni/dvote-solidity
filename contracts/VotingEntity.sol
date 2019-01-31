@@ -28,6 +28,10 @@ contract VotingEntity {
         return (entities[_address].name, entities[_address].exists, entities[_address].censusRequestUrl);
     }
 
+    function getEntityIds() external view returns (address[] memory) {
+        return entitiesIndex;
+    }
+
     function getEntitiesLength() public view
         returns (uint256)
     {
