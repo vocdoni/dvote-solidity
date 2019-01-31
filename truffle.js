@@ -24,10 +24,8 @@ module.exports = {
       network_id: "*" // Match any network id
     },
     test: {
-      provider: function() { 
-        return new HDWalletProvider("perfect kite link property simple eight welcome spring enforce universe barely cargo", 
-          'http://node.testnet.vocdoni.io:8545') 
-      },
+      host:"http://node.testnet.vocdoni.io",
+      port: 8454,
       network_id: "1714"
     }
   },
