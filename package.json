@@ -1,13 +1,13 @@
 {
   "name": "dvote-smart-contracts",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Solidity smart contracts implementing the voting functionality",
   "main": "./lib/index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "ganache": "./node_modules/ganache-cli/cli.js",
+    "ganache": "./node_modules/ganache-cli/cli.js -d",
     "truffle": "./node_modules/truffle/build/cli.bundled.js",
     "test": "./node_modules/truffle/build/cli.bundled.js test",
     "testintest": "./node_modules/truffle/build/cli.bundled.js test --network test",

@@ -18,6 +18,12 @@ contract('VotingEntity', function (accounts) {
         
         let entitiesLength = await instance.getEntitiesLength();
         assert.equal(entitiesLength.valueOf(), 1, "Only one entity exists");
+
+        let entityIds = (await instance.getEntityIds()).valueOf();
+        assert.equal(entityIds.length, 1, "Only one entity exists");
+        assert.equal(typeof entityIds[0], "string", "The address should be a string");
+        assert.equal(entityIds[0].length, 42, "The address should have length 42");
+        assert(entityIds[0].match(/^0x[0-9A-Fa-f]{40}$/), "The address should be valid");
     });
 
     it("Entity data is stored correctly", async () => {
