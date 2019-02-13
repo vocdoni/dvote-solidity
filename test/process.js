@@ -1,6 +1,13 @@
 //TODO missing tests to garantee that transaction are done at the correct blocks
 //(check startBlock and endBlock), not implementing yet for ease of testing.
 
+const Web3Utils = require("web3-utils")
+function stringToBytes32(str) {
+    const hex = Web3Utils.asciiToHex(str)
+    const bytes32 = Web3Utils.padRight(hex, 64)
+    return bytes32
+}
+
 var VotingProcess = artifacts.require("VotingProcess")
 contract('VotingProcess', function (accounts) {
 
@@ -15,16 +22,22 @@ contract('VotingProcess', function (accounts) {
         assert.equal(processesLength.valueOf(), 0, "processess index should be empty")
     });
 
-    input = {
-        name: "This is a process name",
+    let input = {
+        name: "General Election",
         startBlock: 0,
         endBlock: 1,
         censusMerkleRoot: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         censusProofUrl: "http://census.testnet.vocdoni.io/getCensusProof",
         censusRequestUrl: "http://organizer.testnet.vocdoni.io/census-register",
         voteEncryptionPublicKey: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-        question: "Blue pill or red pill?",
-        votingOptions: ["Yep", "Nope", "Maybe"],
+        question: "Who's the best candidate?",
+        votingOptions: [
+            stringToBytes32("Isaac Newton"),
+            stringToBytes32("Albert Einstein"),
+            stringToBytes32("Nikola Tesla"),
+            stringToBytes32("Alan Turing")
+        ],
+        // Used later
         voteEncryptionPrivateKey: "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
         votesBatch1: "0x1111111111111111111111111111111111111111111111111111111111111111",
     }

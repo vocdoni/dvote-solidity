@@ -29,5 +29,7 @@
     "truffle": "^5.0.0",
     "truffle-hdwallet-provider": "^1.0.2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "web3-utils": "^1.0.0-beta.46"
+  }
 }
