@@ -11,22 +11,24 @@ contract('EntityResolver', function (accounts) {
         global.console.log("EntityResolver contract address: " + instance.address)
     })
 
-
     const entityAddress = accounts[0]
     const entityId = Web3Utils.soliditySha3(entityAddress)
-    const inputEntityName = "The entity"
-
-    it("Sets entity name", async () => {
+    
+    it("Sets a text record", async () => {
+        const inputValue = "A text record string"
+        const inputKey = "textA"
         let instance = await EntityResolver.deployed()
-        await instance.setText(entityId, "name", inputEntityName, { from: entityAddress })
+        let t = await instance.setText(entityId, inputKey, inputValue, { from: entityAddress })
 
-        let entityName = await instance.text(entityId, "name")
-        assert.equal(entityName, inputEntityName, "Names should match")
+        console.log("text record ", t);
+
+        let value = await instance.text(entityId, inputKey)
+        assert.equal(value, inputValue, "Values should match")
     })
 
+    const maliciousEntityAddress = accounts[1]
+    
     it("Different entity can't set the name", async () => {
-
-        const maliciousEntityAddress = accounts[1]
 
         let instance = await EntityResolver.deployed()
         let error = null
@@ -48,6 +50,27 @@ contract('EntityResolver', function (accounts) {
 
         let entityName = await instance.text(entityId, "name")
         assert.equal(entityName, newEntityName, "Names should match")
+    })
+
+    const inputKey = "listA"
+    it("Push a list text record", async () => {
+        const inputValue = "A text record string"
+        let instance = await EntityResolver.deployed()
+        let t = await instance.pushListText(entityId, inputKey, inputValue, { from: entityAddress })
+        console.log("list record ", t);
+        let list = await instance.list(entityId, inputKey)
+        console.log("hello", list)
+        assert.equal(list[0], inputValue, "List record should match")
+    })
+
+    it("Set a list text record", async () => {
+        const inputValue = "A different text record string"
+        let instance = await EntityResolver.deployed()
+        let t = await instance.setListText(entityId, inputKey,0, inputValue, { from: entityAddress })
+        console.log("list record ", t);
+        let list = await instance.list(entityId, inputKey)
+        console.log("hello", list)
+        assert.equal(list[0], inputValue, "List record should match")
     })
 
 })
