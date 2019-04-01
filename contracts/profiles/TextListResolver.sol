@@ -18,9 +18,14 @@ contract TextListResolver is ResolverBase {
      * @param index The index of the list to set.
      * @param value The text data value to set.
      */
-    function setText(bytes32 node, string calldata key, uint256  index, string calldata value) external authorised(node) {
+    function setListText(bytes32 node, string calldata key, uint256  index, string calldata value) external authorised(node) {
         lists[node][key][index] = value;
         emit ListChanged(node, key, index);
+    }
+
+    function pushListText(bytes32 node, string calldata key, string calldata value) external authorised(node) {
+        uint length = lists[node][key].push(value) - 1;
+        emit ListChanged(node, key, length);
     }
 
     /**
@@ -29,6 +34,7 @@ contract TextListResolver is ResolverBase {
      * @param key The text data key to query.
      * @return The associated text data.
      */
+
     function list(bytes32 node, string calldata key) external view returns (string[] memory) {
         return lists[node][key];
     }
