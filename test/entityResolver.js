@@ -27,7 +27,7 @@ contract('EntityResolver', function (accounts) {
     })
 
     const maliciousEntityAddress = accounts[1]
-    
+
     it("Different entity can't set the name", async () => {
 
         let instance = await EntityResolver.deployed()
@@ -52,13 +52,13 @@ contract('EntityResolver', function (accounts) {
         assert.equal(entityName, newEntityName, "Names should match")
     })
 
-    const inputKey = "listA"
+    const inputKeyA = "listA"
     it("Push a list text record", async () => {
         const inputValue = "A text record string"
         let instance = await EntityResolver.deployed()
-        let t = await instance.pushListText(entityId, inputKey, inputValue, { from: entityAddress })
+        let t = await instance.pushListText(entityId, inputKeyA, inputValue, { from: entityAddress })
         console.log("list record ", t);
-        let list = await instance.list(entityId, inputKey)
+        let list = await instance.list(entityId, inputKeyA)
         console.log("hello", list)
         assert.equal(list[0], inputValue, "List record should match")
     })
@@ -66,11 +66,41 @@ contract('EntityResolver', function (accounts) {
     it("Set a list text record", async () => {
         const inputValue = "A different text record string"
         let instance = await EntityResolver.deployed()
-        let t = await instance.setListText(entityId, inputKey,0, inputValue, { from: entityAddress })
+        let t = await instance.setListText(entityId, inputKeyA,0, inputValue, { from: entityAddress })
         console.log("list record ", t);
-        let list = await instance.list(entityId, inputKey)
+        let list = await instance.list(entityId, inputKeyA)
         console.log("hello", list)
         assert.equal(list[0], inputValue, "List record should match")
+    })
+
+    it("Different entity can't push a text", async () => {
+        const inputKey = "listB"
+        const inputValue = "Random text"
+        let instance = await EntityResolver.deployed()
+        let error = null
+        try {
+            await instance.setListText(entityId, inputKey , inputValue, { from: maliciousEntityAddress })
+        }
+        catch (_error) {
+            error = _error
+        }
+
+        assert.isNotNull(error, "Only record creator can edit a list text record")
+    })
+
+    it("Different entity can't set  a text", async () => {
+       
+        const inputValue = "Random text"
+        let instance = await EntityResolver.deployed()
+        let error = null
+        try {
+            await instance.setListText(entityId, inputKeyA , inputValue, { from: maliciousEntityAddress })
+        }
+        catch (_error) {
+            error = _error
+        }
+
+        assert.isNotNull(error, "Only record creator can edit a list text record")
     })
 
 })
