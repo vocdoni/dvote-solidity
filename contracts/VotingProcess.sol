@@ -9,13 +9,14 @@ contract VotingProcess {
         address entityAddress;     // The address of the Entity's creator
         string processName;
         string metadataContentUri; // Content URI to fetch the JSON metadata from
-        uint startBlock;
-        uint endBlock;
-        
+        uint256 startTime;         // block.timestamp after which votes can be registered
+        uint256 endTime;           // block.timestamp after which votes can be registered
+        bytes32 voteEncryptionPublicKey;
+        bool canceled;
+
         address[] relayList;       // Relay addresses to let users fetch the Relay data
         mapping (address => Relay) relays;
         
-        bytes32 voteEncryptionPublicKey;
         mapping (uint64 => string) voteBatches;  // Mapping from [0..N-1] to Content URI's to fetch the vote batches
         uint64 voteBatchCount;                   // N vote batches registered
     }
@@ -23,7 +24,7 @@ contract VotingProcess {
     struct Relay {
         bool active;
         string publicKey;
-        string relayMessagingUri;
+        string messagingUri;
     }
     
     // MAPPINGS
@@ -58,7 +59,7 @@ contract VotingProcess {
 
     // Get the next process ID to use for an entity
     function getNextProcessId(address entityAddress) public view returns (bytes32){
-        uint idx = processCount[entityAddress];
+        uint idx = processCount[entityAddress] + 1;
         return getProcessId(entityAddress, idx);
     }
     // Compute a process ID
@@ -76,11 +77,11 @@ contract VotingProcess {
     	address entityResolver,
     	string memory processName,
     	string memory metadataContentUri,
-    	uint startBlock,
-    	uint endBlock,
+    	uint256 startTime,
+    	uint256 endTime,
     	string memory voteEncryptionPublicKey) public {
 
-				address entityAddress = msg.sender;
+            address entityAddress = msg.sender;
 
         
     }
@@ -90,9 +91,10 @@ contract VotingProcess {
     	address entityAddress,
     	string memory processName,
     	string memory metadataContentUri,
-    	uint startBlock,
-    	uint endBlock,
-    	string memory voteEncryptionPublicKey
+    	uint256 startTime,
+    	uint256 endTime,
+    	string memory voteEncryptionPublicKey,
+        bool canceled
     ) {
 
     }
@@ -101,7 +103,7 @@ contract VotingProcess {
 
     }
     
-    function addRelay(bytes32 processId, address relayAddress, string memory publicKey, string memory relayMessagingUri) public onlyEntity(processId) {
+    function addRelay(bytes32 processId, address relayAddress, string memory publicKey, string memory messagingUri) public onlyEntity(processId) {
 
     }
     
@@ -117,7 +119,7 @@ contract VotingProcess {
 
     }
     
-    function getRelay(bytes32 processId, address relayAddress) public view returns (string memory publicKey, string memory relayMessagingUri) {
+    function getRelay(bytes32 processId, address relayAddress) public view returns (string memory publicKey, string memory messagingUri) {
 
     }
     
@@ -129,7 +131,7 @@ contract VotingProcess {
 
     }
     
-    function getBatch(bytes32 processId) public view returns (string memory batchContentUri) {
+    function getBatch(bytes32 processId, uint64 batchNumber) public view returns (string memory batchContentUri) {
 
     }
     
