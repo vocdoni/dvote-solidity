@@ -34,7 +34,7 @@ contract VotingProcess {
 
     // EVENTS
 
-    event ProcessCreated(bytes32 indexed processId);
+    event ProcessCreated(address indexed entityAddress, bytes32 processId);
     event ProcessCanceled(bytes32 indexed processId);
     event RelayAdded(bytes32 indexed processId, address relayAddress);
     event RelayDisabled(bytes32 indexed processId, address relayAddress);
@@ -79,7 +79,8 @@ contract VotingProcess {
     	string memory metadataContentUri,
     	uint256 startTime,
     	uint256 endTime,
-    	string memory voteEncryptionPublicKey) public {
+    	string memory voteEncryptionPublicKey
+    ) public {
 
             address entityAddress = msg.sender;
 

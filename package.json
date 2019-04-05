@@ -24,7 +24,7 @@
   "license": "ISC",
   "homepage": "https://github.com/vocdoni/dvote-smart-contracts#readme",
   "dependencies": {
-    "ganache-cli": "^6.2.5",
+    "ganache-cli": "^6.4.2",
     "serialize-to-js": "^1.2.1",
     "truffle": "^5.0.0",
     "truffle-hdwallet-provider": "^1.0.2"
