@@ -3,18 +3,16 @@
   "version": "0.1.0",
   "description": "Solidity smart contracts implementing the voting core features of Vocdoni",
   "main": "./build/index.js",
-  "directories": {
-    "test": "test"
-  },
   "scripts": {
     "ganache": "./node_modules/ganache-cli/cli.js -d",
     "truffle": "./node_modules/truffle/build/cli.bundled.js",
-    "test": "./node_modules/truffle/build/cli.bundled.js test",
-    "test:remote": "./node_modules/truffle/build/cli.bundled.js test --network test",
-    "build": "./node_modules/truffle/build/cli.bundled.js build",
-    "migrate": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
-    "export": "./scripts/compile.sh",
-    "prepublishOnly": "npm test && npm run export"
+    "truffle:test": "./node_modules/truffle/build/cli.bundled.js test",
+    "truffle:test:remote": "./node_modules/truffle/build/cli.bundled.js test --network staging",
+    "truffle:build": "./scripts/compile.sh",
+    "truffle:migrate": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
+    "test": "mocha test/index.js",
+    "build": "./scripts/build.sh",
+    "prepublishOnly": "npm test && npm run build"
   },
   "repository": {
     "type": "git",
@@ -24,13 +22,15 @@
   "license": "ISC",
   "homepage": "https://github.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
-    "ganache-cli": "^6.4.2",
+    "dotenv": "^7.0.0",
     "solc": "^0.5.0",
     "truffle": "^5.0.0",
-    "truffle-hdwallet-provider": "^1.0.2",
-    "web3": "^1.0.0-beta.52"
+    "truffle-hdwallet-provider": "^1.0.2"
   },
   "devDependencies": {
-    "web3-utils": "^1.0.0-beta.46"
+    "ganache-cli": "^6.4.2",
+    "mocha": "^6.0.2",
+    "web3": "^1.0.0-beta.48",
+    "web3-utils": "^1.0.0-beta.48"
   }
 }

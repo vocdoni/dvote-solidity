@@ -69,10 +69,6 @@ contract VotingProcess {
     
     // METHODS
 
-    constructor() public {
-
-    }
-
     function create(
     	address entityResolver,
     	string memory processName,
@@ -84,7 +80,7 @@ contract VotingProcess {
 
             address entityAddress = msg.sender;
 
-        
+
     }
 
     function get(bytes32 processId) public view returns (
