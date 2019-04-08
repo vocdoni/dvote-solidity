@@ -94,7 +94,6 @@ describe('VotingProcess', function () {
         assert.equal(processId2Expected, processId2Actual)
     })
 
-
     describe("should create a process", () => {
         it("should allow anyone to create one", async () => {
             assert(instance.methods.create)
@@ -151,7 +150,6 @@ describe('VotingProcess', function () {
             processIdActual = await instance.methods.getNextProcessId(randomAddress2).call()
             assert.equal(processIdExpected, processIdActual)
         })
-
         it("should emit an event", async () => {
             const expectedProcessId = await instance.methods.getNextProcessId(entityAddress).call()
 
@@ -179,7 +177,6 @@ describe('VotingProcess', function () {
             assert.equal(result.events.ProcessCreated.returnValues.entityAddress, entityAddress)
             assert.equal(result.events.ProcessCreated.returnValues.processId, expectedProcessId)
         })
-
         it("should enforce startTime's greater than the current timestamp", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
             let startTime = (await web3.eth.getBlock(blockNumber)).timestamp - 50  // <<--
@@ -201,7 +198,7 @@ describe('VotingProcess', function () {
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
-                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
             }
 
         })
@@ -227,7 +224,7 @@ describe('VotingProcess', function () {
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
-                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
             }
 
             // Lower failing
@@ -251,7 +248,7 @@ describe('VotingProcess', function () {
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
-                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
             }
         })
         it("should increase the processCount of the entity on success", async () => {
@@ -303,7 +300,7 @@ describe('VotingProcess', function () {
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
-                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
             }
 
             const current = Number(await instance.methods.entityProcessCount(entityAddress).call())
@@ -344,6 +341,7 @@ describe('VotingProcess', function () {
             assert.equal(processData.startTime, startTime)
             assert.equal(processData.endTime, endTime)
             assert.equal(processData.voteEncryptionPublicKey, voteEncryptionPublicKey)
+            assert.equal(processData.canceled, false, "The process should not start as canceled")
 
             const privateKey = await instance.methods.getPrivateKey(processId).call()
             assert.equal(privateKey, "")
@@ -351,13 +349,252 @@ describe('VotingProcess', function () {
     })
 
     describe("should cancel the process", () => {
-        it("only when the entity requests it")
-        it("only if it not yet canceled")
-        it("not after startTime")
+        it("only when the creator requests it", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+
+            // Canceled by the creator
+            await instance.methods.cancel(processId1).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            const processData1 = await instance.methods.get(processId1).call()
+
+            assert.equal(processData1.entityResolver, defaultResolver)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.processName, defaultProcessName)
+            assert.equal(processData1.metadataContentUri, defaultMetadataContentUri)
+            assert.equal(processData1.startTime, startTime)
+            assert.equal(processData1.endTime, endTime)
+            assert.equal(processData1.voteEncryptionPublicKey, defaultEncryptionPublicKey)
+            assert.equal(processData1.canceled, true, "The process should now be canceled")
+
+            // CREATE AGAIN
+
+            const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
+
+            // Create
+            const result3 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,  // <<--
+                nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
+            })
+
+            assert.equal(result3.events.ProcessCreated.returnValues.processId, processId2)
+
+            // Try to cancel from another account
+            try {
+                await instance.methods.cancel(processId2).send({
+                    from: randomAddress1,  // <<--
+                    nonce: await web3.eth.getTransactionCount(randomAddress1)  // <<--
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            const processData2 = await instance.methods.get(processId2).call()
+
+            assert.equal(processData2.entityResolver, defaultResolver)
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.processName, defaultProcessName)
+            assert.equal(processData2.metadataContentUri, defaultMetadataContentUri)
+            assert.equal(processData2.startTime, startTime)
+            assert.equal(processData2.endTime, endTime)
+            assert.equal(processData2.voteEncryptionPublicKey, defaultEncryptionPublicKey)
+            assert.equal(processData2.canceled, false, "The process should remain active")
+
+        })
+        it("only if it not yet canceled", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await instance.methods.cancel(processId1).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessCanceled)
+            assert.ok(result2.events.ProcessCanceled.returnValues)
+            assert.equal(result2.events.ProcessCanceled.event, "ProcessCanceled")
+            assert.equal(result2.events.ProcessCanceled.returnValues.processId, processId1)
+
+            const processData1 = await instance.methods.get(processId1).call()
+
+            assert.equal(processData1.entityResolver, defaultResolver)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.processName, defaultProcessName)
+            assert.equal(processData1.metadataContentUri, defaultMetadataContentUri)
+            assert.equal(processData1.startTime, startTime)
+            assert.equal(processData1.endTime, endTime)
+            assert.equal(processData1.voteEncryptionPublicKey, defaultEncryptionPublicKey)
+            assert.equal(processData1.canceled, true, "The process should now be canceled")
+
+            // Try to cancel again
+            try {
+                await instance.methods.cancel(processId1).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+
+            assert.equal(processData2.entityResolver, defaultResolver)
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.processName, defaultProcessName)
+            assert.equal(processData2.metadataContentUri, defaultMetadataContentUri)
+            assert.equal(processData2.startTime, startTime)
+            assert.equal(processData2.endTime, endTime)
+            assert.equal(processData2.voteEncryptionPublicKey, defaultEncryptionPublicKey)
+            assert.equal(processData2.canceled, true, "The process should now be canceled")
+
+        })
+        it("not after startTime", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // <<--
+            let endTime = startTime + 50
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            const processId1 = result1.events.ProcessCreated.returnValues.processId
+
+            await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))   // <<--
+            // await increaseTimestamp(4)    // Not working with ganache by now
+
+            // The creator attempts to cancel after startTime
+            try {
+                await instance.methods.cancel(processId1).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+
+            assert.equal(processData2.entityResolver, defaultResolver)
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.processName, defaultProcessName)
+            assert.equal(processData2.metadataContentUri, defaultMetadataContentUri)
+            assert.equal(processData2.startTime, startTime)
+            assert.equal(processData2.endTime, endTime)
+            assert.equal(processData2.voteEncryptionPublicKey, defaultEncryptionPublicKey)
+            assert.equal(processData2.canceled, false, "The process should remain active")
+
+        }).timeout(5000)
+
+        it("should emit an event", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await instance.methods.cancel(processId1).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessCanceled)
+            assert.ok(result2.events.ProcessCanceled.returnValues)
+            assert.equal(result2.events.ProcessCanceled.event, "ProcessCanceled")
+            assert.equal(result2.events.ProcessCanceled.returnValues.processId, processId1)
+
+        })
     })
 
     describe("should register a relay", () => {
-        it("only when the entity requests it")
+        it("only when the creator requests it")
         it("only when the process ID exists")
         it("only when the process is not canceled")
         it("should fail if it already exists")
@@ -377,7 +614,7 @@ describe('VotingProcess', function () {
     })
 
     describe("should disable a relay", () => {
-        it("only when the entity requests it")
+        it("only when the creator requests it")
         it("only when the process ID exists")
         it("only when the process is not canceled")
         it("should fail if it does not exist")
@@ -387,7 +624,7 @@ describe('VotingProcess', function () {
     })
 
     describe("should accept the encryption private key", () => {
-        it("only when the entity requests it")
+        it("only when the creator requests it")
         it("only when the process ID exists")
         it("only when the process is not canceled")
         it("only after endTime")

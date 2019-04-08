@@ -36,7 +36,7 @@ contract VotingProcess {
     // EVENTS
 
     event ProcessCreated(address indexed entityAddress, bytes32 processId);
-    event ProcessCanceled(bytes32 indexed processId);
+    event ProcessCanceled(address indexed entityAddress, bytes32 processId);  // entityAddress could be removed. Keeping for web3 testability issues
     event RelayAdded(bytes32 indexed processId, address relayAddress);
     event RelayDisabled(bytes32 indexed processId, address relayAddress);
     event BatchRegistered(bytes32 indexed processId, uint64 batchNumber);
@@ -45,8 +45,7 @@ contract VotingProcess {
     // MODIFIERS
 
     modifier onlyEntity(bytes32 processId) {
-
-
+        require(processes[processId].entityAddress == msg.sender, "Invalid entity");
     	_;
     }
 
@@ -78,11 +77,11 @@ contract VotingProcess {
     	uint256 endTime,
     	string memory voteEncryptionPublicKey
     ) public {
-        if (startTime < block.timestamp) revert("Invalid startTime");
-        else if (endTime <= startTime) revert("Invalid endTime");
-        else if (bytes(processName).length < 1) revert("Empty processName");
-        else if (bytes(metadataContentUri).length < 1) revert("Empty metadataContentUri");
-        else if (bytes(voteEncryptionPublicKey).length < 1) revert("Empty voteEncryptionPublicKey");
+        require(startTime > block.timestamp, "Invalid startTime");
+        require(endTime > startTime, "Invalid endTime");
+        require(bytes(processName).length > 0, "Empty processName");
+        require(bytes(metadataContentUri).length > 0, "Empty metadataContentUri");
+        require(bytes(voteEncryptionPublicKey).length > 0, "Empty voteEncryptionPublicKey");
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
@@ -121,7 +120,11 @@ contract VotingProcess {
     }
     
     function cancel(bytes32 processId) public onlyEntity(processId) {
+        require(processes[processId].startTime > block.timestamp, "The process has already started");
+        require(!processes[processId].canceled, "The process is already canceled");
 
+        processes[processId].canceled = true;
+        emit ProcessCanceled(msg.sender, processId);
     }
     
     function addRelay(bytes32 processId, address relayAddress, string memory publicKey, string memory messagingUri) public onlyEntity(processId) {
