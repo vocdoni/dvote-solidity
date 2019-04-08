@@ -16,7 +16,7 @@ contract VotingProcess {
         bool canceled;
 
         address[] relayList;       // Relay addresses to let users fetch the Relay data
-        mapping (address => Relay) relays;
+        mapping (address => Relay) relays;       // Mapping relayAddress => Relay
         
         mapping (uint64 => string) voteBatches;  // Mapping from [0..N-1] to Content URI's to fetch the vote batches
         uint64 voteBatchCount;                   // N vote batches registered
@@ -128,7 +128,15 @@ contract VotingProcess {
     }
     
     function addRelay(bytes32 processId, address relayAddress, string memory publicKey, string memory messagingUri) public onlyEntity(processId) {
+        require(!processes[processId].canceled, "The process has been canceled");
+        require(!processes[processId].relays[relayAddress].active, "The relay is already active");
 
+        processes[processId].relayList.push(relayAddress);
+        processes[processId].relays[relayAddress].publicKey = publicKey;
+        processes[processId].relays[relayAddress].messagingUri = messagingUri;
+        processes[processId].relays[relayAddress].active = true;
+
+        emit RelayAdded(processId, relayAddress);
     }
     
     function disableRelay(bytes32 processId, address relayAddress) public onlyEntity(processId) {
@@ -136,11 +144,11 @@ contract VotingProcess {
     }
     
     function getRelayIndex(bytes32 processId) public view returns (address[] memory) {
-
+        return processes[processId].relayList;
     }
     
     function isActiveRelay(bytes32 processId, address relayAddress) public view returns (bool) {
-
+        return processes[processId].relays[relayAddress].active;
     }
     
     function getRelay(bytes32 processId, address relayAddress) public view returns (string memory publicKey, string memory messagingUri) {
