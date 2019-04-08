@@ -123,6 +123,7 @@ contract VotingProcess {
         require(processes[processId].startTime > block.timestamp, "The process has already started");
         require(!processes[processId].canceled, "The process is already canceled");
 
+        processes[processId].relayList.length = 0;
         processes[processId].canceled = true;
         emit ProcessCanceled(msg.sender, processId);
     }
@@ -140,7 +141,21 @@ contract VotingProcess {
     }
     
     function disableRelay(bytes32 processId, address relayAddress) public onlyEntity(processId) {
+        require(!processes[processId].canceled, "The process has been canceled");
+        require(processes[processId].relays[relayAddress].active, "The relay is already disabled");
 
+        uint len = processes[processId].relayList.length;
+        for (uint i = 0; i < len; i++) {
+            if(processes[processId].relayList[i] != relayAddress) continue;
+
+            // swap with the last element from the list
+            processes[processId].relayList[i] = processes[processId].relayList[len - 1];
+            processes[processId].relayList.length--;
+            break;
+        }
+
+        processes[processId].relays[relayAddress].active = false;
+        emit RelayDisabled(processId, relayAddress);
     }
     
     function getRelayIndex(bytes32 processId) public view returns (address[] memory) {
@@ -152,7 +167,8 @@ contract VotingProcess {
     }
     
     function getRelay(bytes32 processId, address relayAddress) public view returns (string memory publicKey, string memory messagingUri) {
-
+        publicKey = processes[processId].relays[relayAddress].publicKey;
+        messagingUri = processes[processId].relays[relayAddress].messagingUri;
     }
     
     function registerVoteBatch(bytes32 processId, string memory dataContentUri) public onlyRelay(processId) {

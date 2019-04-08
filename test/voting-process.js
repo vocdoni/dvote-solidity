@@ -591,6 +591,58 @@ describe('VotingProcess', function () {
             assert.equal(result2.events.ProcessCanceled.returnValues.processId, processId1)
 
         })
+        it("should return an empty relay list after a process is canceled", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const relayPublicKey = "0x1234"
+            const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic`
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
+
+            // Register a relay
+            const result2 = await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2.transactionHash)
+
+            const relayList1 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(relayList1.length, 1)
+            assert.deepEqual(relayList1, [relayAddress])
+
+            // Canceled by the creator
+            await instance.methods.cancel(processId).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            const relayList2 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(relayList2.length, 0)
+            assert.deepEqual(relayList2, [])
+        })
     })
 
     describe("should register a relay", () => {
@@ -909,6 +961,50 @@ describe('VotingProcess', function () {
             assert(result3, "Relay should be active when created")
 
         })
+        it("should retrieve a given relay's data", async () => {
+
+            const relayPublicKey = "0x5678"
+            const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic-2`
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
+
+            // Register relay
+            const result2 = await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2.transactionHash)
+
+            // Get relay status
+            const result3 = await instance.methods.getRelay(processId, relayAddress).call()
+            assert.equal(result3.publicKey, relayPublicKey)
+            assert.equal(result3.messagingUri, relayMessagingUri)
+
+        })
         it("should emit an event", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
             let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
@@ -966,14 +1062,400 @@ describe('VotingProcess', function () {
     })
 
     describe("should disable a relay", () => {
-        it("only when the creator requests it")
-        it("only when the process ID exists")
-        it("only when the process is not canceled")
-        it("should fail if it does not exist")
-        it("should remove the relay address from the relay list")
-        it("should return false on isActiveRelay")
+
+        const relayPublicKey = "0x1234"
+        const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic`
+
+        it("only when the creator requests it", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result1.transactionHash)
+
+            // Register relay
+            await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Attempt to disable the relay from someone else
+            try {
+                await instance.methods.disableRelay(
+                    processId,
+                    relayAddress
+                ).send({
+                    from: randomAddress1,   // <<--
+                    nonce: await web3.eth.getTransactionCount(randomAddress1)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            // Get relay list
+            const result2 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(result2.length, 1)
+            assert.deepEqual(result2, [relayAddress])
+
+            // Disable relay from the creator
+            const result3 = await instance.methods.disableRelay(
+                processId,
+                relayAddress
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get relay list
+            const result4 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(result4.length, 0)
+            assert.deepEqual(result4, [])
+
+        })
+        it("only when the process ID exists", async () => {
+
+            const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
+
+            // Attempt to disable a relay from a random processId
+            try {
+                await instance.methods.disableRelay(
+                    nonExistingProcessId,
+                    randomAddress2
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            // Get relay list
+            const result4 = await instance.methods.getRelayIndex(nonExistingProcessId).call()
+            assert.equal(result4.length, 0)
+            assert.deepEqual(result4, [])
+
+        })
+        it("only when the process is not canceled", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
+
+            // Register a relay
+            const result2 = await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2.transactionHash)
+
+            // Canceled by the creator
+            const result3 = await instance.methods.cancel(processId).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result3.events.ProcessCanceled.returnValues.processId, processId)
+
+            // Attempt to disable a relay after being canceled
+            try {
+                await instance.methods.disableRelay(
+                    processId,
+                    relayAddress
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            // Get relay list
+            const result4 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(result4.length, 0)
+            assert.deepEqual(result4, [])
+
+        })
+        it("should fail if the relay does not exist", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
+
+            // Register a relay
+            const result2 = await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2.transactionHash)
+
+            // Attempt to disable non-existing relay
+            try {
+                await instance.methods.disableRelay(
+                    processId,
+                    randomAddress2   // <<--
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            // Get relay list
+            const result4 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(result4.length, 1)
+            assert.deepEqual(result4, [relayAddress])
+
+        })
+        it("should remove the relay address from the relay list", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
+
+            // Register relay #1
+            const result2 = await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2.transactionHash)
+
+            // Register relay #2
+            const result3 = await instance.methods.addRelay(
+                processId,
+                randomAddress1,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result3.transactionHash)
+
+            // Get relay list
+            const result4 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(result4.length, 2)
+            assert.deepEqual(result4, [relayAddress, randomAddress1])
+
+            // Disable relay #1
+            await instance.methods.disableRelay(
+                processId,
+                randomAddress1
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get relay list
+            const result5 = await instance.methods.getRelayIndex(processId).call()
+            assert.equal(result5.length, 1)
+            assert.deepEqual(result5, [relayAddress])
+
+        })
+        it("should return false on isActiveRelay", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
+
+            // Register relay
+            const result2 = await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2.transactionHash)
+
+            // Get relay status
+            const result3 = await instance.methods.isActiveRelay(processId, relayAddress).call()
+            assert.equal(result3, true)
+
+            // Disable relay
+            await instance.methods.disableRelay(
+                processId,
+                relayAddress
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get relay status
+            const result4 = await instance.methods.isActiveRelay(processId, relayAddress).call()
+            assert.equal(result4, false)
+
+        })
         it("should fail to register new vote batches from a disabled relay")
-        it("should emit an event")
+
+        it("should emit an event", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result1.transactionHash)
+
+            // Register relay
+            await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Disable relay
+            const result3 = await instance.methods.disableRelay(
+                processId,
+                relayAddress
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result3)
+            assert.ok(result3.events)
+            assert.ok(result3.events.RelayDisabled)
+            assert.ok(result3.events.RelayDisabled.returnValues)
+            assert.equal(result3.events.RelayDisabled.event, "RelayDisabled")
+            assert.equal(result3.events.RelayDisabled.returnValues.processId, processId)
+            assert.equal(result3.events.RelayDisabled.returnValues.relayAddress, relayAddress)
+
+        })
     })
 
     describe("should accept the encryption private key", () => {
