@@ -10,7 +10,7 @@
     "truffle:test:remote": "./node_modules/truffle/build/cli.bundled.js test --network staging",
     "truffle:build": "./scripts/compile.sh",
     "truffle:migrate": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
-    "test": "mocha test/index.js",
+    "test": "npm run build && mocha test/index.js",
     "build": "./scripts/build.sh",
     "prepublishOnly": "npm test && npm run build"
   },
@@ -30,7 +30,7 @@
   "devDependencies": {
     "ganache-cli": "^6.4.2",
     "mocha": "^6.0.2",
-    "web3": "^1.0.0-beta.48",
-    "web3-utils": "^1.0.0-beta.48"
+    "web3": "1.0.0-beta.48",
+    "web3-utils": "1.0.0-beta.48"
   }
 }

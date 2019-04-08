@@ -11,7 +11,8 @@ contract VotingProcess {
         string metadataContentUri; // Content URI to fetch the JSON metadata from
         uint256 startTime;         // block.timestamp after which votes can be registered
         uint256 endTime;           // block.timestamp after which votes can be registered
-        bytes32 voteEncryptionPublicKey;
+        string voteEncryptionPublicKey;
+        string voteEncryptionPrivateKey;  // Key revealed after the vote ends so that scrutiny can start
         bool canceled;
 
         address[] relayList;       // Relay addresses to let users fetch the Relay data
@@ -29,8 +30,8 @@ contract VotingProcess {
     
     // MAPPINGS
 
-    mapping (bytes32 => Process) public processes;   // processId => process data
-    mapping (address => uint) public processCount;   // index of the last process for a given address
+    mapping (bytes32 => Process) public processes;         // processId => process data
+    mapping (address => uint) public entityProcessCount;   // index of the last process for a given address
 
     // EVENTS
 
@@ -59,7 +60,7 @@ contract VotingProcess {
 
     // Get the next process ID to use for an entity
     function getNextProcessId(address entityAddress) public view returns (bytes32){
-        uint idx = processCount[entityAddress] + 1;
+        uint idx = entityProcessCount[entityAddress];
         return getProcessId(entityAddress, idx);
     }
     // Compute a process ID
@@ -77,10 +78,26 @@ contract VotingProcess {
     	uint256 endTime,
     	string memory voteEncryptionPublicKey
     ) public {
+        if (startTime < block.timestamp) revert("Invalid startTime");
+        else if (endTime <= startTime) revert("Invalid endTime");
+        else if (bytes(processName).length < 1) revert("Empty processName");
+        else if (bytes(metadataContentUri).length < 1) revert("Empty metadataContentUri");
+        else if (bytes(voteEncryptionPublicKey).length < 1) revert("Empty voteEncryptionPublicKey");
 
-            address entityAddress = msg.sender;
+        address entityAddress = msg.sender;
+        bytes32 processId = getNextProcessId(entityAddress);
 
+        processes[processId].entityResolver = entityResolver;
+        processes[processId].entityAddress = entityAddress;
+        processes[processId].processName = processName;
+        processes[processId].metadataContentUri = metadataContentUri;
+        processes[processId].startTime = startTime;
+        processes[processId].endTime = endTime;
+        processes[processId].voteEncryptionPublicKey = voteEncryptionPublicKey;
 
+        entityProcessCount[entityAddress]++;
+        
+        emit ProcessCreated(entityAddress, processId);            
     }
 
     function get(bytes32 processId) public view returns (
@@ -93,7 +110,14 @@ contract VotingProcess {
     	string memory voteEncryptionPublicKey,
         bool canceled
     ) {
-
+        entityResolver = processes[processId].entityResolver;
+        entityAddress = processes[processId].entityAddress;
+        processName = processes[processId].processName;
+        metadataContentUri = processes[processId].metadataContentUri;
+        startTime = processes[processId].startTime;
+        endTime = processes[processId].endTime;
+        voteEncryptionPublicKey = processes[processId].voteEncryptionPublicKey;
+        canceled = processes[processId].canceled;
     }
     
     function cancel(bytes32 processId) public onlyEntity(processId) {
@@ -137,7 +161,7 @@ contract VotingProcess {
     }
 
     function getPrivateKey(bytes32 processId) public view returns (string memory privateKey) {
-
+        privateKey = processes[processId].voteEncryptionPrivateKey;
     }
 
 }

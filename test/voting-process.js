@@ -63,7 +63,8 @@ describe('VotingProcess', function () {
         assert(instance.methods.getNextProcessId.call)
 
         // The entity has 0 processes at the moment
-        const processId1Expected = await instance.methods.getProcessId(entityAddress, 1).call()
+        // So the next process index is 0
+        const processId1Expected = await instance.methods.getProcessId(entityAddress, 0).call()
         const processId1Actual = await instance.methods.getNextProcessId(entityAddress).call()
 
         assert.equal(processId1Expected, processId1Actual)
@@ -79,10 +80,14 @@ describe('VotingProcess', function () {
             startTime,
             endTime,
             defaultEncryptionPublicKey
-        ).send({ from: entityAddress })
+        ).send({
+            from: entityAddress,
+            nonce: await web3.eth.getTransactionCount(entityAddress)
+        })
 
         // The entity has 1 process now
-        const processId2Expected = await instance.methods.getProcessId(entityAddress, 2).call()
+        // So the next process index is 1
+        const processId2Expected = await instance.methods.getProcessId(entityAddress, 1).call()
         const processId2Actual = await instance.methods.getNextProcessId(entityAddress).call()
 
         assert.notEqual(processId1Actual, processId2Actual)
@@ -92,219 +97,256 @@ describe('VotingProcess', function () {
 
     describe("should create a process", () => {
         it("should allow anyone to create one", async () => {
-            // 		const instance = await VotingProcess.deployed()
+            assert(instance.methods.create)
 
-            // 		let blockNumber = await web3.eth.getBlockNumber()
-            // 		let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-            // 		let endTime = startTime + 50
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
 
-            // 		await instance.create(
-            // 			defaultResolver,
-            // 			defaultProcessName,
-            // 			defaultMetadataContentUri,
-            // 			startTime,
-            // 			endTime,
-            // 			defaultEncryptionPublicKey,
-            // 			{ from: entityAddress }
-            // 		)
-            // 		await instance.create(
-            // 			defaultResolver,
-            // 			defaultProcessName,
-            // 			defaultMetadataContentUri,
-            // 			startTime,
-            // 			endTime,
-            // 			defaultEncryptionPublicKey,
-            // 			{ from: randomAddress1 }
-            // 		)
-            // 		await instance.create(
-            // 			defaultResolver,
-            // 			defaultProcessName,
-            // 			defaultMetadataContentUri,
-            // 			startTime,
-            // 			endTime,
-            // 			defaultEncryptionPublicKey,
-            // 			{ from: randomAddress2 }
-            // 		)
+            await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey)
+                .send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+            let processIdExpected = await instance.methods.getProcessId(entityAddress, 1).call()
+            let processIdActual = await instance.methods.getNextProcessId(entityAddress).call()
+            assert.equal(processIdExpected, processIdActual)
+
+            await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey)
+                .send({
+                    from: randomAddress1,
+                    nonce: await web3.eth.getTransactionCount(randomAddress1)
+                })
+
+            processIdExpected = await instance.methods.getProcessId(randomAddress1, 1).call()
+            processIdActual = await instance.methods.getNextProcessId(randomAddress1).call()
+            assert.equal(processIdExpected, processIdActual)
+
+            await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey)
+                .send({
+                    from: randomAddress2,
+                    nonce: await web3.eth.getTransactionCount(randomAddress2)
+                })
+
+            processIdExpected = await instance.methods.getProcessId(randomAddress2, 1).call()
+            processIdActual = await instance.methods.getNextProcessId(randomAddress2).call()
+            assert.equal(processIdExpected, processIdActual)
         })
 
         it("should emit an event", async () => {
-            // 		const instance = await VotingProcess.deployed()
+            const expectedProcessId = await instance.methods.getNextProcessId(entityAddress).call()
 
-            // 		const expectedProcessId = await instance.getNextProcessId.call(entityAddress)
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
 
-            // 		let blockNumber = await web3.eth.getBlockNumber()
-            // 		let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-            // 		let endTime = startTime + 50
+            let result = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
 
-            // 		let result = await instance.create(
-            // 			defaultResolver,
-            // 			defaultProcessName,
-            // 			defaultMetadataContentUri,
-            // 			startTime,
-            // 			endTime,
-            // 			defaultEncryptionPublicKey,
-            // 			{ from: entityAddress }
-            // 		)
-
-            // 		assert.ok(result)
-            // 		assert.ok(result.logs)
-            // 		assert.ok(result.logs[0])
-            // 		assert.equal(result.logs[0].event, "ProcessCreated")
-            // 		assert.equal(result.logs[0].args, 2)
-            // 		assert.equal(result.logs[0].args[0], entityAddress)
-            // 		assert.equal(result.logs[0].args[1], expectedProcessId)
-
+            assert.ok(result)
+            assert.ok(result.events)
+            assert.ok(result.events.ProcessCreated)
+            assert.ok(result.events.ProcessCreated.returnValues)
+            assert.equal(result.events.ProcessCreated.event, "ProcessCreated")
+            assert.equal(result.events.ProcessCreated.returnValues.entityAddress, entityAddress)
+            assert.equal(result.events.ProcessCreated.returnValues.processId, expectedProcessId)
         })
 
         it("should enforce startTime's greater than the current timestamp", async () => {
-            // 		const instance = await VotingProcess.deployed()
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp - 50  // <<--
+            let endTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
 
-            // 		let blockNumber = await web3.eth.getBlockNumber()
-            // 		let startTime = (await web3.eth.getBlock(blockNumber)).timestamp - 50  // <<--
-            // 		let endTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            try {
+                await instance.methods.create(
+                    defaultResolver,
+                    defaultProcessName,
+                    defaultMetadataContentUri,
+                    startTime,
+                    endTime,
+                    defaultEncryptionPublicKey
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
 
-            // 		try {
-            // 			await instance.create(
-            // 				defaultResolver,
-            // 				defaultProcessName,
-            // 				defaultMetadataContentUri,
-            // 				startTime,
-            // 				endTime,
-            // 				defaultEncryptionPublicKey,
-            // 				{ from: entityAddress }
-            // 			)
-            // 			assert.fail("The transaction should have thrown an error")
-            // 		}
-            // 		catch (err) {
-            // 			assert(err.message.match(/revert/), "The transaction should be reverted")
-            // 		}
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+            }
+
         })
         it("should enforce endTime's greater than the given startTime", async () => {
-            // 		const instance = await VotingProcess.deployed()
+            // equal failing
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime  // <<--
 
-            // 		// equal failing
-            // 		let blockNumber = await web3.eth.getBlockNumber()
-            // 		let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-            // 		let endTime = startTime  // <<--
+            try {
+                await instance.methods.create(
+                    defaultResolver,
+                    defaultProcessName,
+                    defaultMetadataContentUri,
+                    startTime,
+                    endTime,
+                    defaultEncryptionPublicKey
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
 
-            // 		try {
-            // 			await instance.create(
-            // 				defaultResolver,
-            // 				defaultProcessName,
-            // 				defaultMetadataContentUri,
-            // 				startTime,
-            // 				endTime,
-            // 				defaultEncryptionPublicKey,
-            // 				{ from: entityAddress }
-            // 			)
-            // 			assert.fail("The transaction should have thrown an error")
-            // 		}
-            // 		catch (err) {
-            // 			assert(err.message.match(/revert/), "The transaction should be reverted")
-            // 		}
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+            }
 
-            // 		// Lower failing
-            // 		blockNumber = await web3.eth.getBlockNumber()
-            // 		startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-            // 		endTime = startTime - Math.ceil(100 * Math.random())   // <<--
+            // Lower failing
+            blockNumber = await web3.eth.getBlockNumber()
+            startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            endTime = startTime - Math.ceil(100 * Math.random())   // <<--
 
-            // 		try {
-            // 			await instance.create(
-            // 				defaultResolver,
-            // 				defaultProcessName,
-            // 				defaultMetadataContentUri,
-            // 				startTime,
-            // 				endTime,
-            // 				defaultEncryptionPublicKey,
-            // 				{ from: entityAddress }
-            // 			)
-            // 			assert.fail("The transaction should have thrown an error")
-            // 		}
-            // 		catch (err) {
-            // 			assert(err.message.match(/revert/), "The transaction should be reverted")
-            // 		}
+            try {
+                await instance.methods.create(
+                    defaultResolver,
+                    defaultProcessName,
+                    defaultMetadataContentUri,
+                    startTime,
+                    endTime,
+                    defaultEncryptionPublicKey
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+            }
         })
         it("should increase the processCount of the entity on success", async () => {
-            // 		const instance = await VotingProcess.deployed()
+            const prev = Number(await instance.methods.entityProcessCount(entityAddress).call())
+            assert.equal(prev, 0)
 
-            // 		const prev = await instance.processCount.call(entityAddress)
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
 
-            // 		let blockNumber = await web3.eth.getBlockNumber()
-            // 		let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-            // 		let endTime = startTime + 50
+            await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
 
-            // 		await instance.create(
-            // 			defaultResolver,
-            // 			defaultProcessName,
-            // 			defaultMetadataContentUri,
-            // 			startTime,
-            // 			endTime,
-            // 			defaultEncryptionPublicKey,
-            // 			{ from: entityAddress }
-            // 		)
 
-            // 		const current = await instance.processCount.call(entityAddress)
+            const current = Number(await instance.methods.entityProcessCount(entityAddress).call())
 
-            // 		assert.equal(current, prev + 1, "processCount should have increased by 1")
+            assert.equal(current, prev + 1, "processCount should have increased by 1")
         })
         it("should not increase the processCount of the entity on error", async () => {
-            // 		const instance = await VotingProcess.deployed()
+            const prev = Number(await instance.methods.entityProcessCount(entityAddress).call())
+            assert.equal(prev, 0)
 
-            // 		const prev = await instance.processCount.call(entityAddress)
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp - 50   // <<--
+            let endTime = startTime - 50   // <<--
 
-            // 		let blockNumber = await web3.eth.getBlockNumber()
-            // 		let startTime = (await web3.eth.getBlock(blockNumber)).timestamp - 50   // <<--
-            // 		let endTime = startTime - 50   // <<--
+            try {
+                await instance.methods.create(
+                    defaultResolver,
+                    defaultProcessName,
+                    defaultMetadataContentUri,
+                    startTime,
+                    endTime,
+                    defaultEncryptionPublicKey
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
 
-            // 		await instance.create(
-            // 			defaultResolver,
-            // 			defaultProcessName,
-            // 			defaultMetadataContentUri,
-            // 			startTime,
-            // 			endTime,
-            // 			defaultEncryptionPublicKey,
-            // 			{ from: entityAddress }
-            // 		)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw another error:\n" + err.message)
+            }
 
-            // 		const current = await instance.processCount.call(entityAddress)
+            const current = Number(await instance.methods.entityProcessCount(entityAddress).call())
 
-            // 		assert.equal(current, prev, "processCount should not have changed")
+            assert.equal(current, prev, "processCount should not have changed")
         })
         it("retrieved metadata should match the one submitted", async () => {
-            // 		const instance = await VotingProcess.deployed()
+            const entityResolver = "0x0987654321098765432109876543210987654321"
+            const processName = "PROCESS NAME TO TEST"
+            const metadataContentUri = "ipfs://ipfs/some-hash-here"
+            const voteEncryptionPublicKey = "TESTING-ENCRYPTION_KEY"
 
-            // 		const entityResolver = "0x0987654321098765432109876543210987654321"
-            // 		const processName = "PROCESS NAME TO TEST"
-            // 		const metadataContentUri = "ipfs://ipfs/some-hash-here"
-            // 		const voteEncryptionPublicKey = "TESTING-ENCRYPTION_KEY"
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 100
+            let endTime = startTime + 100
 
-            // 		let blockNumber = await web3.eth.getBlockNumber()
-            // 		let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 100
-            // 		let endTime = startTime + 100
+            await instance.methods.create(
+                entityResolver,
+                processName,
+                metadataContentUri,
+                startTime,
+                endTime,
+                voteEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
 
-            // 		await instance.create(
-            // 			entityResolver,
-            // 			processName,
-            // 			metadataContentUri,
-            // 			startTime,
-            // 			endTime,
-            // 			voteEncryptionPublicKey,
-            // 			{ from: entityAddress }
-            // 		)
-            // 		const count = await instance.processCount.call(entityAddress)
-            // 		const processId = await instance.getProcessId.call(entityAddress, count - 1)
+            const count = Number(await instance.methods.entityProcessCount(entityAddress).call())
+            const processId = await instance.methods.getProcessId(entityAddress, count - 1).call()
 
-            // 		const processData = await instance.get(processId)
-            // 		assert.equal(processData.entityResolver, entityResolver)
-            // 		assert.equal(processData.entityAddress, entityAddress)
-            // 		assert.equal(processData.processName, processName)
-            // 		assert.equal(processData.metadataContentUri, metadataContentUri)
-            // 		assert.equal(processData.startTime, startTime)
-            // 		assert.equal(processData.endTime, endTime)
-            // 		assert.equal(processData.voteEncryptionPublicKey, voteEncryptionPublicKey)
+            const processData = await instance.methods.get(processId).call()
 
-            // 		const privateKey = await instance.getPrivateKey(processId)
-            // 		assert.equal(privateKey, "")
+            assert.equal(processData.entityResolver, entityResolver)
+            assert.equal(processData.entityAddress, entityAddress)
+            assert.equal(processData.processName, processName)
+            assert.equal(processData.metadataContentUri, metadataContentUri)
+            assert.equal(processData.startTime, startTime)
+            assert.equal(processData.endTime, endTime)
+            assert.equal(processData.voteEncryptionPublicKey, voteEncryptionPublicKey)
+
+            const privateKey = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(privateKey, "")
         })
     })
 
@@ -350,6 +392,7 @@ describe('VotingProcess', function () {
         it("only when the process is not canceled")
         it("only after endTime")
         it("only if the key matches the public key registered")
+        it("should retrieve the submited private key")
     })
 
 })
