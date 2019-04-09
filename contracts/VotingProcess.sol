@@ -50,8 +50,7 @@ contract VotingProcess {
     }
 
     modifier onlyRelay(bytes32 processId) {
-
-
+        require(isActiveRelay(processId, msg.sender), "Invalid relay");
     	_;
     }
 
@@ -172,15 +171,23 @@ contract VotingProcess {
     }
     
     function registerVoteBatch(bytes32 processId, string memory dataContentUri) public onlyRelay(processId) {
+        require(!processes[processId].canceled, "The process has been canceled");
+        require(block.timestamp >= processes[processId].startTime, "Process not started");
+        require(block.timestamp < processes[processId].endTime, "Process ended");
 
+        processes[processId].voteBatches[processes[processId].voteBatchCount] = dataContentUri;
+
+        emit BatchRegistered(processId, processes[processId].voteBatchCount);
+
+        processes[processId].voteBatchCount++;
     }
     
     function getVoteBatchCount(bytes32 processId) public view returns (uint64) {
-
+        return processes[processId].voteBatchCount;
     }
     
     function getBatch(bytes32 processId, uint64 batchNumber) public view returns (string memory batchContentUri) {
-
+        return processes[processId].voteBatches[batchNumber];
     }
     
     function revealPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
