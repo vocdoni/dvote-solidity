@@ -1050,7 +1050,84 @@ describe('VotingProcess', function () {
     })
 
     describe("should register a vote batch", () => {
-        it("only when a registered relay submits it")
+
+        const batchDataContentUri = "bzz://batch-data-hash"
+
+        it("only when a registered relay submits it", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
+            let endTime = startTime + 50
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result1.transactionHash)
+
+            // Register relay
+            await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get vote batch count
+            const result2 = await instance.methods.getVoteBatchCount(processId).call()
+            assert.equal(result2, 0)
+
+            // Attempt to register a batch by someone unauthorized
+            try {
+                await instance.methods.registerVoteBatch(
+                    processId,
+                    "bzz://random-content-uri"
+                ).send({
+                    from: randomAddress2,   // <<--
+                    nonce: await web3.eth.getTransactionCount(randomAddress2)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction should be reverted but threw a different error:\n" + err.message)
+            }
+
+            // Get vote batch count
+            const result3 = await instance.methods.getVoteBatchCount(processId).call()
+            assert.equal(result3, 0, "There should be no vote batches")
+
+            // Register a batch from an authorized relay
+            const result4 = await instance.methods.registerVoteBatch(
+                processId,
+                batchDataContentUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result4.transactionHash)
+
+            // Get vote batch count
+            const result5 = await instance.methods.getVoteBatchCount(processId).call()
+            assert.equal(result5, 1, "There should be one vote batch now")
+
+            const result6 = await instance.methods.getBatch(processId, 0).call()
+            assert.equal(result6.batchContentUri, batchDataContentUri)
+
+        })
         it("only when the relay is active")
         it("only when the process ID exists")
         it("only when the process is not canceled")
@@ -1058,6 +1135,7 @@ describe('VotingProcess', function () {
         it("not after endTime")
         it("should increase the voteBatchCount on success")
         it("should not increase the voteBatchCount on error")
+        it("should retrieve the vote batches submitted")
         it("should emit an event")
     })
 
