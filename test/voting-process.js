@@ -1138,7 +1138,7 @@ describe('VotingProcess', function () {
 
         it("only when the relay is active", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
-            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 1
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2
             let endTime = startTime + 50
 
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
@@ -1170,8 +1170,8 @@ describe('VotingProcess', function () {
             })
 
             // wait until startTime
-            await (new Promise(resolve => setTimeout(resolve, 2 * 1000)))
-            // await increaseTimestamp(2)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Get vote batch count
             const result2 = await instance.methods.getVoteBatchCount(processId).call()
@@ -1443,7 +1443,7 @@ describe('VotingProcess', function () {
         it("not after endTime", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
             let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2 // now + 2
-            let endTime = startTime + 3  // now + 5
+            let endTime = startTime + 2  // now + 4
 
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
@@ -1478,8 +1478,8 @@ describe('VotingProcess', function () {
             assert.equal(result2, 0, "There should be no vote batches")
 
             // wait until startTime
-            await (new Promise(resolve => setTimeout(resolve, 3 * 1000)))
-            // await increaseTimestamp(3)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Register a successful vote batch
             await instance.methods.registerVoteBatch(
@@ -1498,8 +1498,8 @@ describe('VotingProcess', function () {
             assert.equal(result4, batchDataContentUri)
 
             // wait until endTime
-            await (new Promise(resolve => setTimeout(resolve, 3 * 1000)))
-            // await increaseTimestamp(3)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Attempt to register a batch after endTime
             try {
@@ -1523,7 +1523,7 @@ describe('VotingProcess', function () {
             const result6 = await instance.methods.getBatch(processId, 0).call()
             assert.equal(result6, batchDataContentUri)
 
-        }).timeout(7000)
+        }).timeout(5500)
         it("should increase the voteBatchCount on success", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
             let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2
@@ -1631,8 +1631,8 @@ describe('VotingProcess', function () {
             assert.equal(result2, 0, "There should be no vote batches")
 
             // wait until startTime
-            await (new Promise(resolve => setTimeout(resolve, 2 * 1000)))
-            // await increaseTimestamp(2)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Register a successful vote batch
             await instance.methods.registerVoteBatch(
@@ -1651,8 +1651,8 @@ describe('VotingProcess', function () {
             assert.equal(result4, batchDataContentUri)
 
             // wait until endTime
-            await (new Promise(resolve => setTimeout(resolve, 2 * 1000)))
-            // await increaseTimestamp(2)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Attempt to register a batch after endTime
             try {
@@ -1730,7 +1730,7 @@ describe('VotingProcess', function () {
             const result11 = await instance.methods.getBatch(processId, 0).call()
             assert.equal(result11, batchDataContentUri)
 
-        }).timeout(6000)
+        }).timeout(5500)
 
         it("should retrieve the vote batches submitted in ascending order", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
@@ -1813,7 +1813,7 @@ describe('VotingProcess', function () {
 
         it("should emit an event", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
-            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 1
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2
             let endTime = startTime + 50
 
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
@@ -1848,8 +1848,8 @@ describe('VotingProcess', function () {
             assert.equal(result2, 0, "There should be no vote batches yet")
 
             // wait until startTime
-            await (new Promise(resolve => setTimeout(resolve, 2 * 1000)))
-            // await increaseTimestamp(2)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Register a successful vote batch
             const result3 = await instance.methods.registerVoteBatch(processId, batchDataContentUri).send({
@@ -2214,7 +2214,7 @@ describe('VotingProcess', function () {
             // Note: this probably duplicated another testcase functionality
             // Keeping it here too for consistence purposes
             let blockNumber = await web3.eth.getBlockNumber()
-            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 1
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2
             let endTime = startTime + 50
             const batchDataContentUri = "bzz://content-hash-here"
 
@@ -2247,8 +2247,8 @@ describe('VotingProcess', function () {
             })
 
             // wait until startTime
-            await (new Promise(resolve => setTimeout(resolve, 2 * 1000)))
-            // await increaseTimestamp(2)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Get vote batch count
             const result2 = await instance.methods.getVoteBatchCount(processId).call()
