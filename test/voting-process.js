@@ -26,6 +26,7 @@ describe('VotingProcess', function () {
         instance = await deployVotingProcess()
     })
 
+
     it("should deploy the contract", async () => {
         const localInstance = await deployVotingProcess()
 
@@ -2362,13 +2363,380 @@ describe('VotingProcess', function () {
     })
 
     describe("should accept the encryption private key", () => {
-        it("only when the creator requests it")
-        it("only when the processId exists")
-        it("only when the process is not canceled")
-        it("only after endTime")
+
+        const relayPublicKey = "0x1234"
+        const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic`
+        const batchDataContentUri = "bzz://batch-data-hash"
+        const privateKey = "0x01234567890"
+
+        it("only when the creator requests it", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2
+            let endTime = startTime + 2  // NOW + 4
+            const batchDataContentUri = "bzz://content-hash-here"
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result1.transactionHash)
+
+            // Register relay
+            await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // wait until startTime
+            await (new Promise(resolve => setTimeout(resolve, 2.5 * 1000)))
+            // await increaseTimestamp(2.5)    // Not working with ganache by now
+
+            // Register a batch from an active relay
+            await instance.methods.registerVoteBatch(
+                processId,
+                batchDataContentUri
+            ).send({
+                from: relayAddress,
+                nonce: await web3.eth.getTransactionCount(relayAddress)
+            })
+
+            // wait until endTime
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
+
+            // Attempt to reveal the private key by someone else
+            try {
+                await instance.methods.revealPrivateKey(processId, privateKey).send({
+                    from: randomAddress1,
+                    nonce: await web3.eth.getTransactionCount(randomAddress1)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get private key
+            const result2 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result2, "", "There should be no private key")
+
+            // Reveal the private key
+            await instance.methods.revealPrivateKey(processId, privateKey).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get private key
+            const result3 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result3, privateKey, "The private key should match")
+
+        }).timeout(6000)
+        it("only when the processId exists", async () => {
+            const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
+
+            // Attempt to reveal the key of a random processId
+            try {
+                // Reveal the private key
+                await instance.methods.revealPrivateKey(nonExistingProcessId, privateKey).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get private key
+            const result2 = await instance.methods.getPrivateKey(nonExistingProcessId).call()
+            assert.equal(result2, "", "There should be no private key")
+
+        })
+        it("only when the process is not canceled", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2
+            let endTime = startTime + 1  // NOW + 3
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.ok(result1.transactionHash)
+
+            // Cancel the process
+            const result2 = await instance.methods.cancel(processId).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.ok(result2.transactionHash)
+
+            // wait until endTime
+            await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
+            // await increaseTimestamp(4)    // Not working with ganache by now
+
+            // Attempt to reveal the private key after canceling
+            try {
+                await instance.methods.revealPrivateKey(processId, privateKey).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get private key
+            const result3 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result3, "", "There should be no private key")
+
+        }).timeout(5000)
+        it("only after endTime", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2
+            let endTime = startTime + 2  // NOW + 4
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.ok(result1.transactionHash)
+
+            // Attempt to reveal the private key before the process starts
+            try {
+                await instance.methods.revealPrivateKey(processId, privateKey).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get private key
+            const result2 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result2, "", "There should be no private key")
+
+            // wait until startTime and before endTime
+            await (new Promise(resolve => setTimeout(resolve, 3 * 1000)))
+            // await increaseTimestamp(3)    // Not working with ganache by now
+
+            // Register relay
+            await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Register a batch from an active relay
+            await instance.methods.registerVoteBatch(processId, batchDataContentUri).send({
+                from: relayAddress,
+                nonce: await web3.eth.getTransactionCount(relayAddress)
+            })
+
+            // Attempt to reveal the private key
+            try {
+                await instance.methods.revealPrivateKey(processId, privateKey).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get private key
+            const result3 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result3, "", "There should be no private key")
+
+        }).timeout(6000)
         it("only if the key matches the public key registered")
-        it("should retrieve the submited private key")
-        it("should emit an event")
+        it("should retrieve the submited private key", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2
+            let endTime = startTime + 1  // NOW + 3
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.ok(result1.transactionHash)
+
+            // Register relay
+            await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // wait until endTime
+            await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
+            // await increaseTimestamp(4)    // Not working with ganache by now
+
+            // Reveal the private key
+            await instance.methods.revealPrivateKey(processId, privateKey).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get private key
+            const result2 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result2, privateKey, "The private key should match")
+
+        }).timeout(5000)
+        it("should overwrite it in case of a mistake", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2
+            let endTime = startTime + 1  // NOW + 3
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.ok(result1.transactionHash)
+
+            // Register relay
+            await instance.methods.addRelay(
+                processId,
+                relayAddress,
+                relayPublicKey,
+                relayMessagingUri
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // wait until endTime
+            await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
+            // await increaseTimestamp(4)    // Not working with ganache by now
+
+            // Reveal the wrong private key
+            await instance.methods.revealPrivateKey(processId, "INVALID_PRIVATE_KEY").send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get private key
+            const result2 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result2, "INVALID_PRIVATE_KEY", "The private key should match the invalid one")
+
+            // Update the private key
+            await instance.methods.revealPrivateKey(processId, privateKey).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            // Get private key
+            const result3 = await instance.methods.getPrivateKey(processId).call()
+            assert.equal(result3, privateKey, "The private key should match")
+
+        }).timeout(5000)
+        it("should emit an event", async () => {
+            let blockNumber = await web3.eth.getBlockNumber()
+            let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2
+            let endTime = startTime + 1  // NOW + 3
+
+            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+
+            // Create
+            const result1 = await instance.methods.create(
+                defaultResolver,
+                defaultProcessName,
+                defaultMetadataContentUri,
+                startTime,
+                endTime,
+                defaultEncryptionPublicKey
+            ).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.ok(result1.transactionHash)
+
+            // wait until endTime
+            await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
+            // await increaseTimestamp(4)    // Not working with ganache by now
+
+            // Reveal the wrong private key
+            const result2 = await instance.methods.revealPrivateKey(processId, privateKey).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.PrivateKeyRevealed)
+            assert.ok(result2.events.PrivateKeyRevealed.returnValues)
+            assert.equal(result2.events.PrivateKeyRevealed.event, "PrivateKeyRevealed")
+            assert.equal(result2.events.PrivateKeyRevealed.returnValues.processId, processId)
+            assert.equal(result2.events.PrivateKeyRevealed.returnValues.privateKey, privateKey)
+        }).timeout(5000)
     })
 
 })
