@@ -1,13 +1,13 @@
 pragma solidity ^0.5.0;
 
-import "../ResolverBase.sol";
+import "../EntityResolverBase.sol";
 
 contract TextResolver is ResolverBase {
     bytes4 constant private TEXT_INTERFACE_ID = 0x59d1d43c;
 
     event TextChanged(bytes32 indexed node, string indexedKey, string key);
 
-    mapping(bytes32=>mapping(string=>string)) texts;
+    mapping(bytes32 => mapping(string => string)) texts;
 
     /**
      * Sets the text data associated with an ENS node and key.

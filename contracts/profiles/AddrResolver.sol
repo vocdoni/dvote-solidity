@@ -1,13 +1,13 @@
 pragma solidity ^0.5.0;
 
-import "../ResolverBase.sol";
+import "../EntityResolverBase.sol";
 
 contract AddrResolver is ResolverBase {
     bytes4 constant private ADDR_INTERFACE_ID = 0x3b3b57de;
 
     event AddrChanged(bytes32 indexed node, address a);
 
-    mapping(bytes32=>address) addresses;
+    mapping(bytes32 => address) addresses;
 
     /**
      * Sets the address associated with an ENS node.

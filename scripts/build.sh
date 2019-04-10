@@ -6,7 +6,7 @@ rm -Rf ./build/*.json ./build/*.js
 
 echo "Compiling contracts"
 $SOLC --optimize --bin --abi -o build \
-    contracts/VotingProcess.sol contracts/EntityResolver.sol contracts/ResolverBase.sol contracts/profiles/AddrResolver.sol contracts/profiles/TextListResolver.sol contracts/profiles/TextResolver.sol
+    contracts/VotingProcess.sol contracts/EntityResolver.sol contracts/EntityResolverBase.sol contracts/profiles/AddrResolver.sol contracts/profiles/TextListResolver.sol contracts/profiles/TextResolver.sol
 
 echo "Arranging output files"
 echo "{\"abi\": $(cat build/*EntityResolver.abi), \"bytecode\": \"0x$(cat build/*EntityResolver.bin)\"}" > build/entity-resolver.json
