@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "../EntityResolverBase.sol";
 
 contract TextListResolver is ResolverBase {
-    bytes4 constant private TEXT_LIST_INTERFACE_ID = 0x00000000;
+    bytes4 constant private TEXT_LIST_INTERFACE_ID = 0x17141714;
 
     event ListItemChanged(bytes32 indexed node, string key, uint256 index);
     event ListItemRemoved(bytes32 indexed node, string key, uint256 index);

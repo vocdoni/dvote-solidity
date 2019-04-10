@@ -7,6 +7,10 @@ import "./profiles/TextListResolver.sol";
 
 contract EntityResolver is  AddrResolver, TextResolver, TextListResolver {
     function isAuthorised(bytes32 node) internal view returns(bool) {
-        return keccak256(abi.encodePacked(msg.sender)) == node;
+        return getEntityId(msg.sender) == node;
+    }
+
+    function getEntityId(address entityAddress) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(entityAddress));
     }
 }

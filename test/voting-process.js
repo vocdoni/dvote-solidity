@@ -2556,8 +2556,8 @@ describe('VotingProcess', function () {
             assert.equal(result2, "", "There should be no private key")
 
             // wait until startTime and before endTime
-            await (new Promise(resolve => setTimeout(resolve, 3 * 1000)))
-            // await increaseTimestamp(3)    // Not working with ganache by now
+            await (new Promise(resolve => setTimeout(resolve, 2.2 * 1000)))
+            // await increaseTimestamp(2.2)    // Not working with ganache by now
 
             // Register relay
             await instance.methods.addRelay(
@@ -2593,7 +2593,6 @@ describe('VotingProcess', function () {
             assert.equal(result3, "", "There should be no private key")
 
         }).timeout(6000)
-        it("only if the key matches the public key registered")
         it("should retrieve the submited private key", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
             let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2
@@ -2641,6 +2640,9 @@ describe('VotingProcess', function () {
             assert.equal(result2, privateKey, "The private key should match")
 
         }).timeout(5000)
+
+        // TODO: replace T+1 when the implementation is available
+        it("only if the key matches the public key registered")
         it("should overwrite it in case of a mistake", async () => {
             let blockNumber = await web3.eth.getBlockNumber()
             let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 2  // NOW + 2

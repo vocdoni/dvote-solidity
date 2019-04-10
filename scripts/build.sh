@@ -13,8 +13,8 @@ echo "{\"abi\": $(cat build/*EntityResolver.abi), \"bytecode\": \"0x$(cat build/
 echo "{\"abi\": $(cat build/*VotingProcess.abi), \"bytecode\": \"0x$(cat build/*VotingProcess.bin)\"}" > build/voting-process.json
 
 echo "module.exports = {
-    entityResolver: require(\"./entity-resolver.json\"),
-    votingProcess: require(\"./voting-process.json\")
+    EntityResolver: require(\"./entity-resolver.json\"),
+    VotingProcess: require(\"./voting-process.json\")
 }" > build/index.js
 
 echo "Cleaning intermediate artifacts"
