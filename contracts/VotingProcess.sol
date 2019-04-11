@@ -40,7 +40,7 @@ contract VotingProcess {
     event RelayAdded(bytes32 indexed processId, address relayAddress);
     event RelayDisabled(bytes32 indexed processId, address relayAddress);
     event BatchRegistered(bytes32 indexed processId, uint64 batchNumber);
-    event PrivateKeyRevealed(bytes32 indexed processId);
+    event PrivateKeyRevealed(bytes32 indexed processId, string privateKey);
 
     // MODIFIERS
 
@@ -49,9 +49,13 @@ contract VotingProcess {
     	_;
     }
 
-    modifier onlyRelay(bytes32 processId) {
+    modifier onlyActiveRelay(bytes32 processId) {
+        require(isActiveRelay(processId, msg.sender), "Invalid relay");
+    	_;
+    }
 
-
+    modifier onlyActiveProcessId(bytes32 processId) {
+        require(!processes[processId].canceled, "Canceled process");
     	_;
     }
 
@@ -119,18 +123,16 @@ contract VotingProcess {
         canceled = processes[processId].canceled;
     }
     
-    function cancel(bytes32 processId) public onlyEntity(processId) {
-        require(processes[processId].startTime > block.timestamp, "The process has already started");
-        require(!processes[processId].canceled, "The process is already canceled");
+    function cancel(bytes32 processId) public onlyEntity(processId) onlyActiveProcessId(processId) {
+        require(processes[processId].startTime > block.timestamp, "Process started");
 
         processes[processId].relayList.length = 0;
         processes[processId].canceled = true;
         emit ProcessCanceled(msg.sender, processId);
     }
     
-    function addRelay(bytes32 processId, address relayAddress, string memory publicKey, string memory messagingUri) public onlyEntity(processId) {
-        require(!processes[processId].canceled, "The process has been canceled");
-        require(!processes[processId].relays[relayAddress].active, "The relay is already active");
+    function addRelay(bytes32 processId, address relayAddress, string memory publicKey, string memory messagingUri) public onlyEntity(processId) onlyActiveProcessId(processId) {
+        require(!processes[processId].relays[relayAddress].active, "Relay already active");
 
         processes[processId].relayList.push(relayAddress);
         processes[processId].relays[relayAddress].publicKey = publicKey;
@@ -140,9 +142,8 @@ contract VotingProcess {
         emit RelayAdded(processId, relayAddress);
     }
     
-    function disableRelay(bytes32 processId, address relayAddress) public onlyEntity(processId) {
-        require(!processes[processId].canceled, "The process has been canceled");
-        require(processes[processId].relays[relayAddress].active, "The relay is already disabled");
+    function disableRelay(bytes32 processId, address relayAddress) public onlyEntity(processId) onlyActiveProcessId(processId) {
+        require(isActiveRelay(processId, relayAddress), "Relay already disabled");
 
         uint len = processes[processId].relayList.length;
         for (uint i = 0; i < len; i++) {
@@ -171,20 +172,31 @@ contract VotingProcess {
         messagingUri = processes[processId].relays[relayAddress].messagingUri;
     }
     
-    function registerVoteBatch(bytes32 processId, string memory dataContentUri) public onlyRelay(processId) {
+    function registerVoteBatch(bytes32 processId, string memory dataContentUri) public onlyActiveRelay(processId) onlyActiveProcessId(processId) {
+        require(block.timestamp >= processes[processId].startTime, "Process not started");
+        require(block.timestamp < processes[processId].endTime, "Process ended");
 
+        processes[processId].voteBatches[processes[processId].voteBatchCount] = dataContentUri;
+
+        emit BatchRegistered(processId, processes[processId].voteBatchCount);
+
+        processes[processId].voteBatchCount++;
     }
     
     function getVoteBatchCount(bytes32 processId) public view returns (uint64) {
-
+        return processes[processId].voteBatchCount;
     }
     
     function getBatch(bytes32 processId, uint64 batchNumber) public view returns (string memory batchContentUri) {
-
+        return processes[processId].voteBatches[batchNumber];
     }
     
-    function revealPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
+    function revealPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) onlyActiveProcessId(processId) {
+        require(block.timestamp >= processes[processId].endTime, "Process not ended");
 
+        processes[processId].voteEncryptionPrivateKey = privateKey;
+
+        emit PrivateKeyRevealed(processId, privateKey);
     }
 
     function getPrivateKey(bytes32 processId) public view returns (string memory privateKey) {

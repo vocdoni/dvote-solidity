@@ -4,12 +4,7 @@
   "description": "Solidity smart contracts implementing the voting core features of Vocdoni",
   "main": "./build/index.js",
   "scripts": {
-    "ganache": "./node_modules/ganache-cli/cli.js -d -t \"$(date +'%Y %m %d')\"",
-    "truffle": "./node_modules/truffle/build/cli.bundled.js",
-    "truffle:test": "./node_modules/truffle/build/cli.bundled.js test",
-    "truffle:test:remote": "./node_modules/truffle/build/cli.bundled.js test --network staging",
-    "truffle:build": "./scripts/compile.sh",
-    "truffle:migrate": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
+    "ganache": "./node_modules/.bin/ganache-cli -d -t \"$(date +'%Y %m %d')\" -m \"myth like bonus scare over problem client lizard pioneer submit female collect\"",
     "test": "npm run build && mocha test/index.js",
     "build": "./scripts/build.sh",
     "prepublishOnly": "npm test && npm run build"
@@ -22,14 +17,14 @@
   "license": "ISC",
   "homepage": "https://github.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
-    "dotenv": "^7.0.0",
-    "solc": "^0.5.0",
-    "truffle": "^5.0.0",
-    "truffle-hdwallet-provider": "^1.0.2"
+    "solc": "^0.5.7"
   },
   "devDependencies": {
+    "dotenv": "^7.0.0",
+    "ethers": "^4.0.27",
     "ganache-cli": "^6.4.2",
-    "mocha": "^6.0.2",
+    "mocha": "^6.1.2",
+    "truffle-hdwallet-provider": "^1.0.6",
     "web3": "1.0.0-beta.48",
     "web3-utils": "1.0.0-beta.48"
   }

@@ -10,7 +10,7 @@ contract ResolverBase {
     function isAuthorised(bytes32 node) internal view returns(bool);
 
     modifier authorised(bytes32 node) {
-        require(isAuthorised(node));
+        require(isAuthorised(node), "Unauthorized");
         _;
     }
 }
