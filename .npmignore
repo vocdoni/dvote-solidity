@@ -1,7 +1,5 @@
 src
 scripts
 test
-migrations
-truffle-config.json
-truffle.js
 .vscode
+.env

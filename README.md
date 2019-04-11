@@ -50,7 +50,7 @@ function deployVotingProcess() {
 }
 ```
 
-### Etherejs
+### Ethers.js
 
 ```javascript
 const ethers = require("ethers")

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Solidity smart contracts implementing the voting core features of Vocdoni",
   "main": "./build/index.js",
+  "types": "./lib/types.d.ts",
   "scripts": {
     "ganache": "./node_modules/.bin/ganache-cli -d -t \"$(date +'%Y %m %d')\" -m \"myth like bonus scare over problem client lizard pioneer submit female collect\"",
     "test": "npm run build && mocha test/index.js",
