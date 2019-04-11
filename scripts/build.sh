@@ -20,4 +20,7 @@ echo "module.exports = {
 echo "Cleaning intermediate artifacts"
 rm -f build/*.abi build/*.bin
 
+echo "Copying TS type declarations"
+cp ./lib/types.d.ts ./build
+
 echo "Done"
