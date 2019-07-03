@@ -11,11 +11,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vocdoni/dvote-solidity.git"
+    "url": "git+https://gitlab.com/vocdoni/dvote-solidity.git"
   },
   "author": "Vocdoni",
   "license": "ISC",
-  "homepage": "https://github.com/vocdoni/dvote-solidity#readme",
+  "homepage": "https://gitlab.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
     "solc": "^0.5.7"
   },
