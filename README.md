@@ -7,10 +7,10 @@ This repo provides toolkit to interact with the EntityResolver and the VotingPro
 
 ## Get started
 
-Use `npm` or `yarn` to install the package:
+Install NodeJS and NPM on your system.
 
 ```
-npm install dvote-js
+make all
 ```
 
 ## Usage
@@ -88,13 +88,13 @@ const tx = await process.create(...)
 ## Development
 
 Compile and export the contracts ABI and Bytecode:
-    `npm run build`
+    `make all`
 
 Start a local blockchain:
     `npm run ganache`
 
 Run the test suite locally
-    `npm test`
+    `make test`
 
 ### Current testing
 
