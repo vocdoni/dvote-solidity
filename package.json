@@ -7,7 +7,7 @@
     "ganache": "./node_modules/.bin/ganache-cli -d -t \"$(date +'%Y %m %d')\" -m \"myth like bonus scare over problem client lizard pioneer submit female collect\"",
     "test": "mocha test/index.js",
     "build": "./scripts/build.sh",
-    "prepublishOnly": "npm test && npm run build"
+    "prepublishOnly": "npm run build && npm test"
   },
   "repository": {
     "type": "git",
