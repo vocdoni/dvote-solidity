@@ -1,13 +1,14 @@
 {
   "name": "dvote-solidity",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Solidity smart contracts implementing the voting core features of Vocdoni",
   "main": "./build/index.js",
+  "types": "./build/index.d.ts",
   "scripts": {
     "ganache": "./node_modules/.bin/ganache-cli -d -t \"$(date +'%Y %m %d')\" -m \"myth like bonus scare over problem client lizard pioneer submit female collect\"",
     "test": "mocha test/index.js",
-    "build": "./scripts/build.sh",
-    "prepublishOnly": "npm run build && npm test"
+    "build": "make all",
+    "prepublishOnly": "make all && make test"
   },
   "repository": {
     "type": "git",
@@ -17,14 +18,16 @@
   "license": "ISC",
   "homepage": "https://gitlab.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
-    "solc": "^0.5.7"
+    "ethers": "^4.0.33"
   },
   "devDependencies": {
     "dotenv": "^7.0.0",
-    "ethers": "^4.0.27",
     "ganache-cli": "^6.4.2",
-    "mocha": "^6.1.2",
-    "truffle-hdwallet-provider": "^1.0.6",
+    "mocha": "^6.1.4",
+    "solc": "^0.5.7",
+    "truffle-hdwallet-provider": "^1.0.14",
+    "tslint": "^5.15.0",
+    "typescript": "^3.5.3",
     "web3": "1.0.0-beta.48",
     "web3-utils": "1.0.0-beta.48"
   }

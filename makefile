@@ -1,34 +1,62 @@
-CONTRACT_SOURCES = $(sort $(notdir $(wildcard contracts/**/*)))
 PATH  := node_modules/.bin:$(PATH)
 SHELL := /bin/bash
 
-.DEFAULT_GOAL := info
-.PHONY: info $(CONTRACT_SOURCES)
+.DEFAULT_GOAL := help
+SOLC=./node_modules/.bin/solcjs
+TSC=./node_modules/.bin/tsc
+CONTRACT_SOURCES=$(wildcard contracts/*.sol contracts/*/*.sol)
+OUTPUT_FILES=build/index.js build/entity-resolver.json build/voting-process.json
 
 ###############################################################################
-## INFO
+## HELP
 ###############################################################################
 
-info:
-	@echo "Available actions:"
+.PHONY: help
+help:
+	@echo "Available targets:"
 	@echo
-	@echo "  $$ make         Runs 'run info' by default"
-	@echo "  $$ make info    Shows this text"
+	@echo "  $$ make         Runs 'make help' by default"
+	@echo "  $$ make help    Shows this text"
 	@echo
-	@echo "  $$ make build   Compile the smart contracts into 'build'"
+	@echo "  $$ make all     Compile the smart contracts and types into 'build'"
+	@echo "  $$ make test    Compile and test the contracts"
+	@echo "  $$ make clean   Cleanup the build folder"
 	@echo
 
 ###############################################################################
 ## RECIPES
 ###############################################################################
 
-all: contracts
+all: node_modules build
 
-node_modules: package.json
+node_modules: package.json package-lock.json
 	npm install
+	@touch $@
 
-test: contracts
+build: build/solc $(OUTPUT_FILES)
+	@mkdir -p build
+	@touch $@
+
+# Intermediate solidity compiled artifacts
+build/solc: $(CONTRACT_SOURCES)
+	mkdir -p $@
+	$(SOLC) --optimize --bin --abi -o $@ $(CONTRACT_SOURCES)
+	@touch $@
+
+# from $(OUTPUT_FILES)
+build/index.js: build/entity-resolver.json build/voting-process.json lib/index.ts
+	cp lib/index.ts build
+	$(TSC) --build tsconfig.json
+
+# from $(OUTPUT_FILES)
+build/entity-resolver.json:
+	@echo "{\"abi\": $$(cat build/solc/*EntityResolver.abi), \"bytecode\": \"0x$$(cat build/solc/*EntityResolver.bin)\"}" > $@
+# from $(OUTPUT_FILES)
+build/voting-process.json:
+	@echo "{\"abi\": $$(cat build/solc/*VotingProcess.abi), \"bytecode\": \"0x$$(cat build/solc/*VotingProcess.bin)\"}" > $@
+
+test: build
 	npm run test
 
-contracts: node_modules $(CONTRACT_SOURCES)
-	npm run build
+clean: 
+	rm -Rf ./build
