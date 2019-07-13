@@ -25,6 +25,8 @@ console.log(VotingProcess.abi, VotingProcess.bytecode)
 
 ```
 
+If you use Typescript, you may need to add `"resolveJsonModule": true` n your `tsconfig.json` file.
+
 Then use Web3 or Ethers.js to attach to an instance or deploy your own:
 
 ### Web3
