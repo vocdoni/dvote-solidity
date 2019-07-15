@@ -96,7 +96,7 @@ export interface VotingProcessContractMethods {
     getNextProcessId(entityAddress: string): Promise<string>
     getProcessId(entityAddress: string, processIndex: number): Promise<string>
 
-    create(entityResolver: string, processName: string, metadataContentUri: string, startTime: BigNumber, endTime: BigNumber, voteEncryptionPublicKey: string): Promise<ContractTransaction>
+    create(entityResolver: string, processName: string, metadataContentUri: string, startTime: number | BigNumber, endTime: number | BigNumber, voteEncryptionPublicKey: string): Promise<ContractTransaction>
     get(processId: string): Promise<VotingProcessData>
     cancel(processId: string): Promise<ContractTransaction>
 
@@ -107,7 +107,7 @@ export interface VotingProcessContractMethods {
     getRelay(processId: string, relayAddress: string): Promise<RelayData>
 
     registerVoteBatch(processId: string, dataContentUri: string): Promise<ContractTransaction>
-    getVoteBatchCount(processId: string): Promise<number>
+    getVoteBatchCount(processId: string): Promise<BigNumber>
     getBatch(processId: string, batchNumber: number): Promise<string>
 
     revealPrivateKey(processId: string, privateKey: string): Promise<ContractTransaction>
