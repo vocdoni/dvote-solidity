@@ -1,0 +1,38 @@
+image: node:10.16.0-stretch
+
+stages:
+  - build
+  - test
+  - release
+
+# variables:
+#   ACCESS_TOKEN: 1234...
+
+###############################################################################
+## DVOTE SOLIDITY
+###############################################################################
+
+dvote-solidity-build:
+  stage: build
+  script:
+    - apt-get install make
+    - make all
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    paths:
+      - build/
+
+
+dvote-solidity-test:
+  stage: test
+  script:
+    - apt-get install make
+    - make all test
+
+
+# dvote-solidity-release:
+#   stage: release
+#   script:
+#     - npm ...
+#   only:
+#     - master
