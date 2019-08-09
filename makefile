@@ -31,7 +31,10 @@ all: node_modules build
 
 node_modules: package.json package-lock.json
 	npm install
-	if [ -d node_modules/web3-providers/node_modules/websocket ]; then rm -Rf node_modules/web3-providers/node_modules/websocket/.git ; fi
+	if [ -d node_modules/web3-providers/node_modules/websocket ]; then \
+      rm -Rf node_modules/web3-providers/node_modules/websocket/.git ; \
+      rm -Rf node_modules/web3-providers-ws/node_modules/websocket/.git ; \
+   fi
 	@touch $@
 
 build: build/solc $(OUTPUT_FILES)
