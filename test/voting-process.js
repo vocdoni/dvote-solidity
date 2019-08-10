@@ -371,27 +371,18 @@ describe('VotingProcess', function () {
     
             })
         })
-/*
-        describe("should register a relay", () => {
+
+        describe("should register a validator", () => {
     
-            const relayPublicKey = "0x1234"
-            const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic`
+            const validatorPublicKey = "0x1234"
     
             it("only when the creator requests it", async () => {
-                let blockNumber = await web3.eth.getBlockNumber()
-                let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-                let endTime = startTime + 50
-    
+             
                 const processId = await instance.methods.getProcessId(entityAddress, 0).call()
     
                 // Create
                 const result1 = await instance.methods.create(
-                    defaultResolver,
-                    defaultProcessName,
                     processMetadataHash,
-                    startTime,
-                    endTime,
-                    voteEncryptionPrivateKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -400,11 +391,9 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register a relay
-                const result2 = await instance.methods.addRelay(
+                const result2 = await instance.methods.pushValidator(
                     processId,
-                    relayAddress,
-                    relayPublicKey,
-                    relayMessagingUri
+                    validatorPublicKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -413,17 +402,14 @@ describe('VotingProcess', function () {
                 assert.ok(result2.transactionHash)
     
                 // Get relay list
-                const result3 = await instance.methods.getRelayIndex(processId).call()
+                const result3 = await instance.methods.getValidators().call()
                 assert.equal(result3.length, 1)
-                assert.deepEqual(result3, [relayAddress])
     
                 // Attempt to add a relay by someone else
                 try {
-                    await instance.methods.addRelay(
+                    await instance.methods.pushValidator(
                         processId,
-                        randomAddress2,
-                        relayPublicKey,
-                        relayMessagingUri
+                        validatorPublicKey,
                     ).send({
                         from: randomAddress1, // <<--
                         nonce: await web3.eth.getTransactionCount(randomAddress1)
@@ -436,108 +422,18 @@ describe('VotingProcess', function () {
                 }
     
                 // Get relay list
-                const result4 = await instance.methods.getRelayIndex(processId).call()
+                const result4 = await instance.methods.getValidators().call()
                 assert.equal(result4.length, 1)
-                assert.deepEqual(result4, [relayAddress])
     
             })
-            it("only when the processId exists", async () => {
-    
-                const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
-    
-                // Attempt to add a relay to a random processId
-                try {
-                    await instance.methods.addRelay(
-                        nonExistingProcessId,
-                        randomAddress2,
-                        relayPublicKey,
-                        relayMessagingUri
-                    ).send({
-                        from: entityAddress,
-                        nonce: await web3.eth.getTransactionCount(entityAddress)
-                    })
-    
-                    assert.fail("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
-                }
-    
-                // Get relay list
-                const result4 = await instance.methods.getRelayIndex(nonExistingProcessId).call()
-                assert.equal(result4.length, 0)
-                assert.deepEqual(result4, [])
-    
-            })
-            it("only when the process is not canceled", async () => {
-                let blockNumber = await web3.eth.getBlockNumber()
-                let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-                let endTime = startTime + 50
-    
+           
+            it("should fail if it already NOT owner adds Validator", async () => {
+                
                 const processId = await instance.methods.getProcessId(entityAddress, 0).call()
     
                 // Create
                 const result1 = await instance.methods.create(
-                    defaultResolver,
-                    defaultProcessName,
                     processMetadataHash,
-                    startTime,
-                    endTime,
-                    voteEncryptionPrivateKey,
-                ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-    
-                assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
-    
-                // Canceled by the creator
-                const result2 = await instance.methods.cancel(processId).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-    
-                assert.equal(result2.events.ProcessCanceled.returnValues.processId, processId)
-    
-                // Attempt to add a relay after being canceled
-                try {
-                    await instance.methods.addRelay(
-                        processId,
-                        relayAddress,
-                        relayPublicKey,
-                        relayMessagingUri
-                    ).send({
-                        from: entityAddress,
-                        nonce: await web3.eth.getTransactionCount(entityAddress)
-                    })
-    
-                    assert.fail("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
-                }
-    
-                // Get relay list
-                const result4 = await instance.methods.getRelayIndex(processId).call()
-                assert.equal(result4.length, 0)
-                assert.deepEqual(result4, [])
-    
-            })
-            it("should fail if it already exists as active", async () => {
-                let blockNumber = await web3.eth.getBlockNumber()
-                let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-                let endTime = startTime + 50
-    
-                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-    
-                // Create
-                const result1 = await instance.methods.create(
-                    defaultResolver,
-                    defaultProcessName,
-                    processMetadataHash,
-                    startTime,
-                    endTime,
-                    voteEncryptionPrivateKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -546,11 +442,8 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register a relay
-                const result2 = await instance.methods.addRelay(
-                    processId,
-                    relayAddress,
-                    relayPublicKey,
-                    relayMessagingUri
+                const result2 = await instance.methods.pushValidator(
+                    validatorPublicKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -559,17 +452,13 @@ describe('VotingProcess', function () {
                 assert.ok(result2.transactionHash)
     
                 // Get relay list
-                const result3 = await instance.methods.getRelayIndex(processId).call()
+                const result3 = await instance.methods.getValidators().call()
                 assert.equal(result3.length, 1)
-                assert.deepEqual(result3, [relayAddress])
     
                 // Attempt to add a relay by someone else
                 try {
-                    await instance.methods.addRelay(
-                        processId,
-                        relayAddress,
-                        relayPublicKey,
-                        relayMessagingUri
+                    await instance.methods.pushValidator(
+                        validatorPublicKey,
                     ).send({
                         from: entityAddress,
                         nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -582,26 +471,17 @@ describe('VotingProcess', function () {
                 }
     
                 // Get relay list
-                const result4 = await instance.methods.getRelayIndex(processId).call()
+                const result4 = await instance.methods.getValidators().call()
                 assert.equal(result4.length, 1)
-                assert.deepEqual(result4, [relayAddress])
     
             })
-            it("should add the relay address to the relay list", async () => {
-                let blockNumber = await web3.eth.getBlockNumber()
-                let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-                let endTime = startTime + 50
-    
+            it("should add the validator address to the validator list", async () => {
+
                 const processId = await instance.methods.getProcessId(entityAddress, 0).call()
     
                 // Create
                 const result1 = await instance.methods.create(
-                    defaultResolver,
-                    defaultProcessName,
                     processMetadataHash,
-                    startTime,
-                    endTime,
-                    voteEncryptionPrivateKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -610,11 +490,9 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay 1
-                const result2 = await instance.methods.addRelay(
+                const result2 = await instance.methods.pushValidator(
                     processId,
-                    relayAddress,
-                    relayPublicKey,
-                    relayMessagingUri
+                    validatorPublicKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -623,16 +501,14 @@ describe('VotingProcess', function () {
                 assert.ok(result2.transactionHash)
     
                 // Get relay list
-                const result3 = await instance.methods.getRelayIndex(processId).call()
+                const result3 = await instance.methods.getValidators().call()
                 assert.equal(result3.length, 1)
                 assert.deepEqual(result3, [relayAddress])
     
                 // Adding relay #2
-                const result4 = await instance.methods.addRelay(
+                const result4 = await instance.methods.pushValidator(
                     processId,
-                    randomAddress1,
-                    relayPublicKey,
-                    relayMessagingUri
+                    validatorPublicKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -640,113 +516,18 @@ describe('VotingProcess', function () {
     
                 assert.ok(result4.transactionHash)
     
-    
                 // Get relay list
-                const result5 = await instance.methods.getRelayIndex(processId).call()
+                const result5 = await instance.methods.getValidators().call()
                 assert.equal(result5.length, 2)
-                assert.deepEqual(result5, [relayAddress, randomAddress1])
     
             })
-            it("should return true on isActiveRelay", async () => {
-                let blockNumber = await web3.eth.getBlockNumber()
-                let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-                let endTime = startTime + 50
-    
-                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-    
-                // Create
-                const result1 = await instance.methods.create(
-                    defaultResolver,
-                    defaultProcessName,
-                    processMetadataHash,
-                    startTime,
-                    endTime,
-                    voteEncryptionPrivateKey,
-                ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-    
-                assert.ok(result1.transactionHash)
-    
-                // Register relay
-                const result2 = await instance.methods.addRelay(
-                    processId,
-                    relayAddress,
-                    relayPublicKey,
-                    relayMessagingUri
-                ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-    
-                assert.ok(result2.transactionHash)
-    
-                // Retrieve relay status
-                const result3 = await instance.methods.isActiveRelay(processId, relayAddress).call()
-    
-                assert(result3, "Relay should be active when created")
-    
-            })
-            it("should retrieve a given relay's data", async () => {
-    
-                const relayPublicKey = "0x5678"
-                const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic-2`
-                let blockNumber = await web3.eth.getBlockNumber()
-                let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-                let endTime = startTime + 50
-    
-                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-    
-                // Create
-                const result1 = await instance.methods.create(
-                    defaultResolver,
-                    defaultProcessName,
-                    processMetadataHash,
-                    startTime,
-                    endTime,
-                    voteEncryptionPrivateKey,
-                ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-    
-                assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
-    
-                // Register relay
-                const result2 = await instance.methods.addRelay(
-                    processId,
-                    relayAddress,
-                    relayPublicKey,
-                    relayMessagingUri
-                ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-    
-                assert.ok(result2.transactionHash)
-    
-                // Get relay status
-                const result3 = await instance.methods.getRelay(processId, relayAddress).call()
-                assert.equal(result3.publicKey, relayPublicKey)
-                assert.equal(result3.messagingUri, relayMessagingUri)
-    
-            })
+            
             it("should emit an event", async () => {
-                let blockNumber = await web3.eth.getBlockNumber()
-                let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 50
-                let endTime = startTime + 50
-    
                 const processId = await instance.methods.getProcessId(entityAddress, 0).call()
     
                 // Create
                 const result1 = await instance.methods.create(
-                    defaultResolver,
-                    defaultProcessName,
                     processMetadataHash,
-                    startTime,
-                    endTime,
-                    voteEncryptionPrivateKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -755,11 +536,9 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                const result2 = await instance.methods.addRelay(
+                const result2 = await instance.methods.pushValidator(
                     processId,
-                    relayAddress,
-                    relayPublicKey,
-                    relayMessagingUri
+                    validatorPublicKey,
                 ).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -767,19 +546,18 @@ describe('VotingProcess', function () {
     
                 assert.ok(result2)
                 assert.ok(result2.events)
-                assert.ok(result2.events.RelayAdded)
-                assert.ok(result2.events.RelayAdded.returnValues)
-                assert.equal(result2.events.RelayAdded.event, "RelayAdded")
-                assert.equal(result2.events.RelayAdded.returnValues.processId, processId)
-                assert.equal(result2.events.RelayAdded.returnValues.relayAddress, relayAddress)
+                assert.ok(result2.events.ValidatorAdded)
+                assert.ok(result2.events.ValidatorAdded.returnValues)
+                assert.equal(result2.events.ValidatorAdded.event, "ValidatorAdded")
+                assert.equal(result2.events.ValidatorAdded.returnValues.processId, processId)
     
             })
         })
-    
+    /*
         describe("should register a vote batch", () => {
     
-            const relayPublicKey = "0x1234"
-            const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic`
+            const validatorPublicKey = "0x1234"
+            const relayMessagingUri = `pss://${validatorPublicKey}@my-test-topic`
             const batchDataContentUri = "bzz://batch-data-hash"
     
             it("only when a registered relay submits it", async () => {
@@ -805,10 +583,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -885,10 +663,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -963,10 +741,10 @@ describe('VotingProcess', function () {
     
                 try {
                     // Try to register a relay
-                    await instance.methods.addRelay(
+                    await instance.methods.pushValidator(
                         nonExistingProcessId,
                         relayAddress,
-                        relayPublicKey,
+                        validatorPublicKey,
                         relayMessagingUri
                     ).send({
                         from: entityAddress,
@@ -1025,10 +803,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1099,10 +877,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1189,10 +967,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1273,10 +1051,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1342,10 +1120,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1480,10 +1258,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1559,10 +1337,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1596,8 +1374,8 @@ describe('VotingProcess', function () {
     
         describe("should disable a relay", () => {
     
-            const relayPublicKey = "0x1234"
-            const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic`
+            const validatorPublicKey = "0x1234"
+            const relayMessagingUri = `pss://${validatorPublicKey}@my-test-topic`
     
             it("only when the creator requests it", async () => {
                 let blockNumber = await web3.eth.getBlockNumber()
@@ -1622,10 +1400,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1648,7 +1426,7 @@ describe('VotingProcess', function () {
                 }
     
                 // Get relay list
-                const result2 = await instance.methods.getRelayIndex(processId).call()
+                const result2 = await instance.methods.getValidators().call()
                 assert.equal(result2.length, 1)
                 assert.deepEqual(result2, [relayAddress])
     
@@ -1662,7 +1440,7 @@ describe('VotingProcess', function () {
                 })
     
                 // Get relay list
-                const result4 = await instance.methods.getRelayIndex(processId).call()
+                const result4 = await instance.methods.getValidators().call()
                 assert.equal(result4.length, 0)
                 assert.deepEqual(result4, [])
     
@@ -1688,7 +1466,7 @@ describe('VotingProcess', function () {
                 }
     
                 // Get relay list
-                const result4 = await instance.methods.getRelayIndex(nonExistingProcessId).call()
+                const result4 = await instance.methods.getValidators().call()
                 assert.equal(result4.length, 0)
                 assert.deepEqual(result4, [])
     
@@ -1716,10 +1494,10 @@ describe('VotingProcess', function () {
                 assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
     
                 // Register a relay
-                const result2 = await instance.methods.addRelay(
+                const result2 = await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1753,7 +1531,7 @@ describe('VotingProcess', function () {
                 }
     
                 // Get relay list
-                const result4 = await instance.methods.getRelayIndex(processId).call()
+                const result4 = await instance.methods.getValidators().call()
                 assert.equal(result4.length, 0)
                 assert.deepEqual(result4, [])
     
@@ -1781,10 +1559,10 @@ describe('VotingProcess', function () {
                 assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
     
                 // Register a relay
-                const result2 = await instance.methods.addRelay(
+                const result2 = await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1810,7 +1588,7 @@ describe('VotingProcess', function () {
                 }
     
                 // Get relay list
-                const result4 = await instance.methods.getRelayIndex(processId).call()
+                const result4 = await instance.methods.getValidators().call()
                 assert.equal(result4.length, 1)
                 assert.deepEqual(result4, [relayAddress])
     
@@ -1838,10 +1616,10 @@ describe('VotingProcess', function () {
                 assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
     
                 // Register relay #1
-                const result2 = await instance.methods.addRelay(
+                const result2 = await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1851,10 +1629,10 @@ describe('VotingProcess', function () {
                 assert.ok(result2.transactionHash)
     
                 // Register relay #2
-                const result3 = await instance.methods.addRelay(
+                const result3 = await instance.methods.pushValidator(
                     processId,
                     randomAddress1,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1864,7 +1642,7 @@ describe('VotingProcess', function () {
                 assert.ok(result3.transactionHash)
     
                 // Get relay list
-                const result4 = await instance.methods.getRelayIndex(processId).call()
+                const result4 = await instance.methods.getValidators().call()
                 assert.equal(result4.length, 2)
                 assert.deepEqual(result4, [relayAddress, randomAddress1])
     
@@ -1878,7 +1656,7 @@ describe('VotingProcess', function () {
                 })
     
                 // Get relay list
-                const result5 = await instance.methods.getRelayIndex(processId).call()
+                const result5 = await instance.methods.getValidators().call()
                 assert.equal(result5.length, 1)
                 assert.deepEqual(result5, [relayAddress])
     
@@ -1906,10 +1684,10 @@ describe('VotingProcess', function () {
                 assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
     
                 // Register relay
-                const result2 = await instance.methods.addRelay(
+                const result2 = await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -1962,10 +1740,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -2058,10 +1836,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -2090,8 +1868,8 @@ describe('VotingProcess', function () {
     
         describe("should accept the encryption private key", () => {
     
-            const relayPublicKey = "0x1234"
-            const relayMessagingUri = `pss://${relayPublicKey}@my-test-topic`
+            const validatorPublicKey = "0x1234"
+            const relayMessagingUri = `pss://${validatorPublicKey}@my-test-topic`
             const batchDataContentUri = "bzz://batch-data-hash"
             const privateKey = "0x01234567890"
     
@@ -2119,10 +1897,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -2286,10 +2064,10 @@ describe('VotingProcess', function () {
                 // await increaseTimestamp(2.2)    // Not working with ganache by now
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -2341,10 +2119,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
@@ -2391,10 +2169,10 @@ describe('VotingProcess', function () {
                 assert.ok(result1.transactionHash)
     
                 // Register relay
-                await instance.methods.addRelay(
+                await instance.methods.pushValidator(
                     processId,
                     relayAddress,
-                    relayPublicKey,
+                    validatorPublicKey,
                     relayMessagingUri
                 ).send({
                     from: entityAddress,
