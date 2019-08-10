@@ -392,7 +392,6 @@ describe('VotingProcess', function () {
     
                 // Register a relay
                 const result2 = await instance.methods.pushValidator(
-                    processId,
                     validatorPublicKey,
                 ).send({
                     from: entityAddress,
@@ -408,7 +407,6 @@ describe('VotingProcess', function () {
                 // Attempt to add a relay by someone else
                 try {
                     await instance.methods.pushValidator(
-                        processId,
                         validatorPublicKey,
                     ).send({
                         from: randomAddress1, // <<--
@@ -491,7 +489,6 @@ describe('VotingProcess', function () {
     
                 // Register relay 1
                 const result2 = await instance.methods.pushValidator(
-                    processId,
                     validatorPublicKey,
                 ).send({
                     from: entityAddress,
@@ -507,7 +504,6 @@ describe('VotingProcess', function () {
     
                 // Adding relay #2
                 const result4 = await instance.methods.pushValidator(
-                    processId,
                     validatorPublicKey,
                 ).send({
                     from: entityAddress,
@@ -537,7 +533,6 @@ describe('VotingProcess', function () {
     
                 // Register relay
                 const result2 = await instance.methods.pushValidator(
-                    processId,
                     validatorPublicKey,
                 ).send({
                     from: entityAddress,
@@ -698,6 +693,331 @@ describe('VotingProcess', function () {
                 assert.ok(result3.events.ValidatorRemoved.returnValues)
                 assert.equal(result3.events.ValidatorRemoved.event, "ValidatorRemoved")
                 assert.equal(result3.events.ValidatorRemoved.returnValues.processId, processId)
+    
+            })
+        })
+
+        describe("should register an oracle", () => {
+    
+            const oraclePublicKey = "0x1234"
+    
+            it("only when the creator requests it", async () => {
+             
+                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+    
+                // Create
+                const result1 = await instance.methods.create(
+                    processMetadataHash,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result1.transactionHash)
+    
+                // Register a relay
+                const result2 = await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result2.transactionHash)
+    
+                // Get relay list
+                const result3 = await instance.methods.getOracles().call()
+                assert.equal(result3.length, 1)
+    
+                // Attempt to add a relay by someone else
+                try {
+                    await instance.methods.pushOracle(
+                        oraclePublicKey,
+                    ).send({
+                        from: randomAddress1, // <<--
+                        nonce: await web3.eth.getTransactionCount(randomAddress1)
+                    })
+    
+                    assert.fail("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+                }
+    
+                // Get relay list
+                const result4 = await instance.methods.getOracles().call()
+                assert.equal(result4.length, 1)
+    
+            })
+           
+            it("should fail if it already NOT owner adds Oracle", async () => {
+                
+                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+    
+                // Create
+                const result1 = await instance.methods.create(
+                    processMetadataHash,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result1.transactionHash)
+    
+                // Register a relay
+                const result2 = await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result2.transactionHash)
+    
+                // Get relay list
+                const result3 = await instance.methods.getOracles().call()
+                assert.equal(result3.length, 1)
+    
+                // Attempt to add a relay by someone else
+                try {
+                    await instance.methods.pushOracle(
+                        oraclePublicKey,
+                    ).send({
+                        from: entityAddress,
+                        nonce: await web3.eth.getTransactionCount(entityAddress)
+                    })
+    
+                    assert.fail("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+                }
+    
+                // Get relay list
+                const result4 = await instance.methods.getOracles().call()
+                assert.equal(result4.length, 1)
+    
+            })
+            it("should add the oracle publicKey to the oracles list", async () => {
+
+                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+    
+                // Create
+                const result1 = await instance.methods.create(
+                    processMetadataHash,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result1.transactionHash)
+    
+                // Register relay 1
+                const result2 = await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result2.transactionHash)
+    
+                // Get relay list
+                const result3 = await instance.methods.getOracles().call()
+                assert.equal(result3.length, 1)
+                assert.deepEqual(result3, [relayAddress])
+    
+                // Adding relay #2
+                const result4 = await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result4.transactionHash)
+    
+                // Get relay list
+                const result5 = await instance.methods.getOracles().call()
+                assert.equal(result5.length, 2)
+    
+            })
+            
+            it("should emit an event", async () => {
+                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+    
+                // Create
+                const result1 = await instance.methods.create(
+                    processMetadataHash,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result1.transactionHash)
+    
+                // Register relay
+                const result2 = await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result2)
+                assert.ok(result2.events)
+                assert.ok(result2.events.OracleAdded)
+                assert.ok(result2.events.OracleAdded.returnValues)
+                assert.equal(result2.events.OracleAdded.event, "OracleAdded")
+                assert.equal(result2.events.OracleAdded.returnValues.processId, processId)
+    
+            })
+        })
+    
+        describe("should remove an oracle", () => {
+    
+            const oraclePublicKey = "0x1234"
+    
+            it("only when the creator requests it", async () => {
+                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+    
+                // Create
+                const result1 = await instance.methods.create(
+                    processMetadataHash,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result1.transactionHash)
+    
+                // Register relay
+                await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                // Attempt to disable the relay from someone else
+                try {
+                    await instance.methods.removeOracle(
+                        idx,
+                        oraclePublicKey
+                    ).send({
+                        from: randomAddress1,   // <<--
+                        nonce: await web3.eth.getTransactionCount(randomAddress1)
+                    })
+                    assert.fail("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+                }
+    
+                // Get relay list
+                const result2 = await instance.methods.getOracles().call()
+                assert.equal(result2.length, 1)
+    
+                // Disable relay from the creator
+                const result3 = await instance.methods.removeOracle(
+                    idx,
+                    oraclePublicKey
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                // Get relay list
+                const result4 = await instance.methods.getOracles().call()
+                assert.equal(result4.length, 0)
+                assert.deepEqual(result4, [])
+    
+            })
+            
+            it("should fail if the idx does not match oraclePublicKey", async () => {
+
+                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+                const nonExistingoraclePublicKey = "0x123123"
+                // Create
+                const result1 = await instance.methods.create(
+                    processMetadataHash,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
+    
+                // Register a relay
+                const result2 = await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result2.transactionHash)
+    
+                // Attempt to disable non-existing relay
+                try {
+                    await instance.methods.removeOracle(
+                        idx,
+                        nonExistingoraclePublicKey   // <<--
+                    ).send({
+                        from: entityAddress,
+                        nonce: await web3.eth.getTransactionCount(entityAddress)
+                    })
+    
+                    assert.fail("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+                }
+    
+                // Get relay list
+                const result4 = await instance.methods.getOracles().call()
+                assert.equal(result4.length, 1)
+                assert.deepEqual(result4, [relayAddress])
+    
+            })
+            
+            it("should emit an event", async () => {
+
+                const processId = await instance.methods.getProcessId(entityAddress, 0).call()
+    
+                // Create
+                const result1 = await instance.methods.create(
+                    processMetadataHash,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result1.transactionHash)
+    
+                // Register relay
+                await instance.methods.pushOracle(
+                    oraclePublicKey,
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                // Disable relay
+                const result3 = await instance.methods.removeOracle(
+                    idx,
+                    oraclePublicKey
+                ).send({
+                    from: entityAddress,
+                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                })
+    
+                assert.ok(result3)
+                assert.ok(result3.events)
+                assert.ok(result3.events.OracleRemoved)
+                assert.ok(result3.events.OracleRemoved.returnValues)
+                assert.equal(result3.events.OracleRemoved.event, "OracleRemoved")
+                assert.equal(result3.events.OracleRemoved.returnValues.processId, processId)
     
             })
         })
