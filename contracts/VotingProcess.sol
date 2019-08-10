@@ -72,6 +72,11 @@ contract VotingProcess {
 
     // METHODS
 
+    constructor() public
+    {
+        contractOwner = msg.sender;
+    }
+
     function create(
     	string memory processMetadataHash
     ) public {
@@ -112,6 +117,7 @@ contract VotingProcess {
 
     function cancel(bytes32 processId) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
+        require( processes[processIndex].canceled == false);
         processes[processIndex].canceled = true;
         emit ProcessCanceled(msg.sender, processId);
     }
