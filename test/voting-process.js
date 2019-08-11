@@ -519,7 +519,7 @@ describe('VotingProcess', function () {
             // Attempt to disable the validator from someone else
             try {
                 await instance.methods.removeValidator(
-                    idx,
+                    0,
                     validatorPublicKey
                 ).send({
                     from: randomAddress1,   // <<--
@@ -537,11 +537,11 @@ describe('VotingProcess', function () {
 
             // Disable validator from the creator
             const result3 = await instance.methods.removeValidator(
-                idx,
+                0,
                 validatorPublicKey
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
             // Get validator list
@@ -564,12 +564,13 @@ describe('VotingProcess', function () {
                 nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
+
             assert.ok(result2.transactionHash)
 
             // Attempt to disable non-existing validator
             try {
                 await instance.methods.removeValidator(
-                    idx,
+                    5,
                     nonExistingValidatorPublicKey   // <<--
                 ).send({
                     from: randomAddress1,
@@ -601,7 +602,7 @@ describe('VotingProcess', function () {
 
             // Disable validator
             const result3 = await instance.methods.removeValidator(
-                idx,
+                0,
                 validatorPublicKey
             ).send({
                 from: deployAddress,
@@ -614,7 +615,6 @@ describe('VotingProcess', function () {
             assert.ok(result3.events.ValidatorRemoved.returnValues)
             assert.equal(result3.events.ValidatorRemoved.event, "ValidatorRemoved")
             assert.equal(result3.events.ValidatorRemoved.returnValues.validatorPublicKey, validatorPublicKey)
-
         })
     })
 

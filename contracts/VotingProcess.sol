@@ -33,7 +33,7 @@ contract VotingProcess {
     event ProcessCreated(address indexed entityAddress, bytes32 processId);
     event ProcessCanceled(address indexed entityAddress, bytes32 processId);  // entityAddress could be removed. Keeping for web3 testability issues
     event ValidatorAdded( string validatorPublicKey);
-    event ValidatorDisabled(string validatorPublicKey);
+    event ValidatorRemoved(string validatorPublicKey);
     event PrivateKeyRevealed(bytes32 indexed processId, string privateKey);
 
     // MODIFIERS
@@ -128,7 +128,6 @@ contract VotingProcess {
         emit ValidatorAdded(validatorPublicKey);
     }
 
-
     function stringsAreEqual(string memory str1, string memory str2) public pure returns(bool)
     {
         return (keccak256(abi.encodePacked((str1))) == keccak256(abi.encodePacked((str2))) );
@@ -141,7 +140,7 @@ contract VotingProcess {
         validators[idx] = validators[validators.length - 1];
         validators.length--;
 
-        emit ValidatorDisabled( validatorPublicKey);
+        emit ValidatorRemoved( validatorPublicKey);
     }
 
     function getValidators() public view returns (string[] memory) {
