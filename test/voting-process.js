@@ -618,41 +618,30 @@ describe('VotingProcess', function () {
         })
     })
 
-    describe("should register an oracle", () => {
+
+    describe("should register a oracle", () => {
 
         const oraclePublicKey = "0x1234"
 
-        it("only when the creator requests it", async () => {
+        it("only when the contract owner requests it", async () => {
 
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create(
-                processMetadataHash,
-            ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result1.transactionHash)
-
-            // Register a validator
-            const result2 = await instance.methods.pushOracle(
+            // Register a oracle
+            const result2 = await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
             assert.ok(result2.transactionHash)
 
-            // Get validator list
+            // Get oracle list
             const result3 = await instance.methods.getOracles().call()
             assert.equal(result3.length, 1)
 
-            // Attempt to add a validator by someone else
+            // Attempt to add a oracle by someone else
             try {
-                await instance.methods.pushOracle(
+                await instance.methods.addOracle(
                     oraclePublicKey,
                 ).send({
                     from: randomAddress1, // <<--
@@ -665,43 +654,32 @@ describe('VotingProcess', function () {
                 assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            // Get validator list
+            // Get oracle list
             const result4 = await instance.methods.getOracles().call()
             assert.equal(result4.length, 1)
 
         })
 
-        it("should fail if it already NOT owner adds Oracle", async () => {
+        it("should fail if NOT owner adds oracle", async () => {
 
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
-            // Create
-            const result1 = await instance.methods.create(
-                processMetadataHash,
-            ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result1.transactionHash)
-
-            // Register a validator
-            const result2 = await instance.methods.pushOracle(
+            // Register a oracle
+            const result2 = await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
             assert.ok(result2.transactionHash)
 
-            // Get validator list
+            // Get oracle list
             const result3 = await instance.methods.getOracles().call()
             assert.equal(result3.length, 1)
 
-            // Attempt to add a validator by someone else
+            // Attempt to add a oracle by someone else
             try {
-                await instance.methods.pushOracle(
+                await instance.methods.addOracle(
                     oraclePublicKey,
                 ).send({
                     from: entityAddress,
@@ -714,51 +692,39 @@ describe('VotingProcess', function () {
                 assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            // Get validator list
+            // Get oracle list
             const result4 = await instance.methods.getOracles().call()
             assert.equal(result4.length, 1)
 
         })
-        it("should add the oracle publicKey to the oracles list", async () => {
+        it("should add the oracle public key to the oracle list", async () => {
 
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create(
-                processMetadataHash,
-            ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result1.transactionHash)
-
-            // Register validator 1
-            const result2 = await instance.methods.pushOracle(
+            // Register oracle 1
+            const result2 = await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
             assert.ok(result2.transactionHash)
 
-            // Get validator list
+            // Get oracle list
             const result3 = await instance.methods.getOracles().call()
             assert.equal(result3.length, 1)
-            assert.deepEqual(result3, [validatorPublicKey])
+            assert.deepEqual(result3, [oraclePublicKey])
 
-            // Adding validator #2
-            const result4 = await instance.methods.pushOracle(
+            // Adding oracle #2
+            const result4 = await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
             assert.ok(result4.transactionHash)
 
-            // Get validator list
+            // Get oracle list
             const result5 = await instance.methods.getOracles().call()
             assert.equal(result5.length, 2)
 
@@ -767,22 +733,12 @@ describe('VotingProcess', function () {
         it("should emit an event", async () => {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
-            // Create
-            const result1 = await instance.methods.create(
-                processMetadataHash,
-            ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result1.transactionHash)
-
-            // Register validator
-            const result2 = await instance.methods.pushOracle(
+            // Register oracle
+            const result2 = await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
             assert.ok(result2)
@@ -790,30 +746,29 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.OracleAdded)
             assert.ok(result2.events.OracleAdded.returnValues)
             assert.equal(result2.events.OracleAdded.event, "OracleAdded")
-            assert.equal(result2.events.OracleAdded.returnValues.processId, processId)
+            assert.equal(result2.events.OracleAdded.returnValues.oraclePublicKey, oraclePublicKey)
 
         })
     })
 
-    describe("should remove an oracle", () => {
+    describe("should remove a oracle", () => {
 
         const oraclePublicKey = "0x1234"
 
         it("only when the creator requests it", async () => {
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
-            // Register validator
-            await instance.methods.pushOracle(
+            // Register oracle
+            await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
-            // Attempt to disable the validator from someone else
+            // Attempt to disable the oracle from someone else
             try {
-                await instance.methods.removeOracle(
-                    idx,
+                await instance.methods.removeoracle(
+                    0,
                     oraclePublicKey
                 ).send({
                     from: randomAddress1,   // <<--
@@ -825,20 +780,20 @@ describe('VotingProcess', function () {
                 assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            // Get validator list
+            // Get oracle list
             const result2 = await instance.methods.getOracles().call()
             assert.equal(result2.length, 1)
 
-            // Disable validator from the creator
-            const result3 = await instance.methods.removeOracle(
-                idx,
+            // Disable oracle from the creator
+            const result3 = await instance.methods.removeoracle(
+                0,
                 oraclePublicKey
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
-            // Get validator list
+            // Get oracle list
             const result4 = await instance.methods.getOracles().call()
             assert.equal(result4.length, 0)
             assert.deepEqual(result4, [])
@@ -849,34 +804,26 @@ describe('VotingProcess', function () {
 
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
             const nonExistingoraclePublicKey = "0x123123"
-            // Create
-            const result1 = await instance.methods.create(
-                processMetadataHash,
-            ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId)
-
-            // Register a validator
-            const result2 = await instance.methods.pushOracle(
+            
+            // Register a oracle
+            const result2 = await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
+
 
             assert.ok(result2.transactionHash)
 
-            // Attempt to disable non-existing validator
+            // Attempt to disable non-existing oracle
             try {
-                await instance.methods.removeOracle(
-                    idx,
+                await instance.methods.removeoracle(
+                    5,
                     nonExistingoraclePublicKey   // <<--
                 ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
+                    from: randomAddress1,
+                    nonce: await web3.eth.getTransactionCount(randomAddress1)
                 })
 
                 assert.fail("The transaction should have thrown an error but didn't")
@@ -885,53 +832,41 @@ describe('VotingProcess', function () {
                 assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            // Get validator list
+            // Get oracle list
             const result4 = await instance.methods.getOracles().call()
             assert.equal(result4.length, 1)
-            assert.deepEqual(result4, [validatorPublicKey])
+            assert.deepEqual(result4, [oraclePublicKey])
 
         })
 
         it("should emit an event", async () => {
 
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create(
-                processMetadataHash,
-            ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result1.transactionHash)
-
-            // Register validator
-            await instance.methods.pushOracle(
+            // Register oracle
+            await instance.methods.addOracle(
                 oraclePublicKey,
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
-            // Disable validator
-            const result3 = await instance.methods.removeOracle(
-                idx,
+            // Disable oracle
+            const result3 = await instance.methods.removeoracle(
+                0,
                 oraclePublicKey
             ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
             })
 
             assert.ok(result3)
             assert.ok(result3.events)
-            assert.ok(result3.events.OracleRemoved)
-            assert.ok(result3.events.OracleRemoved.returnValues)
-            assert.equal(result3.events.OracleRemoved.event, "OracleRemoved")
-            assert.equal(result3.events.OracleRemoved.returnValues.processId, processId)
-
+            assert.ok(result3.events.oracleRemoved)
+            assert.ok(result3.events.oracleRemoved.returnValues)
+            assert.equal(result3.events.oracleRemoved.event, "oracleRemoved")
+            assert.equal(result3.events.oracleRemoved.returnValues.oraclePublicKey, oraclePublicKey)
         })
     })
+
 
     describe("should accept the encryption private key", () => {
 

@@ -34,6 +34,8 @@ contract VotingProcess {
     event ProcessCanceled(address indexed entityAddress, bytes32 processId);  // entityAddress could be removed. Keeping for web3 testability issues
     event ValidatorAdded( string validatorPublicKey);
     event ValidatorRemoved(string validatorPublicKey);
+    event OracleAdded( string oraclePublicKey);
+    event OracleRemoved(string oraclePublicKey);
     event PrivateKeyRevealed(bytes32 indexed processId, string privateKey);
 
     // MODIFIERS
@@ -68,6 +70,11 @@ contract VotingProcess {
         bytes32 processId
         ) public view returns (uint){
         return processesIndex[processId];
+    }
+
+    function stringsAreEqual(string memory str1, string memory str2) public pure returns(bool)
+    {
+        return (keccak256(abi.encodePacked((str1))) == keccak256(abi.encodePacked((str2))) );
     }
 
     // METHODS
@@ -128,11 +135,6 @@ contract VotingProcess {
         emit ValidatorAdded(validatorPublicKey);
     }
 
-    function stringsAreEqual(string memory str1, string memory str2) public pure returns(bool)
-    {
-        return (keccak256(abi.encodePacked((str1))) == keccak256(abi.encodePacked((str2))) );
-    }
-
     function removeValidator(uint idx, string memory validatorPublicKey) public onlyContractOwner() {
 
         require(stringsAreEqual(validators[idx], validatorPublicKey), "Validator to remove does not match index");
@@ -147,6 +149,27 @@ contract VotingProcess {
         return validators;
     }
     
+    function addOracle(string memory oraclePublicKey) public onlyContractOwner()  {
+
+        oracles.push(oraclePublicKey);
+        emit OracleAdded(oraclePublicKey);
+    }
+
+    function removeOracle(uint idx, string memory oraclePublicKey) public onlyContractOwner() {
+
+        require(stringsAreEqual(oracles[idx], oraclePublicKey), "Oracle to remove does not match index");
+        // swap with the last element from the list
+        oracles[idx] = oracles[oracles.length - 1];
+        oracles.length--;
+
+        emit OracleRemoved( oraclePublicKey);
+    }
+
+    function getOracles() public view returns (string[] memory) {
+        return oracles;
+    }
+    
+
     function revealPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
         processes[processIndex].voteEncryptionPrivateKey = privateKey;
