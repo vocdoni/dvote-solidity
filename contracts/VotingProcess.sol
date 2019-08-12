@@ -30,6 +30,7 @@ contract VotingProcess {
 
     // EVENTS
 
+    event GenesisChanged( string genesis);
     event ProcessCreated(address indexed entityAddress, bytes32 processId);
     event ProcessCanceled(address indexed entityAddress, bytes32 processId);  // entityAddress could be removed. Keeping for web3 testability issues
     event ValidatorAdded( string validatorPublicKey);
@@ -89,6 +90,17 @@ contract VotingProcess {
     {
         contractOwner = msg.sender;
     }
+
+     function setGenesis(string memory newGenesis) public onlyContractOwner()  {
+         require(stringsAreEqual(genesis, newGenesis) == false, "New genesis can't be the same");
+        genesis = newGenesis;
+        emit GenesisChanged(genesis);
+    }
+
+    function getGenesis() public view returns (string memory) {
+        return genesis;
+    }
+
 
     function create(
     	string memory processMetadataHash
@@ -154,7 +166,7 @@ contract VotingProcess {
     function getValidators() public view returns (string[] memory) {
         return validators;
     }
-    
+
     function addOracle(string memory oraclePublicKey) public onlyContractOwner()  {
 
         oracles.push(oraclePublicKey);
