@@ -153,8 +153,6 @@ describe('VotingProcess', function () {
             const prev = Number(await instance.methods.entityProcessCount(entityAddress).call())
             assert.equal(prev, 0)
 
-
-
             await instance.methods.create(
                 processMetadataHash,
             ).send({
@@ -219,6 +217,60 @@ describe('VotingProcess', function () {
             const privateKey = await instance.methods.getPrivateKey(processId).call()
             assert.equal(privateKey, "")
         })
+    })
+
+    describe("should set genesis", () => {
+
+        it("only contract creator", async () => {
+            assert(instance.methods.create)
+
+            try {
+                await instance.methods.setGenesis(
+                    gensis,
+                )
+                .send({
+                    from: randomAddress1,
+                    nonce: await web3.eth.getTransactionCount(randomAddress1)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+        })
+
+        it("persists", async () => {
+            assert(instance.methods.create)
+
+            await instance.methods.setGenesis(
+                gensis,
+            )
+            .send({
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
+            })
+            
+            const settedGenesis = await instance.methods.getGenesis().call()
+            assert.equal(settedGenesis, gensis, "Gensis should match")
+        })
+
+        it("should emit an event", async () => {
+            await instance.methods.setGenesis(
+                gensis,
+            )
+            .send({
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
+            })
+
+            assert.ok(result)
+            assert.ok(result.events)
+            assert.ok(result.events.GenesisChanged)
+            assert.ok(result.events.GenesisChanged.returnValues)
+            assert.equal(result.events.GenesisChanged.event, "GenesisChanged")
+            assert.equal(result.events.GenesisChanged.returnValues.genesis, genesis)
+        })
+
     })
 
     describe("should cancel the process", () => {
