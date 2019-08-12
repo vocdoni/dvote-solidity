@@ -10,7 +10,7 @@ contract VotingProcess {
     struct Process {
         address entityAddress;     // The address of the Entity's creator
         string processMetadataHash; // Content URI to fetch the JSON metadata from
-        string voteEncryptionPrivateKey;  // Key revealed after the vote ends so that scrutiny can start
+        string voteEncryptionPrivateKey;  // Key published after the vote ends so that scrutiny can start
         bool canceled;
         string resultsHash;                   // N vote batches registered
     }
@@ -36,7 +36,8 @@ contract VotingProcess {
     event ValidatorRemoved(string validatorPublicKey);
     event OracleAdded( string oraclePublicKey);
     event OracleRemoved(string oraclePublicKey);
-    event PrivateKeyRevealed(bytes32 indexed processId, string privateKey);
+    event PrivateKeyPublished(bytes32 indexed processId, string privateKey);
+    event ResultsHashPublished(bytes32 indexed processId, string resultsHash);
 
     // MODIFIERS
 
@@ -169,17 +170,30 @@ contract VotingProcess {
         return oracles;
     }
 
-    function revealPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
+    function publishPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
         require(processes[processIndex].canceled == false, "Process must not be canceled");
         processes[processIndex].voteEncryptionPrivateKey = privateKey;
 
-        emit PrivateKeyRevealed(processId, privateKey);
+        emit PrivateKeyPublished(processId, privateKey);
     }
 
     function getPrivateKey(bytes32 processId) public view returns (string memory privateKey) {
         uint processIndex = getProcessIndex(processId);
         privateKey = processes[processIndex].voteEncryptionPrivateKey;
+    }
+
+     function publishResultsHash(bytes32 processId, string memory resultsHash) public onlyEntity(processId) {
+        uint processIndex = getProcessIndex(processId);
+        require(processes[processIndex].canceled == false, "Process must not be canceled");
+        processes[processIndex].resultsHash = resultsHash;
+
+        emit ResultsHashPublished(processId, resultsHash);
+    }
+
+    function getResultsHash(bytes32 processId) public view returns (string memory privateKey) {
+        uint processIndex = getProcessIndex(processId);
+        privateKey = processes[processIndex].resultsHash;
     }
 
 }
