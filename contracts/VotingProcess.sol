@@ -54,11 +54,16 @@ contract VotingProcess {
 
     // HELPERS
 
+    function getEntityProcessCount(address entityAddress) public view returns (uint){
+        return entityProcessCount[entityAddress];
+    }
+
     // Get the next process ID to use for an entity
     function getNextProcessId(address entityAddress) public view returns (bytes32){
-        uint idx = entityProcessCount[entityAddress];
+        uint idx = getEntityProcessCount(entityAddress);
         return getProcessId(entityAddress, idx);
     }
+
     // Compute a process ID
     function getProcessId(
         address entityAddress,
@@ -107,7 +112,7 @@ contract VotingProcess {
         processesIndex[processId] = processes.length-1;
         entityProcessCount[entityAddress]++;
 
-        emit ProcessCreated(entityAddress, processId);            
+        emit ProcessCreated(entityAddress, processId);
     }
 
     function get(bytes32 processId) public view returns (
@@ -186,6 +191,7 @@ contract VotingProcess {
      function publishResultsHash(bytes32 processId, string memory resultsHash) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
         require(processes[processIndex].canceled == false, "Process must not be canceled");
+        require(stringsAreEqual(processes[processIndex].voteEncryptionPrivateKey, "") == false, "Process must not be canceled");
         processes[processIndex].resultsHash = resultsHash;
 
         emit ResultsHashPublished(processId, resultsHash);
