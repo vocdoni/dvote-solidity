@@ -141,6 +141,60 @@ describe('VotingProcess', function () {
 
     })
 
+    describe("should set chainId", () => {
+
+        it("only contract creator", async () => {
+            assert(instance.methods.create)
+
+            try {
+                await instance.methods.setChainId(
+                    chainId,
+                )
+                .send({
+                    from: randomAddress1,
+                    nonce: await web3.eth.getTransactionCount(randomAddress1)
+                })
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+        })
+
+        it("persists", async () => {
+            assert(instance.methods.create)
+
+            await instance.methods.setChainId(
+                chainId,
+            )
+            .send({
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
+            })
+            
+            const settedChainId = await instance.methods.getGenesis().call()
+            assert.equal(settedChainId, chainId, "Gensis should match")
+        })
+
+        it("should emit an event", async () => {
+            let result = await instance.methods.setChainId(
+                chainId,
+            )
+            .send({
+                from: deployAddress,
+                nonce: await web3.eth.getTransactionCount(deployAddress)
+            })
+
+            assert.ok(result)
+            assert.ok(result.events)
+            assert.ok(result.events.ChainIdChanged)
+            assert.ok(result.events.ChainIdChanged.returnValues)
+            assert.equal(result.events.ChainIdChanged.event, "ChainIdChanged")
+            assert.equal(result.events.ChainIdChanged.returnValues.chainId, chainId)
+        })
+
+    })
+
     describe("should create a process", () => {
         it("should allow anyone to create one", async () => {
             assert(instance.methods.create)
