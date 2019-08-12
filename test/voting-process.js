@@ -22,7 +22,7 @@ describe('VotingProcess', function () {
         randomAddress2 = accounts[3]
 
         genesis = "0x1234567890123456789012345678901234567890123123123"
-        chainId = 0
+        chainId = 1
 
         instance = await deployVotingProcess(deployAddress)
     })
@@ -90,7 +90,6 @@ describe('VotingProcess', function () {
     describe("should set genesis", () => {
 
         it("only contract creator", async () => {
-            assert(instance.methods.create)
 
             try {
                 await instance.methods.setGenesis(
@@ -108,7 +107,6 @@ describe('VotingProcess', function () {
         })
 
         it("persists", async () => {
-            assert(instance.methods.create)
 
             await instance.methods.setGenesis(
                 genesis,
@@ -138,13 +136,11 @@ describe('VotingProcess', function () {
             assert.equal(result.events.GenesisChanged.event, "GenesisChanged")
             assert.equal(result.events.GenesisChanged.returnValues.genesis, genesis)
         })
-
     })
 
     describe("should set chainId", () => {
 
         it("only contract creator", async () => {
-            assert(instance.methods.create)
 
             try {
                 await instance.methods.setChainId(
@@ -162,18 +158,21 @@ describe('VotingProcess', function () {
         })
 
         it("persists", async () => {
-            assert(instance.methods.create)
-
-            await instance.methods.setChainId(
+            let result = await instance.methods.setChainId(
                 chainId,
             )
             .send({
                 from: deployAddress,
                 nonce: await web3.eth.getTransactionCount(deployAddress)
             })
+            assert.ok(result.transactionHash)
+
+            setTimeout(function(){
+
+            },5000)
+            let settedChainId = await instance.methods.getChainId().call()
             
-            const settedChainId = await instance.methods.getGenesis().call()
-            assert.equal(settedChainId, chainId, "Gensis should match")
+            assert.equal(settedChainId, chainId, "ChainId should match")
         })
 
         it("should emit an event", async () => {

@@ -31,6 +31,7 @@ contract VotingProcess {
     // EVENTS
 
     event GenesisChanged( string genesis);
+    event ChainIdChanged( uint chainId);
     event ProcessCreated(address indexed entityAddress, bytes32 processId);
     event ProcessCanceled(address indexed entityAddress, bytes32 processId);  // entityAddress could be removed. Keeping for web3 testability issues
     event ValidatorAdded( string validatorPublicKey);
@@ -91,8 +92,8 @@ contract VotingProcess {
         contractOwner = msg.sender;
     }
 
-     function setGenesis(string memory newGenesis) public onlyContractOwner()  {
-         require(stringsAreEqual(genesis, newGenesis) == false, "New genesis can't be the same");
+    function setGenesis(string memory newGenesis) public onlyContractOwner()  {
+        require(stringsAreEqual(genesis, newGenesis) == false, "New genesis can't be the same");
         genesis = newGenesis;
         emit GenesisChanged(genesis);
     }
@@ -101,6 +102,15 @@ contract VotingProcess {
         return genesis;
     }
 
+    function setChainId(uint newChainId) public onlyContractOwner()  {
+        require(chainId != newChainId, "New chainId can't be the same");
+        chainId = newChainId;
+        emit ChainIdChanged(chainId);
+    }
+
+    function getChainId() public view returns (uint) {
+        return chainId;
+    }
 
     function create(
     	string memory processMetadataHash
