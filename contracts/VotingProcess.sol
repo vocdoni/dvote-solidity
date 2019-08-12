@@ -124,7 +124,7 @@ contract VotingProcess {
 
     function cancel(bytes32 processId) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
-        require( processes[processIndex].canceled == false);
+        require(processes[processIndex].canceled == false, "Process must not be canceled");
         processes[processIndex].canceled = true;
         emit ProcessCanceled(msg.sender, processId);
     }
@@ -142,7 +142,7 @@ contract VotingProcess {
         validators[idx] = validators[validators.length - 1];
         validators.length--;
 
-        emit ValidatorRemoved( validatorPublicKey);
+        emit ValidatorRemoved(validatorPublicKey);
     }
 
     function getValidators() public view returns (string[] memory) {
@@ -168,10 +168,10 @@ contract VotingProcess {
     function getOracles() public view returns (string[] memory) {
         return oracles;
     }
-    
 
     function revealPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
+        require(processes[processIndex].canceled == false, "Process must not be canceled");
         processes[processIndex].voteEncryptionPrivateKey = privateKey;
 
         emit PrivateKeyRevealed(processId, privateKey);

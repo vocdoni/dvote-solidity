@@ -873,7 +873,7 @@ describe('VotingProcess', function () {
         const validatorPublicKey = "0x1234"
         const privateKey = "0x01234567890"
 
-        it("only when the creator requests it", async () => {
+        it("only when the entity requests it", async () => {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
@@ -885,15 +885,6 @@ describe('VotingProcess', function () {
             })
 
             assert.ok(result1.transactionHash)
-
-            // Register validator
-            await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
 
             // Attempt to reveal the private key by someone else
             try {
@@ -936,12 +927,8 @@ describe('VotingProcess', function () {
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
-                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+                assert(err.message.match(/opcode/), "The transaction threw an unexpected error:\n" + err.message)
             }
-
-            // Get private key
-            const result2 = await instance.methods.getPrivateKey(nonExistingProcessId).call()
-            assert.equal(result2, "", "There should be no private key")
 
         })
         it("only when the process is not canceled", async () => {
@@ -1010,8 +997,6 @@ describe('VotingProcess', function () {
 
         }).timeout(5000)
 
-        // TODO: replace T+1 when the implementation is available
-        it("only if the key matches the public key registered")
         it("should overwrite it in case of a mistake", async () => {
             // NOW + 3
 
