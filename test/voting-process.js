@@ -767,7 +767,7 @@ describe('VotingProcess', function () {
 
             // Attempt to disable the oracle from someone else
             try {
-                await instance.methods.removeoracle(
+                await instance.methods.removeOracle(
                     0,
                     oraclePublicKey
                 ).send({
@@ -785,7 +785,7 @@ describe('VotingProcess', function () {
             assert.equal(result2.length, 1)
 
             // Disable oracle from the creator
-            const result3 = await instance.methods.removeoracle(
+            const result3 = await instance.methods.removeOracle(
                 0,
                 oraclePublicKey
             ).send({
@@ -818,7 +818,7 @@ describe('VotingProcess', function () {
 
             // Attempt to disable non-existing oracle
             try {
-                await instance.methods.removeoracle(
+                await instance.methods.removeOracle(
                     5,
                     nonExistingoraclePublicKey   // <<--
                 ).send({
@@ -850,7 +850,7 @@ describe('VotingProcess', function () {
             })
 
             // Disable oracle
-            const result3 = await instance.methods.removeoracle(
+            const result3 = await instance.methods.removeOracle(
                 0,
                 oraclePublicKey
             ).send({
@@ -860,10 +860,10 @@ describe('VotingProcess', function () {
 
             assert.ok(result3)
             assert.ok(result3.events)
-            assert.ok(result3.events.oracleRemoved)
-            assert.ok(result3.events.oracleRemoved.returnValues)
-            assert.equal(result3.events.oracleRemoved.event, "oracleRemoved")
-            assert.equal(result3.events.oracleRemoved.returnValues.oraclePublicKey, oraclePublicKey)
+            assert.ok(result3.events.OracleRemoved)
+            assert.ok(result3.events.OracleRemoved.returnValues)
+            assert.equal(result3.events.OracleRemoved.event, "OracleRemoved")
+            assert.equal(result3.events.OracleRemoved.returnValues.oraclePublicKey, oraclePublicKey)
         })
     })
 
