@@ -5,11 +5,12 @@ const web3 = getWeb3()
 
 let accounts
 let instance
+let chainId
 
 let entityAddress, randomAddress1, randomAddress2
 
 const processMetadataHash = "ipfs://ipfs/1234"
-const voteEncryptionPrivateKey = "0x1234"
+// const voteEncryptionPrivateKey = "0x1234"
 
 describe('VotingProcess', function () {
 
@@ -24,12 +25,12 @@ describe('VotingProcess', function () {
         genesis = "0x1234567890123456789012345678901234567890123123123"
         chainId = 1
 
-        instance = await deployVotingProcess(deployAddress)
+        instance = await deployVotingProcess(deployAddress, chainId)
     })
 
 
     it("should deploy the contract", async () => {
-        const localInstance = await deployVotingProcess(deployAddress)
+        const localInstance = await deployVotingProcess(deployAddress, chainId)
 
         assert.ok(localInstance)
         assert.ok(localInstance.options)
@@ -90,15 +91,14 @@ describe('VotingProcess', function () {
     describe("should set genesis", () => {
 
         it("only contract creator", async () => {
-
             try {
                 await instance.methods.setGenesis(
                     genesis,
                 )
-                .send({
-                    from: randomAddress1,
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
+                    .send({
+                        from: randomAddress1,
+                        nonce: await web3.eth.getTransactionCount(randomAddress1)
+                    })
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -106,28 +106,33 @@ describe('VotingProcess', function () {
             }
         })
 
-        it("persists", async () => {
+        it("should persist", async () => {
+            await instance.methods.setGenesis(genesis)
+                .send({
+                    from: deployAddress,
+                    nonce: await web3.eth.getTransactionCount(deployAddress)
+                })
 
-            await instance.methods.setGenesis(
-                genesis,
-            )
-            .send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-            
-            const settedGenesis = await instance.methods.getGenesis().call()
-            assert.equal(settedGenesis, genesis, "Gensis should match")
+            let currentGenesis = await instance.methods.getGenesis().call()
+            assert.equal(currentGenesis, genesis, "Gensis should match")
+
+            // Another genesis value
+            await instance.methods.setGenesis("1234")
+                .send({
+                    from: deployAddress,
+                    nonce: await web3.eth.getTransactionCount(deployAddress)
+                })
+
+            currentGenesis = await instance.methods.getGenesis().call()
+            assert.equal(currentGenesis, "1234", "Gensis should match")
         })
 
         it("should emit an event", async () => {
-            let result = await instance.methods.setGenesis(
-                genesis,
-            )
-            .send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            let result = await instance.methods.setGenesis(genesis)
+                .send({
+                    from: deployAddress,
+                    nonce: await web3.eth.getTransactionCount(deployAddress)
+                })
 
             assert.ok(result)
             assert.ok(result.events)
@@ -141,15 +146,14 @@ describe('VotingProcess', function () {
     describe("should set chainId", () => {
 
         it("only contract creator", async () => {
-
             try {
                 await instance.methods.setChainId(
                     chainId,
                 )
-                .send({
-                    from: randomAddress1,
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
+                    .send({
+                        from: randomAddress1,
+                        nonce: await web3.eth.getTransactionCount(randomAddress1)
+                    })
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -157,51 +161,61 @@ describe('VotingProcess', function () {
             }
         })
 
-        it("persists", async () => {
-            let result = await instance.methods.setChainId(
-                chainId,
-            )
-            .send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+        it("should persist", async () => {
+            const chainValue = 200
+            let result = await instance.methods.setChainId(chainValue)
+                .send({
+                    from: deployAddress,
+                    nonce: await web3.eth.getTransactionCount(deployAddress)
+                })
             assert.ok(result.transactionHash)
 
-            setTimeout(function(){
+            await new Promise(resolve => setTimeout(resolve, 1500))
 
-            },5000)
-            let settedChainId = await instance.methods.getChainId().call()
-            
-            assert.equal(settedChainId, chainId, "ChainId should match")
+            let currentChainId = await instance.methods.getChainId().call()
+            assert.equal(currentChainId, chainValue, "ChainId should match")
+        })
+
+        it("should fail if duplicated", async () => {
+            try {
+                // same that it already is
+                await instance.methods.setChainId(chainId)
+                    .send({
+                        from: deployAddress,
+                        nonce: await web3.eth.getTransactionCount(deployAddress)
+                    })
+
+                await new Promise(resolve => setTimeout(resolve, 2500))
+
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
         })
 
         it("should emit an event", async () => {
-            let result = await instance.methods.setChainId(
-                chainId,
-            )
-            .send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            const newChainId = 200
+            let result = await instance.methods.setChainId(newChainId)
+                .send({
+                    from: deployAddress,
+                    nonce: await web3.eth.getTransactionCount(deployAddress)
+                })
 
             assert.ok(result)
             assert.ok(result.events)
             assert.ok(result.events.ChainIdChanged)
             assert.ok(result.events.ChainIdChanged.returnValues)
             assert.equal(result.events.ChainIdChanged.event, "ChainIdChanged")
-            assert.equal(result.events.ChainIdChanged.returnValues.chainId, chainId)
+            assert.equal(result.events.ChainIdChanged.returnValues.chainId, newChainId)
         })
-
     })
 
     describe("should create a process", () => {
         it("should allow anyone to create one", async () => {
             assert(instance.methods.create)
 
-            await instance.methods.create(
-
-                processMetadataHash,
-            )
+            await instance.methods.create(processMetadataHash)
                 .send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -327,7 +341,7 @@ describe('VotingProcess', function () {
     })
 
     describe("should cancel the process", () => {
-        it("only when the entityAddress requests it", async () => {
+        it("only when the entity account requests it", async () => {
 
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
 
@@ -611,7 +625,7 @@ describe('VotingProcess', function () {
 
         const validatorPublicKey = "0x1234"
 
-        it("only when the creator requests it", async () => {
+        it("only when the entity account requests it", async () => {
 
             // Register validator
             await instance.methods.addValidator(
@@ -743,6 +757,7 @@ describe('VotingProcess', function () {
             // Get oracle list
             const result3 = await instance.methods.getOracles().call()
             assert.equal(result3.length, 1)
+            assert.deepEqual(result3, [oraclePublicKey])
 
             // Attempt to add a oracle by someone else
             try {
@@ -762,46 +777,9 @@ describe('VotingProcess', function () {
             // Get oracle list
             const result4 = await instance.methods.getOracles().call()
             assert.equal(result4.length, 1)
-
+            assert.deepEqual(result4, [oraclePublicKey])
         })
 
-        it("should fail if NOT owner adds oracle", async () => {
-
-
-            // Register a oracle
-            const result2 = await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result2.transactionHash)
-
-            // Get oracle list
-            const result3 = await instance.methods.getOracles().call()
-            assert.equal(result3.length, 1)
-
-            // Attempt to add a oracle by someone else
-            try {
-                await instance.methods.addOracle(
-                    oraclePublicKey,
-                ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-
-                assert.fail("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get oracle list
-            const result4 = await instance.methods.getOracles().call()
-            assert.equal(result4.length, 1)
-
-        })
         it("should add the oracle public key to the oracle list", async () => {
 
             // Register oracle 1
@@ -836,8 +814,6 @@ describe('VotingProcess', function () {
         })
 
         it("should emit an event", async () => {
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
             // Register oracle
             const result2 = await instance.methods.addOracle(
                 oraclePublicKey,
@@ -860,7 +836,7 @@ describe('VotingProcess', function () {
 
         const oraclePublicKey = "0x1234"
 
-        it("only when the creator requests it", async () => {
+        it("only when the entity account requests it", async () => {
 
             // Register oracle
             await instance.methods.addOracle(
@@ -907,7 +883,6 @@ describe('VotingProcess', function () {
 
         it("should fail if the idx does not match oraclePublicKey", async () => {
 
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
             const nonExistingoraclePublicKey = "0x123123"
 
             // Register a oracle
@@ -972,13 +947,12 @@ describe('VotingProcess', function () {
         })
     })
 
-
     describe("should accept the encryption private key", () => {
 
-        const validatorPublicKey = "0x1234"
+        // const validatorPublicKey = "0x1234"
         const privateKey = "0x01234567890"
 
-        it("only when the entity requests it", async () => {
+        it("only when the entity account requests it", async () => {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
@@ -1018,6 +992,7 @@ describe('VotingProcess', function () {
             assert.equal(result3, privateKey, "The private key should match")
 
         }).timeout(6000)
+
         it("only when the processId exists", async () => {
             const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
 
@@ -1034,8 +1009,8 @@ describe('VotingProcess', function () {
             catch (err) {
                 assert(err.message.match(/opcode/), "The transaction threw an unexpected error:\n" + err.message)
             }
-
         })
+
         it("only when the process is not canceled", async () => {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
@@ -1137,8 +1112,8 @@ describe('VotingProcess', function () {
             assert.equal(result3, privateKey, "The private key should match")
 
         }).timeout(5000)
+        
         it("should emit an event", async () => {  // NOW + 3
-
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
@@ -1175,7 +1150,7 @@ describe('VotingProcess', function () {
 
         const resultsHash = "0x01234567890"
 
-        it("only when the entity requests it", async () => {
+        it("only when the entity account requests it", async () => {
 
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
             const privateKey = "0x1234"
@@ -1221,8 +1196,8 @@ describe('VotingProcess', function () {
             // Get resultsHash
             const result4 = await instance.methods.getResultsHash(processId).call()
             assert.equal(result4, resultsHash, "The resultsHash should match")
-
         }).timeout(6000)
+
         it("only when the processId exists", async () => {
             const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
 
@@ -1241,7 +1216,6 @@ describe('VotingProcess', function () {
             catch (err) {
                 assert(err.message.match(/opcode/), "The transaction threw an unexpected error:\n" + err.message)
             }
-
         })
 
         it("only when privatekey has been published", async () => {
@@ -1272,9 +1246,7 @@ describe('VotingProcess', function () {
             // Get resultsHash
             const result3 = await instance.methods.getResultsHash(processId).call()
             assert.equal(result3, "", "There should be no resultsHash")
-
         }).timeout(5000)
-
 
         it("only when the process is not canceled", async () => {
             const privateKey = "0x123"
@@ -1395,8 +1367,8 @@ describe('VotingProcess', function () {
             // Get resultsHash
             const result4 = await instance.methods.getResultsHash(processId).call()
             assert.equal(result4, resultsHash, "The resultsHash should match")
-
         }).timeout(5000)
+
         it("should emit an event", async () => {  // NOW + 3
             const privateKey = "0x123"
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
@@ -1437,5 +1409,4 @@ describe('VotingProcess', function () {
             assert.equal(result3.events.ResultsHashPublished.returnValues.resultsHash, resultsHash)
         }).timeout(5000)
     })
-
 })
