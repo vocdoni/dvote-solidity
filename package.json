@@ -1,6 +1,6 @@
 {
   "name": "dvote-solidity",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Solidity smart contracts implementing the voting core features of Vocdoni",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
