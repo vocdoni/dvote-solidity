@@ -6,11 +6,11 @@ contract VotingProcess {
     // GLOBAL STRUCTS
 
     struct Process {
-        address entityAddress;     // The address of the Entity's creator
-        string processMetadataHash; // Content URI to fetch the JSON metadata from
-        string voteEncryptionPrivateKey;  // Key published after the vote ends so that scrutiny can start
-        bool canceled;
-        string resultsHash;                   // N vote batches registered
+        address entityAddress;             // The Ethereum address of the Entity
+        string metadataContentHashedUri;   // Content Hashed URI of the JSON metadata (See Data Origins)
+        string voteEncryptionPrivateKey;   // Key published after the vote ends so that scrutiny can start
+        bool canceled;                     // Can be used by organization to cancel the project
+        string resultsContentHashedUri;    // Content Hashed URI of the results (See Data Origins)
     }
 
     // GLOBAL DATA
@@ -18,14 +18,13 @@ contract VotingProcess {
     address contractOwner;
     string[] validators;
     string[] oracles;
-    string genesis;
+    string genesisContentHashedUri;
     uint chainId;
 
     // PER-PROCESS DATA
 
     Process[] public processes;                 // Array of Process struct
     mapping (bytes32 => uint) processesIndex;   // Mapping of processIds with processess idx
-
     mapping (address => uint) public entityProcessCount;   // index of the last process for a given address
 
     // EVENTS
@@ -68,7 +67,7 @@ contract VotingProcess {
 
     // Compute a process ID
     function getProcessId(address entityAddress, uint processCountIndex) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(entityAddress, processCountIndex, genesis, chainId));
+        return keccak256(abi.encodePacked(entityAddress, processCountIndex, genesisContentHashedUri, chainId));
     }
 
     function getProcessIndex(bytes32 processId) public view returns (uint) {
@@ -86,19 +85,22 @@ contract VotingProcess {
         chainId = chainIdValue;
     }
 
-    function setGenesis(string memory newGenesis) public onlyContractOwner()  {
-        require(equalStrings(genesis, newGenesis) == false, "New genesis can't be the same");
-        genesis = newGenesis;
-        emit GenesisChanged(genesis);
+    function setGenesis(string memory newValue) public onlyContractOwner()  {
+        require(equalStrings(genesisContentHashedUri, newValue) == false, "New genesis can't be the same");
+
+        genesisContentHashedUri = newValue;
+
+        emit GenesisChanged(genesisContentHashedUri);
     }
 
     function getGenesis() public view returns (string memory) {
-        return genesis;
+        return genesisContentHashedUri;
     }
 
-    function setChainId(uint newChainId) public onlyContractOwner()  {
-        require(chainId != newChainId, "New chainId can't be the same");
-        chainId = newChainId;
+    function setChainId(uint newValue) public onlyContractOwner()  {
+        require(chainId != newValue, "New chainId can't be the same");
+        chainId = newValue;
+
         emit ChainIdChanged(chainId);
     }
 
@@ -106,8 +108,8 @@ contract VotingProcess {
         return chainId;
     }
 
-    function create(string memory processMetadataHash) public {
-        require(bytes(processMetadataHash).length > 0, "Empty processMetadataHash");
+    function create(string memory metadataContentHashedUri) public {
+        require(bytes(metadataContentHashedUri).length > 0, "Empty metadataContentHashedUri");
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
@@ -115,10 +117,10 @@ contract VotingProcess {
 
         Process memory process = Process({
             entityAddress: entityAddress,
-            processMetadataHash: processMetadataHash,
+            metadataContentHashedUri: metadataContentHashedUri,
             voteEncryptionPrivateKey: "",
             canceled: false,
-            resultsHash: ""
+            resultsContentHashedUri: ""
         });
 
         processes.push(process);
@@ -130,13 +132,13 @@ contract VotingProcess {
 
     function get(bytes32 processId) public view returns (
     	address entityAddress,
-    	string memory processMetadataHash,
+    	string memory metadataContentHashedUri,
     	string memory voteEncryptionPrivateKey,
         bool canceled
     ) {
         uint processIndex = processesIndex[processId];
         entityAddress = processes[processIndex].entityAddress;
-        processMetadataHash = processes[processIndex].processMetadataHash;
+        metadataContentHashedUri = processes[processIndex].metadataContentHashedUri;
         voteEncryptionPrivateKey = processes[processIndex].voteEncryptionPrivateKey;
         canceled = processes[processIndex].canceled;
     }
@@ -144,12 +146,15 @@ contract VotingProcess {
     function cancel(bytes32 processId) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
         require(processes[processIndex].canceled == false, "Process must not be canceled");
+
         processes[processIndex].canceled = true;
+
         emit ProcessCanceled(msg.sender, processId);
     }
 
     function addValidator(string memory validatorPublicKey) public onlyContractOwner()  {
         validators.push(validatorPublicKey);
+
         emit ValidatorAdded(validatorPublicKey);
     }
 
@@ -169,6 +174,7 @@ contract VotingProcess {
 
     function addOracle(string memory oraclePublicKey) public onlyContractOwner()  {
         oracles.push(oraclePublicKey);
+
         emit OracleAdded(oraclePublicKey);
     }
 
@@ -189,6 +195,7 @@ contract VotingProcess {
     function publishPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
         require(processes[processIndex].canceled == false, "Process must not be canceled");
+
         processes[processIndex].voteEncryptionPrivateKey = privateKey;
 
         emit PrivateKeyPublished(processId, privateKey);
@@ -199,17 +206,18 @@ contract VotingProcess {
         privateKey = processes[processIndex].voteEncryptionPrivateKey;
     }
 
-     function publishResultsHash(bytes32 processId, string memory resultsHash) public onlyEntity(processId) {
+    function publishResults(bytes32 processId, string memory resultsContentHashedUri) public onlyEntity(processId) {
         uint processIndex = getProcessIndex(processId);
         require(processes[processIndex].canceled == false, "Process must not be canceled");
         require(equalStrings(processes[processIndex].voteEncryptionPrivateKey, "") == false, "The private key has not been revealed yet");
-        processes[processIndex].resultsHash = resultsHash;
 
-        emit ResultsHashPublished(processId, resultsHash);
+        processes[processIndex].resultsContentHashedUri = resultsContentHashedUri;
+
+        emit ResultsHashPublished(processId, resultsContentHashedUri);
     }
 
-    function getResultsHash(bytes32 processId) public view returns (string memory resultsHash) {
+    function getResults(bytes32 processId) public view returns (string memory resultsContentHashedUri) {
         uint processIndex = getProcessIndex(processId);
-        resultsHash = processes[processIndex].resultsHash;
+        resultsContentHashedUri = processes[processIndex].resultsContentHashedUri;
     }
 }

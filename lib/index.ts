@@ -93,33 +93,53 @@ export type EntityResolverContractMethods = {
 
 /** Smart Contract operations for a Voting Process contract */
 export interface VotingProcessContractMethods {
+    /** Retrieves the amount of voting processes that the entity has created */
     getEntityProcessCount(entityAddress: string): Promise<BigNumber>,
+    /** Get the process ID that would be assigned to the next voting process */
     getNextProcessId(entityAddress: string): Promise<string>,
-
+    /** Compute the process ID that corresponds to the given parameters */
     getProcessId(entityAddress: string, processCountIndex: number): Promise<string>,
+    /** Get the windex within the global array where the given process is stored */
     getProcessIndex(processId: string): Promise<BigNumber>,
 
-    setGenesis(newGenesis: string): Promise<ContractTransaction>,
+    /** Update the genesis link and hash */
+    setGenesis(genesisDataContentHashedUri: string): Promise<ContractTransaction>,
+    /** Retrieve the current genesis block content link */
     getGenesis(): Promise<string>,
 
+    /** Update the Chain ID */
     setChainId(newChainId: number): Promise<ContractTransaction>,
+    /** Retrieve the current Chain ID */
     getChainId(): Promise<BigNumber>,
 
-    create(processMetadataHash: string): Promise<ContractTransaction>,
-    get(processId: string): Promise<[string, string, string, boolean]>, // entityAddress, processMetadataHash, voteEncryptionPrivateKey, canceled
+    /** Publish a new voting process using the given metadata link */
+    create(metadataContentHashedUri: string): Promise<ContractTransaction>,
+    /** Retrieve the current data for the given process */
+    get(processId: string): Promise<{ entityAddress: string, metadataContentHashedUri: string, metadataHash: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
+    /** Cancel the voting process that corresponds to the given Id */
     cancel(processId: string): Promise<ContractTransaction>,
 
+    /** Register the public key of a new validator */
     addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
+    /** Remove the public key at the given index for a validator */
     removeValidator(idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    /** Retrieve the current list of validators on the Vocchain */
     getValidators(): Promise<string[]>,
 
+    /** Register the public key of a new oracle */
     addOracle(oraclePublicKey: string): Promise<ContractTransaction>,
+    /** Remove the public key at the given index for an oracle */
     removeOracle(idx: number, oraclePublicKey: string): Promise<ContractTransaction>,
+    /** Retrieve the current list of oracles on the Vocchain */
     getOracles(): Promise<string[]>,
 
+    /** Reveal the private key for the given voting process */
     publishPrivateKey(processId: string, privateKey: string): Promise<ContractTransaction>,
+    /** Retrieve the current decryption key for the given process */
     getPrivateKey(processId: string): Promise<string>,
 
-    publishResultsHash(processId: string, resultsHash: string): Promise<ContractTransaction>,
-    getResultsHash(processId: string): Promise<string>
+    /** Publish the results for the given process */
+    publishResultsHash(processId: string, resultsContentHashedUri: string): Promise<ContractTransaction>,
+    /** Retrieve the available results for the given process */
+    getResultsHash(processId: string): Promise<{ resultsContentHashedUri: string }>
 }
