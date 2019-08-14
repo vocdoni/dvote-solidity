@@ -93,38 +93,33 @@ export type EntityResolverContractMethods = {
 
 /** Smart Contract operations for a Voting Process contract */
 export interface VotingProcessContractMethods {
-    getNextProcessId(entityAddress: string): Promise<string>
-    getProcessId(entityAddress: string, processIndex: number): Promise<string>
+    getEntityProcessCount(entityAddress: string): Promise<BigNumber>,
+    getNextProcessId(entityAddress: string): Promise<string>,
 
-    create(entityResolver: string, processName: string, metadataContentUri: string, startTime: number | BigNumber, endTime: number | BigNumber, voteEncryptionPublicKey: string): Promise<ContractTransaction>
-    get(processId: string): Promise<VotingProcessData>
-    cancel(processId: string): Promise<ContractTransaction>
+    getProcessId(entityAddress: string, processCountIndex: number): Promise<string>,
+    getProcessIndex(processId: string): Promise<BigNumber>,
 
-    addRelay(processId: string, relayAddress: string, publicKey: string, messagingUri: string): Promise<ContractTransaction>
-    disableRelay(processId: string, relayAddress: string): Promise<ContractTransaction>
-    getRelayIndex(processId: string): Promise<string[]>
-    isActiveRelay(processId: string, relayAddress: string): Promise<boolean>
-    getRelay(processId: string, relayAddress: string): Promise<RelayData>
+    setGenesis(newGenesis: string): Promise<ContractTransaction>,
+    getGenesis(): Promise<string>,
 
-    registerVoteBatch(processId: string, dataContentUri: string): Promise<ContractTransaction>
-    getVoteBatchCount(processId: string): Promise<BigNumber>
-    getBatch(processId: string, batchNumber: number): Promise<string>
+    setChainId(newChainId: number): Promise<ContractTransaction>,
+    getChainId(): Promise<BigNumber>,
 
-    revealPrivateKey(processId: string, privateKey: string): Promise<ContractTransaction>
-    getPrivateKey(processId: string): Promise<string>
-}
+    create(processMetadataHash: string): Promise<ContractTransaction>,
+    get(processId: string): Promise<[string, string, string, boolean]>, // entityAddress, processMetadataHash, voteEncryptionPrivateKey, canceled
+    cancel(processId: string): Promise<ContractTransaction>,
 
-type VotingProcessData = {
-    entityResolver: string,
-    entityAddress: string,
-    processName: string,
-    metadataContentUri: string,
-    startTime: BigNumber,
-    endTime: BigNumber,
-    voteEncryptionPublicKey: string,
-    canceled: boolean
-}
-type RelayData = {
-    publicKey: string,
-    messagingUri: string
+    addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
+    removeValidator(idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    getValidators(): Promise<string[]>,
+
+    addOracle(oraclePublicKey: string): Promise<ContractTransaction>,
+    removeOracle(idx: number, oraclePublicKey: string): Promise<ContractTransaction>,
+    getOracles(): Promise<string[]>,
+
+    publishPrivateKey(processId: string, privateKey: string): Promise<ContractTransaction>,
+    getPrivateKey(processId: string): Promise<string>,
+
+    publishResultsHash(processId: string, resultsHash: string): Promise<ContractTransaction>,
+    getResultsHash(processId: string): Promise<string>
 }
