@@ -1114,9 +1114,9 @@ describe('VotingProcess', function () {
     })
 
 
-    describe("should accept the resultsHash", () => {
+    describe("should accept the results", () => {
 
-        const resultsHash = "0x01234567890"
+        const results = "ipfs://12345!0987654321"
 
         it("only when the entity account requests it", async () => {
 
@@ -1137,9 +1137,9 @@ describe('VotingProcess', function () {
 
             assert.ok(result2.transactionHash)
 
-            // Attempt to publish the resultsHash by someone else
+            // Attempt to publish the results by someone else
             try {
-                await instance.methods.publishResults(processId, resultsHash).send({
+                await instance.methods.publishResults(processId, results).send({
                     from: randomAddress1,
                     nonce: await web3.eth.getTransactionCount(randomAddress1)
                 })
@@ -1149,19 +1149,19 @@ describe('VotingProcess', function () {
                 assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            // Get resultsHash
+            // Get results
             const result3 = await instance.methods.getResults(processId).call()
-            assert.equal(result3, "", "There should be no resultsHash")
+            assert.equal(result3, "", "There should be no results")
 
-            // Reveal the resultsHash
-            await instance.methods.publishResults(processId, resultsHash).send({
+            // Reveal the results
+            await instance.methods.publishResults(processId, results).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
 
-            // Get resultsHash
+            // Get results
             const result4 = await instance.methods.getResults(processId).call()
-            assert.equal(result4, resultsHash, "The resultsHash should match")
+            assert.equal(result4, results, "The results should match")
         }).timeout(6000)
 
         it("only when the processId exists", async () => {
@@ -1171,8 +1171,8 @@ describe('VotingProcess', function () {
             assert.ok(result2.transactionHash)
             // Attempt to publish the key of a random processId
             try {
-                // Reveal the resultsHash
-                await instance.methods.publishResults(nonExistingProcessId, resultsHash).send({
+                // Reveal the results
+                await instance.methods.publishResults(nonExistingProcessId, results).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
                 })
@@ -1195,9 +1195,9 @@ describe('VotingProcess', function () {
             const processCount = await instance.methods.getEntityProcessCount(entityAddress).call()
             const processId = await instance.methods.getProcessId(entityAddress, processCount - 1).call()
 
-            // Attempt to publish the resultsHash before publishing private key
+            // Attempt to publish the results before publishing private key
             try {
-                await instance.methods.publishResults(processId, resultsHash).send({
+                await instance.methods.publishResults(processId, results).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
                 })
@@ -1207,9 +1207,9 @@ describe('VotingProcess', function () {
                 assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            // Get resultsHash
+            // Get results
             const result3 = await instance.methods.getResults(processId).call()
-            assert.equal(result3, "", "There should be no resultsHash")
+            assert.equal(result3, "", "There should be no results")
         }).timeout(5000)
 
         it("only when the process is not canceled", async () => {
@@ -1237,9 +1237,9 @@ describe('VotingProcess', function () {
             })
             assert.ok(result3.transactionHash)
 
-            // Attempt to publish the resultsHash after canceling
+            // Attempt to publish the results after canceling
             try {
-                await instance.methods.publishResults(processId, resultsHash).send({
+                await instance.methods.publishResults(processId, results).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
                 })
@@ -1249,14 +1249,14 @@ describe('VotingProcess', function () {
                 assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            // Get resultsHash
+            // Get results
             const result4 = await instance.methods.getResults(processId).call()
-            assert.equal(result4, "", "There should be no resultsHash")
+            assert.equal(result4, "", "There should be no results")
 
         }).timeout(5000)
 
 
-        it("should retrieve the submited resultsHash", async () => {
+        it("should retrieve the submited results", async () => {
 
             const privateKey = "0x123"
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
@@ -1275,15 +1275,15 @@ describe('VotingProcess', function () {
 
             assert.ok(result2.transactionHash)
 
-            // Reveal the resultsHash
-            await instance.methods.publishResults(processId, resultsHash).send({
+            // Reveal the results
+            await instance.methods.publishResults(processId, results).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
 
-            // Get resultsHash
+            // Get results
             const result3 = await instance.methods.getResults(processId).call()
-            assert.equal(result3, resultsHash, "The resultsHash should match")
+            assert.equal(result3, results, "The results should match")
 
         }).timeout(5000)
 
@@ -1306,25 +1306,25 @@ describe('VotingProcess', function () {
 
             assert.ok(result2.transactionHash)
 
-            // Reveal the wrong resultsHash
+            // Reveal the wrong results
             await instance.methods.publishResults(processId, "INVALID_PRIVATE_KEY").send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
 
-            // Get resultsHash
+            // Get results
             const result3 = await instance.methods.getResults(processId).call()
-            assert.equal(result3, "INVALID_PRIVATE_KEY", "The resultsHash should match the invalid one")
+            assert.equal(result3, "INVALID_PRIVATE_KEY", "The results should match the invalid one")
 
-            // Update the resultsHash
-            await instance.methods.publishResults(processId, resultsHash).send({
+            // Update the results
+            await instance.methods.publishResults(processId, results).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
 
-            // Get resultsHash
+            // Get results
             const result4 = await instance.methods.getResults(processId).call()
-            assert.equal(result4, resultsHash, "The resultsHash should match")
+            assert.equal(result4, results, "The results should match")
         }).timeout(5000)
 
         it("should emit an event", async () => {  // NOW + 3
@@ -1350,8 +1350,8 @@ describe('VotingProcess', function () {
             await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
             // await increaseTimestamp(4)    // Not working with ganache by now
 
-            // Reveal the wrong resultsHash
-            const result3 = await instance.methods.publishResults(processId, resultsHash).send({
+            // Reveal the wrong results
+            const result3 = await instance.methods.publishResults(processId, results).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
