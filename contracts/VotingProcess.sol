@@ -38,7 +38,7 @@ contract VotingProcess {
     event OracleAdded(string oraclePublicKey);
     event OracleRemoved(string oraclePublicKey);
     event PrivateKeyPublished(bytes32 indexed processId, string privateKey);
-    event ResultsHashPublished(bytes32 indexed processId, string resultsHash);
+    event ResultsPublished(bytes32 indexed processId, string results);
 
     // MODIFIERS
 
@@ -213,7 +213,7 @@ contract VotingProcess {
 
         processes[processIndex].resultsContentHashedUri = resultsContentHashedUri;
 
-        emit ResultsHashPublished(processId, resultsContentHashedUri);
+        emit ResultsPublished(processId, resultsContentHashedUri);
     }
 
     function getResults(bytes32 processId) public view returns (string memory resultsContentHashedUri) {
