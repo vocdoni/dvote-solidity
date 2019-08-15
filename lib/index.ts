@@ -115,7 +115,7 @@ export interface VotingProcessContractMethods {
     /** Publish a new voting process using the given metadata link */
     create(metadataContentHashedUri: string): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{ entityAddress: string, metadataContentHashedUri: string, metadataHash: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
+    get(processId: string): Promise<{ entityAddress: string, metadataContentHashedUri: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
     /** Cancel the voting process that corresponds to the given Id */
     cancel(processId: string): Promise<ContractTransaction>,
 
@@ -139,7 +139,7 @@ export interface VotingProcessContractMethods {
     getPrivateKey(processId: string): Promise<string>,
 
     /** Publish the results for the given process */
-    publishResultsHash(processId: string, resultsContentHashedUri: string): Promise<ContractTransaction>,
+    publishResults(processId: string, resultsContentHashedUri: string): Promise<ContractTransaction>,
     /** Retrieve the available results for the given process */
-    getResultsHash(processId: string): Promise<{ resultsContentHashedUri: string }>
+    getResults(processId: string): Promise<{ resultsContentHashedUri: string }>
 }
