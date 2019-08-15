@@ -1362,7 +1362,7 @@ describe('VotingProcess', function () {
             assert.ok(result3.events.ResultsPublished.returnValues)
             assert.equal(result3.events.ResultsPublished.event, "ResultsPublished")
             assert.equal(result3.events.ResultsPublished.returnValues.processId, processId)
-            assert.equal(result3.events.ResultsPublished.returnValues.resultsHash, resultsHash)
+            assert.equal(result3.events.ResultsPublished.returnValues.results, results)
         }).timeout(5000)
     })
 })
