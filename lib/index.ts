@@ -103,7 +103,7 @@ export interface VotingProcessContractMethods {
     getProcessIndex(processId: string): Promise<BigNumber>,
 
     /** Update the genesis link and hash */
-    setGenesis(genesisDataContentHashedUri: string): Promise<ContractTransaction>,
+    setGenesis(genesisData: string): Promise<ContractTransaction>,
     /** Retrieve the current genesis block content link */
     getGenesis(): Promise<string>,
 
@@ -113,9 +113,9 @@ export interface VotingProcessContractMethods {
     getChainId(): Promise<BigNumber>,
 
     /** Publish a new voting process using the given metadata link */
-    create(metadataContentHashedUri: string): Promise<ContractTransaction>,
+    create(metadata: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{ entityAddress: string, metadataContentHashedUri: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
+    get(processId: string): Promise<{ entityAddress: string, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
     /** Cancel the voting process that corresponds to the given Id */
     cancel(processId: string): Promise<ContractTransaction>,
 
@@ -139,7 +139,7 @@ export interface VotingProcessContractMethods {
     getPrivateKey(processId: string): Promise<string>,
 
     /** Publish the results for the given process */
-    publishResults(processId: string, resultsContentHashedUri: string): Promise<ContractTransaction>,
+    publishResults(processId: string, results: string): Promise<ContractTransaction>,
     /** Retrieve the available results for the given process */
-    getResults(processId: string): Promise<{ resultsContentHashedUri: string }>
+    getResults(processId: string): Promise<{ results: string }>
 }

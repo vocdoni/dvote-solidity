@@ -9,7 +9,9 @@ let chainId
 
 let entityAddress, randomAddress1, randomAddress2
 
-const metadataContentHashedUri = "ipfs://abcdef...,https://host/file!012345678"
+const metadata = "ipfs://abcdef...,https://host/file!012345678"
+const censusMerkleRoot = "0x1234"
+const censusMerkleTree = "ipfs://12345...,https://host/file!23456789"
 // const voteEncryptionPrivateKey = "0x1234"
 
 describe('VotingProcess', function () {
@@ -72,7 +74,7 @@ describe('VotingProcess', function () {
 
         assert.equal(processId1Expected, processId1Actual)
 
-        await instance.methods.create(metadataContentHashedUri).send({
+        await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
             from: entityAddress,
             nonce: await web3.eth.getTransactionCount(entityAddress)
         })
@@ -214,7 +216,7 @@ describe('VotingProcess', function () {
             assert(instance.methods.create)
 
             // TODO: CHANGEME
-            await instance.methods.create(metadataContentHashedUri)
+            await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree)
                 .send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -224,7 +226,7 @@ describe('VotingProcess', function () {
             let processIdActual = await instance.methods.getNextProcessId(entityAddress).call()
             assert.equal(processIdExpected, processIdActual)
 
-            await instance.methods.create(metadataContentHashedUri)
+            await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree)
                 .send({
                     from: randomAddress1,
                     nonce: await web3.eth.getTransactionCount(randomAddress1)
@@ -234,7 +236,7 @@ describe('VotingProcess', function () {
             processIdActual = await instance.methods.getNextProcessId(randomAddress1).call()
             assert.equal(processIdExpected, processIdActual)
 
-            await instance.methods.create(metadataContentHashedUri)
+            await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree)
                 .send({
                     from: randomAddress2,
                     nonce: await web3.eth.getTransactionCount(randomAddress2)
@@ -247,7 +249,7 @@ describe('VotingProcess', function () {
         it("should emit an event", async () => {
             const expectedProcessId = await instance.methods.getNextProcessId(entityAddress).call()
 
-            let result = await instance.methods.create(metadataContentHashedUri).send({
+            let result = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -265,7 +267,7 @@ describe('VotingProcess', function () {
             const prev = Number(await instance.methods.entityProcessCount(entityAddress).call())
             assert.equal(prev, 0)
 
-            await instance.methods.create(metadataContentHashedUri).send({
+            await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -279,10 +281,7 @@ describe('VotingProcess', function () {
             assert.equal(prev, 0)
 
             try {
-                await instance.methods.create(
-                    // TODO: CHANGEME
-                    "",
-                ).send({
+                await instance.methods.create("", "", "").send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
                 })
@@ -299,14 +298,16 @@ describe('VotingProcess', function () {
         })
         it("retrieved metadata should match the one submitted", async () => {
 
-            const metadataContentHashedUri = "ipfs://ipfs/some-hash-here"
-            const voteEncryptionPublicKey = "TESTING-ENCRYPTION_KEY"
+            const metadata = "ipfs://ipfs/some-hash-here!sha3-hash"
+            const censusMerkleRoot = "0x1234567890"
+            const censusMerkleTree = "ipfs://ipfs/some-hash-there!sha3-hash-there"
+            // const voteEncryptionPublicKey = "TESTING-ENCRYPTION_KEY"
 
             let blockNumber = await web3.eth.getBlockNumber()
             let startTime = (await web3.eth.getBlock(blockNumber)).timestamp + 100
             let endTime = startTime + 100
 
-            await instance.methods.create(metadataContentHashedUri).send({
+            await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -318,7 +319,9 @@ describe('VotingProcess', function () {
 
 
             assert.equal(processData.entityAddress, entityAddress)
-            assert.equal(processData.metadataContentHashedUri, metadataContentHashedUri)
+            assert.equal(processData.metadata, metadata)
+            assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
+            assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
             assert.equal(processData.canceled, false, "The process should not start as canceled")
 
             const privateKey = await instance.methods.getPrivateKey(processId).call()
@@ -332,7 +335,7 @@ describe('VotingProcess', function () {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -350,7 +353,7 @@ describe('VotingProcess', function () {
 
 
             assert.equal(processData1.entityAddress, entityAddress)
-            assert.equal(processData1.metadataContentHashedUri, metadataContentHashedUri)
+            assert.equal(processData1.metadata, metadata)
             assert.equal(processData1.canceled, true, "The process should now be canceled")
 
             // CREATE AGAIN
@@ -358,7 +361,7 @@ describe('VotingProcess', function () {
             const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
 
             // Create
-            const result3 = await instance.methods.create(metadataContentHashedUri).send({
+            const result3 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,  // <<--
                 nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
             })
@@ -381,7 +384,7 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId2).call()
 
             assert.equal(processData2.entityAddress, entityAddress)
-            assert.equal(processData2.metadataContentHashedUri, metadataContentHashedUri)
+            assert.equal(processData2.metadata, metadata)
             assert.equal(processData2.canceled, false, "The process should remain active")
 
         })
@@ -391,7 +394,7 @@ describe('VotingProcess', function () {
 
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -415,7 +418,7 @@ describe('VotingProcess', function () {
 
 
             assert.equal(processData1.entityAddress, entityAddress)
-            assert.equal(processData1.metadataContentHashedUri, metadataContentHashedUri)
+            assert.equal(processData1.metadata, metadata)
             assert.equal(processData1.canceled, true, "The process should now be canceled")
 
             // Try to cancel again
@@ -435,7 +438,7 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
 
             assert.equal(processData2.entityAddress, entityAddress)
-            assert.equal(processData2.metadataContentHashedUri, metadataContentHashedUri)
+            assert.equal(processData2.metadata, metadata)
             assert.equal(processData2.canceled, true, "The process should now be canceled")
         })
 
@@ -444,7 +447,7 @@ describe('VotingProcess', function () {
 
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -934,7 +937,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -991,7 +994,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1031,7 +1034,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1055,7 +1058,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1087,7 +1090,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1123,7 +1126,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
             const privateKey = "0x1234"
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1186,7 +1189,7 @@ describe('VotingProcess', function () {
 
         it("only when privatekey has been published", async () => {
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1217,7 +1220,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1262,7 +1265,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1292,7 +1295,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1332,7 +1335,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(metadataContentHashedUri).send({
+            const result1 = await instance.methods.create(metadata, censusMerkleRoot, censusMerkleTree).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
