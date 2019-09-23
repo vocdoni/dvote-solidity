@@ -113,9 +113,9 @@ export interface VotingProcessContractMethods {
     getChainId(): Promise<BigNumber>,
 
     /** Publish a new voting process using the given metadata link */
-    create(metadata: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
+    create(metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number, numberOfBlocks: number): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{ entityAddress: string, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
+    get(processId: string): Promise<{ entityAddress: string, startBlock: number, numberOfBlocks: number, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
     /** Cancel the voting process that corresponds to the given Id */
     cancel(processId: string): Promise<ContractTransaction>,
 

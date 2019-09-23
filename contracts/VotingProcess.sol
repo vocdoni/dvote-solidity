@@ -7,6 +7,8 @@ contract VotingProcess {
 
     struct Process {
         address entityAddress;             // The Ethereum address of the Entity
+        uint256 startBlock;                // Tendermint block number on which the voting process starts
+        uint256 numberOfBlocks;            // Amount of Tendermint blocks during which the voting process is active
         string metadata;                   // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusMerkleRoot;           // Hex string with the Merkle Root hash of the census
         string censusMerkleTree;           // Content Hashed URI of the exported Merkle Tree (not including the public keys)
@@ -110,7 +112,8 @@ contract VotingProcess {
         return chainId;
     }
 
-    function create(string memory metadata, string memory merkleRoot, string memory merkleTree) public {
+    function create(string memory metadata, string memory merkleRoot, string memory merkleTree,
+        uint256 startBlock, uint256 numberOfBlocks) public {
         require(bytes(metadata).length > 0, "Empty metadata");
         require(bytes(merkleRoot).length > 0, "Empty merkleRoot");
         require(bytes(merkleTree).length > 0, "Empty merkleTree");
@@ -121,6 +124,8 @@ contract VotingProcess {
 
         Process memory process = Process({
             entityAddress: entityAddress,
+            startBlock: startBlock,
+            numberOfBlocks: numberOfBlocks,
             metadata: metadata,
             censusMerkleRoot: merkleRoot,
             censusMerkleTree: merkleTree,
@@ -138,6 +143,8 @@ contract VotingProcess {
 
     function get(bytes32 processId) public view returns (
     	address entityAddress,
+        uint256 startBlock,
+        uint256 numberOfBlocks,
     	string memory metadata,
     	string memory censusMerkleRoot,
     	string memory censusMerkleTree,
@@ -146,6 +153,8 @@ contract VotingProcess {
     ) {
         uint processIndex = processesIndex[processId];
         entityAddress = processes[processIndex].entityAddress;
+        startBlock = processes[processIndex].startBlock;
+        numberOfBlocks = processes[processIndex].numberOfBlocks;
         metadata = processes[processIndex].metadata;
         censusMerkleRoot = processes[processIndex].censusMerkleRoot;
         censusMerkleTree = processes[processIndex].censusMerkleTree;
