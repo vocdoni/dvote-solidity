@@ -91,6 +91,8 @@ export type EntityResolverContractMethods = {
 // VOTING PROCESS TYPES
 ///////////////////////////////////////////////////////////////////////////////
 
+type ProcessType = "snark-vote" | "poll-vote" | "petition-sign"
+
 /** Smart Contract operations for a Voting Process contract */
 export interface VotingProcessContractMethods {
     /** Retrieves the amount of voting processes that the entity has created */
@@ -113,9 +115,9 @@ export interface VotingProcessContractMethods {
     getChainId(): Promise<BigNumber>,
 
     /** Publish a new voting process using the given metadata link */
-    create(metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number | BigNumber, numberOfBlocks: number | BigNumber): Promise<ContractTransaction>,
+    create(processType: ProcessType, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number | BigNumber, numberOfBlocks: number | BigNumber): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{ entityAddress: string, startBlock: BigNumber, numberOfBlocks: BigNumber, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
+    get(processId: string): Promise<{ processType: ProcessType, entityAddress: string, startBlock: BigNumber, numberOfBlocks: BigNumber, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
     /** Cancel the voting process that corresponds to the given Id */
     cancel(processId: string): Promise<ContractTransaction>,
 

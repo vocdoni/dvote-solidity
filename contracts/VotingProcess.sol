@@ -6,6 +6,7 @@ contract VotingProcess {
     // GLOBAL STRUCTS
 
     struct Process {
+        string processType;                // One of: snark-vote, poll-vote, petition-sign
         address entityAddress;             // The Ethereum address of the Entity
         uint256 startBlock;                // Tendermint block number on which the voting process starts
         uint256 numberOfBlocks;            // Amount of Tendermint blocks during which the voting process is active
@@ -112,8 +113,8 @@ contract VotingProcess {
         return chainId;
     }
 
-    function create(string memory metadata, string memory merkleRoot, string memory merkleTree,
-        uint256 startBlock, uint256 numberOfBlocks) public {
+    function create(string memory processType, string memory metadata, string memory merkleRoot,
+        string memory merkleTree, uint256 startBlock, uint256 numberOfBlocks) public {
         require(bytes(metadata).length > 0, "Empty metadata");
         require(bytes(merkleRoot).length > 0, "Empty merkleRoot");
         require(bytes(merkleTree).length > 0, "Empty merkleTree");
@@ -123,6 +124,7 @@ contract VotingProcess {
         // require(processesIndex[processId] == 0, "ProcessId already exists");
 
         Process memory process = Process({
+            processType: processType,
             entityAddress: entityAddress,
             startBlock: startBlock,
             numberOfBlocks: numberOfBlocks,
@@ -142,6 +144,7 @@ contract VotingProcess {
     }
 
     function get(bytes32 processId) public view returns (
+        string memory processType,
     	address entityAddress,
         uint256 startBlock,
         uint256 numberOfBlocks,
@@ -152,6 +155,7 @@ contract VotingProcess {
         bool canceled
     ) {
         uint processIndex = processesIndex[processId];
+        processType = processes[processIndex].processType;
         entityAddress = processes[processIndex].entityAddress;
         startBlock = processes[processIndex].startBlock;
         numberOfBlocks = processes[processIndex].numberOfBlocks;
