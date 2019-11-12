@@ -51,6 +51,8 @@ describe('VotingProcess', function () {
         const proc4 = await instance.methods.getProcessId(accounts[0], 1).call()
         const proc5 = await instance.methods.getProcessId(accounts[0], 2).call()
         const proc6 = await instance.methods.getProcessId(accounts[0], 3).call()
+        const proc7 = await instance.methods.getProcessId(accounts[1], 0).call()
+        const proc8 = await instance.methods.getProcessId(accounts[1], 1).call()
 
         assert.equal(proc1, proc2)
         assert.equal(proc3, proc4)
@@ -63,6 +65,9 @@ describe('VotingProcess', function () {
         assert.notEqual(proc3, proc6)
 
         assert.notEqual(proc5, proc6)
+
+        assert.notEqual(proc7, proc1)
+        assert.notEqual(proc8, proc3)
     })
 
     it("should compute the next processId", async () => {
@@ -76,10 +81,13 @@ describe('VotingProcess', function () {
 
         assert.equal(processId1Expected, processId1Actual)
 
-        await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+        const creationResult = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
             from: entityAddress,
             nonce: await web3.eth.getTransactionCount(entityAddress)
         })
+
+        assert(creationResult.events.ProcessCreated)
+        assert.equal(creationResult.events.ProcessCreated.returnValues.processId, processId1Expected)
 
         // The entity has 1 process now
         // So the next process index is 1
