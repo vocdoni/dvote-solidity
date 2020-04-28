@@ -27,19 +27,32 @@ help:
 ## RECIPES
 ###############################################################################
 
-all: node_modules build
+all: node_modules js-output contract-output
 
 node_modules: package.json package-lock.json
-	npm install
+	npm install || true
 	if [ -d node_modules/web3-providers/node_modules/websocket ]; then \
       rm -Rf node_modules/web3-providers/node_modules/websocket/.git ; \
       rm -Rf node_modules/web3-providers-ws/node_modules/websocket/.git ; \
    fi
 	@touch $@
 
-build: build/solc $(OUTPUT_FILES)
+js-output: build/index.js
+contract-output: build/entity-resolver.json build/voting-process.json
+
+build:
 	@mkdir -p build
 	@touch $@
+
+build/index.js: build build/entity-resolver.json build/voting-process.json lib/index.ts
+	cp lib/index.ts build
+	$(TSC) --build tsconfig.json
+
+build/entity-resolver.json: build/solc
+	@echo "{\"abi\": $$(cat build/solc/*EntityResolver.abi), \"bytecode\": \"0x$$(cat build/solc/*EntityResolver.bin)\"}" > $@
+
+build/voting-process.json:
+	@echo "{\"abi\": $$(cat build/solc/*VotingProcess.abi), \"bytecode\": \"0x$$(cat build/solc/*VotingProcess.bin)\"}" > $@
 
 # Intermediate solidity compiled artifacts
 build/solc: $(CONTRACT_SOURCES)
@@ -47,19 +60,7 @@ build/solc: $(CONTRACT_SOURCES)
 	$(SOLC) --optimize --bin --abi -o $@ $(CONTRACT_SOURCES)
 	@touch $@
 
-# from $(OUTPUT_FILES)
-build/index.js: build/entity-resolver.json build/voting-process.json lib/index.ts
-	cp lib/index.ts build
-	$(TSC) --build tsconfig.json
-
-# from $(OUTPUT_FILES)
-build/entity-resolver.json:
-	@echo "{\"abi\": $$(cat build/solc/*EntityResolver.abi), \"bytecode\": \"0x$$(cat build/solc/*EntityResolver.bin)\"}" > $@
-# from $(OUTPUT_FILES)
-build/voting-process.json:
-	@echo "{\"abi\": $$(cat build/solc/*VotingProcess.abi), \"bytecode\": \"0x$$(cat build/solc/*VotingProcess.bin)\"}" > $@
-
-test: build
+test: all
 	npm run test
 
 clean: 

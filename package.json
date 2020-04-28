@@ -1,6 +1,6 @@
 {
   "name": "dvote-solidity",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Solidity smart contracts implementing the voting core features of Vocdoni",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
@@ -8,7 +8,7 @@
     "ganache": "./node_modules/.bin/ganache-cli -d -t \"$(date +'%Y %m %d')\" -m \"myth like bonus scare over problem client lizard pioneer submit female collect\"",
     "test": "mocha test/index.js",
     "build": "make all",
-    "prepublishOnly": "make all && make test"
+    "prepublishOnly": "make clean && make all && make test"
   },
   "repository": {
     "type": "git",
