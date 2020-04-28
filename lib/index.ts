@@ -91,7 +91,7 @@ export type EntityResolverContractMethods = {
 // VOTING PROCESS TYPES
 ///////////////////////////////////////////////////////////////////////////////
 
-type ProcessType = "snark-vote" | "poll-vote" | "petition-sign"
+export type ProcessType = "snark-vote" | "poll-vote" | "encrypted-poll-vote" | "petition-sign"
 
 /** Smart Contract operations for a Voting Process contract */
 export interface VotingProcessContractMethods {
