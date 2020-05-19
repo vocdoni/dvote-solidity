@@ -103,84 +103,96 @@ Run the test suite locally
 Feel free to contribute any additional test cases that you consider necessary.
 
 ```mocha
-  DVote Solidity
+DVote Solidity
     EntityResolver
-      ✓ Should deploy the contract (75ms)
+      ✓ Should deploy the contract (73ms)
+      ✓ Should compute the ID of an entity by its address (129ms)
       Text Records
-        ✓ Should set a Text record and keep the right value (220ms)
-        ✓ Should override an existing Text record (166ms)
-        ✓ Should reject updates from extraneous accounts (340ms)
-        ✓ Should override the entity name (311ms)
-        ✓ Should emit an event (165ms)
+        ✓ Should set a Text record and keep the right value (138ms)
+        ✓ Should override an existing Text record (111ms)
+        ✓ Should reject updates from extraneous accounts (102ms)
+        ✓ Should override the entity name (150ms)
+        ✓ Should emit an event (75ms)
       Text List records
-        ✓ Push a Text List record (387ms)
-        ✓ Set a Text List record (393ms)
-        ✓ Remove a Text List record (924ms)
-        ✓ Should fail updating non-existing indexes (149ms)
-        ✓ Should fail removing non-existing indexes (838ms)
-        ✓ Should reject pushing values from extraneous accounts (95ms)
-        ✓ Should reject setting values from extraneous accounts (369ms)
-        ✓ Should emit events on push, update and remove (275ms)
+        ✓ Push a Text List record (230ms)
+        ✓ Set a Text List record (311ms)
+        ✓ Remove a Text List record (785ms)
+        ✓ Should fail updating non-existing indexes (64ms)
+        ✓ Should fail removing non-existing indexes (500ms)
+        ✓ Should reject pushing values from extraneous accounts
+        ✓ Should reject setting values from extraneous accounts (232ms)
+        ✓ Should emit events on push, update and remove (311ms)
     VotingProcess
-      ✓ should deploy the contract (63ms)
-      ✓ should compute a processId from the entity address and the process index (114ms)
-      ✓ should compute the next processId (241ms)
+      ✓ should deploy the contract (60ms)
+      ✓ should compute a processId from the entity address and the process index (129ms)
+      ✓ should compute the next processId (192ms)
+      should set genesis
+        ✓ only contract creator
+        ✓ should persist (179ms)
+        ✓ should emit an event (71ms)
+      should set chainId
+        ✓ only contract creator
+        ✓ should persist (1585ms)
+        ✓ should fail if duplicated
+        ✓ should emit an event (59ms)
       should create a process
-        ✓ should allow anyone to create one (458ms)
-        ✓ should emit an event (162ms)
-        ✓ should enforce startTime's greater than the current timestamp (90ms)
-        ✓ should enforce endTime's greater than the given startTime (157ms)
-        ✓ should increase the processCount of the entity on success (149ms)
-        ✓ should not increase the processCount of the entity on error (112ms)
-        ✓ retrieved metadata should match the one submitted (282ms)
+        ✓ should allow anyone to create one (424ms)
+        ✓ should emit an event (116ms)
+        ✓ should increase the processCount of the entity on success (132ms)
+        ✓ should not increase the processCount of the entity on error (56ms)
+        ✓ retrieved metadata should match the one submitted (339ms)
       should cancel the process
-        ✓ only when the creator requests it (516ms)
-        ✓ only if it not yet canceled (346ms)
-        ✓ not after startTime (4216ms)
-        ✓ should emit an event (214ms)
-        ✓ should return an empty relay list after a process is canceled (374ms)
-      should register a relay
-        ✓ only when the creator requests it (418ms)
-        ✓ only when the processId exists (71ms)
-        ✓ only when the process is not canceled (433ms)
-        ✓ should fail if it already exists as active (396ms)
-        ✓ should add the relay address to the relay list (351ms)
-        ✓ should return true on isActiveRelay (263ms)
-        ✓ should retrieve a given relay's data (249ms)
-        ✓ should emit an event (213ms)
-      should register a vote batch
-        ✓ only when a registered relay submits it (3442ms)
-        ✓ only when the relay is active (2759ms)
-        ✓ only when the processId exists (138ms)
-        ✓ only when the process is not canceled (3433ms)
-        ✓ not before startTime (1436ms)
-        ✓ not after endTime (4906ms)
-        ✓ should increase the voteBatchCount on success (3449ms)
-        ✓ should not increase the voteBatchCount on error (5118ms)
-        ✓ should retrieve the vote batches submitted in ascending order (3679ms)
-        ✓ should emit an event (2622ms)
-      should disable a relay
-        ✓ only when the creator requests it (390ms)
-        ✓ only when the processId exists (68ms)
-        ✓ only when the process is not canceled (362ms)
-        ✓ should fail if the relay does not exist (288ms)
-        ✓ should remove the relay address from the relay list (507ms)
-        ✓ should return false on isActiveRelay (396ms)
-        ✓ should fail to register new vote batches from a disabled relay (2741ms)
-        ✓ should emit an event (313ms)
-      should accept the encryption private key
-        ✓ only when the creator requests it (5194ms)
-        ✓ only when the processId exists (70ms)
-        ✓ only when the process is not canceled (4273ms)
-        ✓ only after endTime (2644ms)
-        ✓ should retrieve the submited private key (4322ms)
-        - only if the key matches the public key registered
-        ✓ should overwrite it in case of a mistake (4411ms)
-        ✓ should emit an event (4207ms)
+        ✓ only when the entity account requests it (422ms)
+        ✓ if is not yet canceled (324ms)
+        ✓ if it not yet ended (258ms)
+        ✓ should emit an event (216ms)
+      should end the process
+        ✓ only when the entity account requests it (375ms)
+        ✓ if is not yet ended (245ms)
+        ✓ if it not canceled (241ms)
+        ✓ should emit an event (179ms)
+      should pause the process
+        ✓ only if the entity account requests it (366ms)
+        ✓ if not canceled (252ms)
+        ✓ if not ended (254ms)
+        ✓ if not paused yet (221ms)
+        ✓ if opened (201ms)
+        ✓ should emit an event (183ms)
+      should open the process
+        ✓ if not canceled (229ms)
+        ✓ if not ended (305ms)
+        ✓ if not opened yet (201ms)
+        ✓ if paused (329ms)
+      should register a validator
+        ✓ only when the contract owner requests it (127ms)
+        ✓ should fail if NOT owner adds Validator (125ms)
+        ✓ should add the validator public key to the validator list (177ms)
+        ✓ should not add the validator public key to the validator list if exists (120ms)
+        ✓ should emit an event (101ms)
+      should remove a validator
+        ✓ only when the contract owner account requests it (161ms)
+        ✓ should fail if the idx does not match validatorPublicKey (85ms)
+        ✓ should emit an event (142ms)
+      should register an oracle
+        ✓ only when the contract owner requests it (107ms)
+        ✓ should add the oracle address to the oracle list (156ms)
+        ✓ should not add the oracle address to the oracle list if exists (109ms)
+        ✓ should emit an event (77ms)
+      should remove a oracle
+        ✓ only when the contract owner requests it (171ms)
+        ✓ should fail if the idx is not valid (138ms)
+        ✓ should fail if the idx does not match oracleAddress (146ms)
+        ✓ should emit an event (127ms)
+      should accept the results
+        ✓ only when the sender is an oracle (409ms)
+        ✓ only when the processId exists (88ms)
+        ✓ only when the process is not canceled (350ms)
+        ✓ should retrieve the submited results (286ms)
+        ✓ should overwrite it in case of a mistake (370ms)
+        ✓ should emit an event (4290ms)
 
 
-  62 passing (1m)
-  1 pending
+  70 passing (24s)
 
 ```
 

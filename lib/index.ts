@@ -91,7 +91,8 @@ export type EntityResolverContractMethods = {
 // VOTING PROCESS TYPES
 ///////////////////////////////////////////////////////////////////////////////
 
-export type ProcessType = "snark-vote" | "poll-vote" | "encrypted-poll" | "petition-sign"
+export type EnvelopeType = 0 | 1 | 4 | 6 | 8 | 10 | 12 | 14
+export type Mode = 0 | 1
 
 /** Smart Contract operations for a Voting Process contract */
 export interface VotingProcessContractMethods {
@@ -115,11 +116,11 @@ export interface VotingProcessContractMethods {
     getChainId(): Promise<BigNumber>,
 
     /** Publish a new voting process using the given metadata link */
-    create(processType: ProcessType, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number | BigNumber, numberOfBlocks: number | BigNumber): Promise<ContractTransaction>,
+    create(envelopeType: EnvelopeType, mode: Mode, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number | BigNumber, numberOfBlocks: number | BigNumber): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{ processType: ProcessType, entityAddress: string, startBlock: BigNumber, numberOfBlocks: BigNumber, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
-    /** Cancel the voting process that corresponds to the given Id */
-    cancel(processId: string): Promise<ContractTransaction>,
+    get(processId: string): Promise<{ envelopeType: EnvelopeType, mode: Mode, entityAddress: string, startBlock: BigNumber, numberOfBlocks: BigNumber, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
+    /** Update the voting process status that corresponds to the given Id */
+    setProcessStatus(processId: string, status: number): Promise<ContractTransaction>,
 
     /** Register the public key of a new validator */
     addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
@@ -129,16 +130,11 @@ export interface VotingProcessContractMethods {
     getValidators(): Promise<string[]>,
 
     /** Register the public key of a new oracle */
-    addOracle(oraclePublicKey: string): Promise<ContractTransaction>,
+    addOracle(oracleAddr: string): Promise<ContractTransaction>,
     /** Remove the public key at the given index for an oracle */
-    removeOracle(idx: number, oraclePublicKey: string): Promise<ContractTransaction>,
+    removeOracle(idx: number, oracleAddr: string): Promise<ContractTransaction>,
     /** Retrieve the current list of oracles on the Vocchain */
     getOracles(): Promise<string[]>,
-
-    /** Reveal the private key for the given voting process */
-    publishPrivateKey(processId: string, privateKey: string): Promise<ContractTransaction>,
-    /** Retrieve the current decryption key for the given process */
-    getPrivateKey(processId: string): Promise<string>,
 
     /** Publish the results for the given process */
     publishResults(processId: string, results: string): Promise<ContractTransaction>,

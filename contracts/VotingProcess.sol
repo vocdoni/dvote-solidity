@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 contract VotingProcess {
@@ -6,30 +6,30 @@ contract VotingProcess {
     // GLOBAL STRUCTS
 
     struct Process {
-        string processType;                // One of: snark-vote, poll-vote, petition-sign
+        uint8 envelopeType;                // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/components/process
+        uint8 mode;                        // 0 [scheduled-single-envelope], 1 [ondemand-single-envelope]
         address entityAddress;             // The Ethereum address of the Entity
         uint256 startBlock;                // Tendermint block number on which the voting process starts
         uint256 numberOfBlocks;            // Amount of Tendermint blocks during which the voting process is active
         string metadata;                   // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusMerkleRoot;           // Hex string with the Merkle Root hash of the census
         string censusMerkleTree;           // Content Hashed URI of the exported Merkle Tree (not including the public keys)
-        string voteEncryptionPrivateKey;   // Key published after the vote ends so that scrutiny can start
-        bool canceled;                     // Can be used by organization to cancel the project
-        string results;                    // Content Hashed URI of the results (See Data Origins)
+        uint8 status;                      // 0 [open], 1 [ended], 2 [canceled], 3 [paused]
+        string results;                    // string containing the results
     }
 
     // GLOBAL DATA
 
     address contractOwner;
     string[] validators;                   // Public key array
-    string[] oracles;                      // Public key array
+    address[] oracles;                     // Public key array
     string genesis;                        // Content Hashed URI
     uint chainId;
 
     // PER-PROCESS DATA
 
-    Process[] public processes;                 // Array of Process struct
-    mapping (bytes32 => uint) processesIndex;   // Mapping of processIds with processess idx
+    Process[] public processes;                            // Array of Process struct
+    mapping (bytes32 => uint) processesIndex;              // Mapping of processIds with processess idx
     mapping (address => uint) public entityProcessCount;   // index of the last process for a given address
 
     // EVENTS
@@ -37,12 +37,11 @@ contract VotingProcess {
     event GenesisChanged(string genesis);
     event ChainIdChanged(uint chainId);
     event ProcessCreated(address indexed entityAddress, bytes32 processId, string merkleTree);
-    event ProcessCanceled(address indexed entityAddress, bytes32 processId);
+    event ProcessStatusUpdated(address indexed entityAddress, bytes32 processId, uint8 status);
     event ValidatorAdded(string validatorPublicKey);
     event ValidatorRemoved(string validatorPublicKey);
-    event OracleAdded(string oraclePublicKey);
-    event OracleRemoved(string oraclePublicKey);
-    event PrivateKeyPublished(bytes32 indexed processId, string privateKey);
+    event OracleAdded(address oracleAddress);
+    event OracleRemoved(address oracleAddress);
     event ResultsPublished(bytes32 indexed processId, string results);
 
     // MODIFIERS
@@ -56,6 +55,18 @@ contract VotingProcess {
     modifier onlyContractOwner() {
         require(msg.sender == contractOwner, "Only contract owner");
     	_;
+    }
+
+    modifier onlyOracle() {
+        bool authorized = false;
+        for (uint i = 0; i < oracles.length; i++) {
+            if (msg.sender == oracles[i]) {
+                authorized = true;
+                break;
+            }
+        }
+        require(authorized == true, "unauthorized");
+        _;
     }
 
     // HELPERS
@@ -83,6 +94,23 @@ contract VotingProcess {
         return keccak256(abi.encodePacked((str1))) == keccak256(abi.encodePacked((str2)));
     }
 
+    function validatorExists(string memory validator) public view returns(bool) {
+        for (uint i = 0; i < validators.length; i++) {
+            if (equalStrings(validators[i], validator)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function oracleExists(address oracle) public view returns(bool) {
+          for (uint i = 0; i < oracles.length; i++) {
+            if (oracles[i] == oracle) {
+                return true;
+            }
+        }
+        return false;
+    }
     // METHODS
 
     constructor(uint chainIdValue) public {
@@ -113,26 +141,45 @@ contract VotingProcess {
         return chainId;
     }
 
-    function create(string memory processType, string memory metadata, string memory merkleRoot,
+    function create(uint8 envelopeType, uint8 mode, string memory metadata, string memory merkleRoot,
         string memory merkleTree, uint256 startBlock, uint256 numberOfBlocks) public {
         require(bytes(metadata).length > 0, "Empty metadata");
         require(bytes(merkleRoot).length > 0, "Empty merkleRoot");
         require(bytes(merkleTree).length > 0, "Empty merkleTree");
+        require(
+            envelopeType == 0  || // Realtime poll
+            envelopeType == 1  || // Petition sign
+            envelopeType == 4  || // Encrypted poll
+            envelopeType == 6  || // Encrypted private poll
+            envelopeType == 8  || // Realtime election
+            envelopeType == 10 || // Private election
+            envelopeType == 12 || // Election
+            envelopeType == 14,   // Realtime private election
+            "Invalid envelope type"
+        );
+        require(mode == 0 || mode == 1, "Invalid process mode");
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
         // require(processesIndex[processId] == 0, "ProcessId already exists");
 
+        // by default status is open
+        uint8 status = 0;
+        // on-demand process
+        if (mode == 1) {
+            // by default on-demand processes status is paused
+            status = 3;
+        }
         Process memory process = Process({
-            processType: processType,
+            envelopeType: envelopeType,
+            mode: mode,
             entityAddress: entityAddress,
             startBlock: startBlock,
             numberOfBlocks: numberOfBlocks,
             metadata: metadata,
             censusMerkleRoot: merkleRoot,
             censusMerkleTree: merkleTree,
-            voteEncryptionPrivateKey: "",
-            canceled: false,
+            status: status,
             results: ""
         });
 
@@ -144,38 +191,48 @@ contract VotingProcess {
     }
 
     function get(bytes32 processId) public view returns (
-        string memory processType,
+        uint8 envelopeType,
+        uint8 mode,
     	address entityAddress,
         uint256 startBlock,
         uint256 numberOfBlocks,
     	string memory metadata,
     	string memory censusMerkleRoot,
     	string memory censusMerkleTree,
-    	string memory voteEncryptionPrivateKey,
-        bool canceled
+        uint8 status
     ) {
         uint processIndex = processesIndex[processId];
-        processType = processes[processIndex].processType;
+        envelopeType = processes[processIndex].envelopeType;
+        mode = processes[processIndex].mode;
         entityAddress = processes[processIndex].entityAddress;
         startBlock = processes[processIndex].startBlock;
         numberOfBlocks = processes[processIndex].numberOfBlocks;
         metadata = processes[processIndex].metadata;
         censusMerkleRoot = processes[processIndex].censusMerkleRoot;
         censusMerkleTree = processes[processIndex].censusMerkleTree;
-        voteEncryptionPrivateKey = processes[processIndex].voteEncryptionPrivateKey;
-        canceled = processes[processIndex].canceled;
+        status = processes[processIndex].status;
     }
 
-    function cancel(bytes32 processId) public onlyEntity(processId) {
+    function setProcessStatus(bytes32 processId, uint8 status) public onlyEntity(processId) {
+        require(status >= 0 && status < 4, "Invalid status code");
         uint processIndex = getProcessIndex(processId);
-        require(processes[processIndex].canceled == false, "Process must not be canceled");
 
-        processes[processIndex].canceled = true;
+        // check status code and conditions for changing it
+        if (status == 0) {
+            require(processes[processIndex].status == 3, "Process must be paused");
+        } else if (status == 1 || status == 2) {
+            require(processes[processIndex].status == 0 || processes[processIndex].status == 3, "Process must be open or paused");
+        } else if (status == 3) {
+            require(processes[processIndex].status == 0, "Process must be open");
+        }
 
-        emit ProcessCanceled(msg.sender, processId);
+        processes[processIndex].status = status;
+
+        emit ProcessStatusUpdated(msg.sender, processId, status);
     }
 
     function addValidator(string memory validatorPublicKey) public onlyContractOwner()  {
+        require(validatorExists(validatorPublicKey) == false, "Validator already exists");
         validators.push(validatorPublicKey);
 
         emit ValidatorAdded(validatorPublicKey);
@@ -183,10 +240,9 @@ contract VotingProcess {
 
     function removeValidator(uint idx, string memory validatorPublicKey) public onlyContractOwner() {
         require(equalStrings(validators[idx], validatorPublicKey), "Validator to remove does not match index");
-
         // swap with the last element from the list
         validators[idx] = validators[validators.length - 1];
-        validators.length--;
+        validators.pop();
 
         emit ValidatorRemoved(validatorPublicKey);
     }
@@ -195,44 +251,35 @@ contract VotingProcess {
         return validators;
     }
 
-    function addOracle(string memory oraclePublicKey) public onlyContractOwner()  {
-        oracles.push(oraclePublicKey);
+    function addOracle(address oracleAddress) public onlyContractOwner()  {
+        require(oracleExists(oracleAddress) == false, "Oracle already exists");
+        oracles.push(oracleAddress);
 
-        emit OracleAdded(oraclePublicKey);
+        emit OracleAdded(oracleAddress);
     }
 
-    function removeOracle(uint idx, string memory oraclePublicKey) public onlyContractOwner() {
-        require(equalStrings(oracles[idx], oraclePublicKey), "Oracle to remove does not match index");
+    function removeOracle(uint idx, address oracleAddress) public onlyContractOwner() {
+        require(idx < oracles.length, "Invalid index");
+        require(oracles[idx] == oracleAddress, "Oracle to remove does not match index");
 
         // swap with the last element from the list
         oracles[idx] = oracles[oracles.length - 1];
-        oracles.length--;
+        oracles.pop();
 
-        emit OracleRemoved(oraclePublicKey);
+        emit OracleRemoved(oracleAddress);
     }
 
-    function getOracles() public view returns (string[] memory) {
+    function getOracles() public view returns (address[] memory) {
         return oracles;
     }
 
-    function publishPrivateKey(bytes32 processId, string memory privateKey) public onlyEntity(processId) {
+    function publishResults(bytes32 processId, string memory results) public onlyOracle {
         uint processIndex = getProcessIndex(processId);
-        require(processes[processIndex].canceled == false, "Process must not be canceled");
 
-        processes[processIndex].voteEncryptionPrivateKey = privateKey;
-
-        emit PrivateKeyPublished(processId, privateKey);
-    }
-
-    function getPrivateKey(bytes32 processId) public view returns (string memory privateKey) {
-        uint processIndex = getProcessIndex(processId);
-        privateKey = processes[processIndex].voteEncryptionPrivateKey;
-    }
-
-    function publishResults(bytes32 processId, string memory results) public onlyEntity(processId) {
-        uint processIndex = getProcessIndex(processId);
-        require(processes[processIndex].canceled == false, "Process must not be canceled");
-        require(equalStrings(processes[processIndex].voteEncryptionPrivateKey, "") == false, "The private key has not been revealed yet");
+        // cannot publish results of a canceled process
+        require(processes[processIndex].status != 2, "Process must not be canceled");
+        // results can only be published once
+        require(equalStrings(processes[processIndex].results, "") == true, "Results already published");
 
         processes[processIndex].results = results;
 

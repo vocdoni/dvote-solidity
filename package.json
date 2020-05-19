@@ -1,6 +1,6 @@
 {
   "name": "dvote-solidity",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Solidity smart contracts implementing the voting core features of Vocdoni",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
@@ -18,13 +18,14 @@
   "license": "ISC",
   "homepage": "https://gitlab.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
-    "ethers": "^4.0.33"
+    "ethers": "^4.0.33",
+    "ganache": "^6.4.4"
   },
   "devDependencies": {
     "dotenv": "^7.0.0",
-    "ganache-cli": "^6.4.2",
-    "mocha": "^6.1.4",
-    "solc": "^0.5.7",
+    "ganache-cli": "^6.9.1",
+    "mocha": "^6.2.3",
+    "solc": "^0.6.7",
     "truffle-hdwallet-provider": "^1.0.14",
     "tslint": "^5.15.0",
     "typescript": "^3.5.3",

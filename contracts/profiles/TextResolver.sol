@@ -1,8 +1,8 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "../EntityResolverBase.sol";
 
-contract TextResolver is ResolverBase {
+abstract contract TextResolver is ResolverBase {
     bytes4 constant private TEXT_INTERFACE_ID = 0x59d1d43c;
 
     event TextChanged(bytes32 indexed node, string indexedKey, string key);
@@ -31,7 +31,7 @@ contract TextResolver is ResolverBase {
         return texts[node][key];
     }
 
-    function supportsInterface(bytes4 interfaceID) public pure returns(bool) {
+    function supportsInterface(bytes4 interfaceID) public pure virtual override returns(bool) {
         return interfaceID == TEXT_INTERFACE_ID || super.supportsInterface(interfaceID);
     }
 }

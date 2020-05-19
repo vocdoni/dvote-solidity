@@ -1,9 +1,9 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../EntityResolverBase.sol";
 
-contract TextListResolver is ResolverBase {
+abstract contract TextListResolver is ResolverBase {
     bytes4 constant private TEXT_LIST_INTERFACE_ID = 0x00000000;
 
     event ListItemChanged(bytes32 indexed node, string key, uint256 index);
@@ -36,8 +36,8 @@ contract TextListResolver is ResolverBase {
      */
     function pushListText(bytes32 node, string calldata key, string calldata value) external authorised(node) {
         bytes32 keyHash = keccak256(abi.encodePacked(key));
-        uint newIndex = lists[node][keyHash].push(value) - 1;
-        emit ListItemChanged(node, key, newIndex);
+        lists[node][keyHash].push(value);
+        emit ListItemChanged(node, key, lists[node][keyHash].length - 1);
     }
 
     /**
@@ -53,7 +53,7 @@ contract TextListResolver is ResolverBase {
         
         uint length = lists[node][keyHash].length;
         lists[node][keyHash][index] = lists[node][keyHash][length - 1];
-        lists[node][keyHash].length--;
+        lists[node][keyHash].pop();
         emit ListItemRemoved(node, key, index);
     }
 
@@ -80,7 +80,7 @@ contract TextListResolver is ResolverBase {
         return lists[node][keyHash][index];
     }
 
-    function supportsInterface(bytes4 interfaceID) public pure returns(bool) {
+    function supportsInterface(bytes4 interfaceID) public pure virtual override returns(bool) {
         return interfaceID == TEXT_LIST_INTERFACE_ID || super.supportsInterface(interfaceID);
     }
 }
