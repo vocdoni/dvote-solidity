@@ -3,8 +3,9 @@ pragma experimental ABIEncoderV2;
 
 import "../EntityResolverBase.sol";
 
+
 abstract contract TextListResolver is ResolverBase {
-    bytes4 constant private TEXT_LIST_INTERFACE_ID = 0x00000000;
+    bytes4 private constant TEXT_LIST_INTERFACE_ID = 0x00000000;
 
     event ListItemChanged(bytes32 indexed node, string key, uint256 index);
     event ListItemRemoved(bytes32 indexed node, string key, uint256 index);
@@ -19,10 +20,15 @@ abstract contract TextListResolver is ResolverBase {
      * @param index The index of the list to set.
      * @param value The text data value to set.
      */
-    function setListText(bytes32 node, string calldata key, uint256 index, string calldata value) external authorised(node) {
+    function setListText(
+        bytes32 node,
+        string calldata key,
+        uint256 index,
+        string calldata value
+    ) external authorised(node) {
         bytes32 keyHash = keccak256(abi.encodePacked(key));
         require(lists[node][keyHash].length > index, "Invalid index");
-        
+
         lists[node][keyHash][index] = value;
         emit ListItemChanged(node, key, index);
     }
@@ -34,7 +40,11 @@ abstract contract TextListResolver is ResolverBase {
      * @param key The text data key to query.
      * @param value The text data value to set.
      */
-    function pushListText(bytes32 node, string calldata key, string calldata value) external authorised(node) {
+    function pushListText(
+        bytes32 node,
+        string calldata key,
+        string calldata value
+    ) external authorised(node) {
         bytes32 keyHash = keccak256(abi.encodePacked(key));
         lists[node][keyHash].push(value);
         emit ListItemChanged(node, key, lists[node][keyHash].length - 1);
@@ -47,11 +57,15 @@ abstract contract TextListResolver is ResolverBase {
      * @param key The text data key to query.
      * @param index The index to remove.
      */
-    function removeListIndex(bytes32 node, string calldata key, uint256 index) external authorised(node) {
+    function removeListIndex(
+        bytes32 node,
+        string calldata key,
+        uint256 index
+    ) external authorised(node) {
         bytes32 keyHash = keccak256(abi.encodePacked(key));
         require(lists[node][keyHash].length > index, "Invalid index");
-        
-        uint length = lists[node][keyHash].length;
+
+        uint256 length = lists[node][keyHash].length;
         lists[node][keyHash][index] = lists[node][keyHash][length - 1];
         lists[node][keyHash].pop();
         emit ListItemRemoved(node, key, index);
@@ -63,7 +77,11 @@ abstract contract TextListResolver is ResolverBase {
      * @param key The text data key to query.
      * @return The associated text data.
      */
-    function list(bytes32 node, string calldata key) external view returns (string[] memory) {
+    function list(bytes32 node, string calldata key)
+        external
+        view
+        returns (string[] memory)
+    {
         bytes32 keyHash = keccak256(abi.encodePacked(key));
         return lists[node][keyHash];
     }
@@ -75,12 +93,24 @@ abstract contract TextListResolver is ResolverBase {
      * @param index The index of the list to retrieve.
      * @return The associated text data.
      */
-    function listText(bytes32 node, string calldata key, uint256 index) external view returns (string memory) {
+    function listText(
+        bytes32 node,
+        string calldata key,
+        uint256 index
+    ) external view returns (string memory) {
         bytes32 keyHash = keccak256(abi.encodePacked(key));
         return lists[node][keyHash][index];
     }
 
-    function supportsInterface(bytes4 interfaceID) public pure virtual override returns(bool) {
-        return interfaceID == TEXT_LIST_INTERFACE_ID || super.supportsInterface(interfaceID);
+    function supportsInterface(bytes4 interfaceID)
+        public
+        virtual
+        override
+        pure
+        returns (bool)
+    {
+        return
+            interfaceID == TEXT_LIST_INTERFACE_ID ||
+            super.supportsInterface(interfaceID);
     }
 }

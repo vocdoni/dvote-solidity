@@ -5,8 +5,9 @@ import "./profiles/AddrResolver.sol";
 import "./profiles/TextResolver.sol";
 import "./profiles/TextListResolver.sol";
 
-contract EntityResolver is  AddrResolver, TextResolver, TextListResolver {
-    function isAuthorised(bytes32 node) internal view override returns(bool) {
+
+contract EntityResolver is AddrResolver, TextResolver, TextListResolver {
+    function isAuthorised(bytes32 node) internal override view returns (bool) {
         return getEntityId(msg.sender) == node;
     }
 
@@ -14,7 +15,12 @@ contract EntityResolver is  AddrResolver, TextResolver, TextListResolver {
         return keccak256(abi.encodePacked(entityAddress));
     }
 
-    function supportsInterface(bytes4 interfaceID) public pure override(AddrResolver, TextResolver, TextListResolver) returns(bool) {
+    function supportsInterface(bytes4 interfaceID)
+        public
+        override(AddrResolver, TextResolver, TextListResolver)
+        pure
+        returns (bool)
+    {
         return super.supportsInterface(interfaceID);
     }
 }
