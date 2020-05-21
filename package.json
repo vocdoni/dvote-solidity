@@ -18,18 +18,18 @@
   "license": "ISC",
   "homepage": "https://gitlab.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
-    "ethers": "^4.0.33",
-    "ganache": "^6.4.4"
+    "ethers": "^4.0.47"
   },
   "devDependencies": {
     "dotenv": "^7.0.0",
     "ganache-cli": "^6.9.1",
+    "ganache": "^6.4.4",
     "mocha": "^6.2.3",
     "solc": "^0.6.7",
-    "truffle-hdwallet-provider": "^1.0.14",
+    "truffle-hdwallet-provider": "^1.0.17",
     "tslint": "^5.15.0",
-    "typescript": "^3.5.3",
-    "web3": "1.0.0-beta.48",
-    "web3-utils": "1.0.0-beta.48"
+    "typescript": "^3.9.3",
+    "web3": "1.2.8",
+    "web3-utils": "1.2.8"
   }
 }

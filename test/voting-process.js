@@ -1,14 +1,15 @@
 const assert = require("assert")
 const { getWeb3,
-        increaseTimestamp,
-        deployVotingProcess,
-        setProcessStatus,
-        addOracle,
-        addValidator,
-        removeOracle,
-        removeValidator,
-        publishResults
-    } = require("../lib/util")
+    increaseTimestamp,
+    deployVotingProcess,
+    setProcessStatus,
+    addOracle,
+    addValidator,
+    removeOracle,
+    removeValidator,
+    publishResults
+} = require("../lib/util")
+const { ProcessEnvelopeType, ProcessMode, ProcessStatus } = require("..")
 
 const web3 = getWeb3()
 
@@ -92,7 +93,7 @@ describe('VotingProcess', function () {
 
         assert.equal(processId1Expected, processId1Actual)
 
-        const creationResult = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+        const creationResult = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
             from: entityAddress,
             nonce: await web3.eth.getTransactionCount(entityAddress)
         })
@@ -237,7 +238,7 @@ describe('VotingProcess', function () {
             assert(instance.methods.create)
 
             // TODO: CHANGEME
-            await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
                 .send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -247,7 +248,7 @@ describe('VotingProcess', function () {
             let processIdActual = await instance.methods.getNextProcessId(entityAddress).call()
             assert.equal(processIdExpected, processIdActual)
 
-            await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
                 .send({
                     from: randomAddress1,
                     nonce: await web3.eth.getTransactionCount(randomAddress1)
@@ -257,7 +258,7 @@ describe('VotingProcess', function () {
             processIdActual = await instance.methods.getNextProcessId(randomAddress1).call()
             assert.equal(processIdExpected, processIdActual)
 
-            await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
                 .send({
                     from: randomAddress2,
                     nonce: await web3.eth.getTransactionCount(randomAddress2)
@@ -270,7 +271,7 @@ describe('VotingProcess', function () {
         it("should emit an event", async () => {
             const expectedProcessId = await instance.methods.getNextProcessId(entityAddress).call()
 
-            let result = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            let result = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -288,7 +289,7 @@ describe('VotingProcess', function () {
             const prev = Number(await instance.methods.entityProcessCount(entityAddress).call())
             assert.equal(prev, 0)
 
-            await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -302,7 +303,7 @@ describe('VotingProcess', function () {
             assert.equal(prev, 0)
 
             try {
-                await instance.methods.create(0, 0, "", "", "", 0, 0).send({
+                await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, "", "", "", 0, 0).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
                 })
@@ -326,7 +327,7 @@ describe('VotingProcess', function () {
             let numberOfBlocks = 50000
 
             // 1
-            await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -342,7 +343,7 @@ describe('VotingProcess', function () {
             assert.equal(processData.metadata, metadata)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
-            assert.equal(processData.status, 0, "The process should start open")
+            assert.equal(processData.status, ProcessStatus.OPEN, "The process should start open")
             assert.equal(processData.startBlock, startBlock)
             assert.equal(processData.numberOfBlocks, numberOfBlocks)
 
@@ -354,7 +355,7 @@ describe('VotingProcess', function () {
             startBlock = 23456789
             numberOfBlocks = 1000
 
-            await instance.methods.create(4, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            await instance.methods.create(ProcessEnvelopeType.ENCRYPTED_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -370,7 +371,7 @@ describe('VotingProcess', function () {
             assert.equal(processData.metadata, metadata)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
-            assert.equal(processData.status, 0, "The process should start as open")
+            assert.equal(processData.status, ProcessStatus.OPEN, "The process should start as open")
             assert.equal(processData.startBlock, startBlock)
             assert.equal(processData.numberOfBlocks, numberOfBlocks)
         })
@@ -380,7 +381,7 @@ describe('VotingProcess', function () {
         it("only when the entity account requests it", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
-            const result1 = await instance.methods.create(1, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.PETITION_SIGNING, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -393,12 +394,12 @@ describe('VotingProcess', function () {
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 2, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
 
             // Create again
             const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
             // Create
-            const result2 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result2 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,  // <<--
                 nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
             })
@@ -418,14 +419,14 @@ describe('VotingProcess', function () {
             assert.equal(processData2.mode, 0)
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 0, "The process should remain open")
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should remain open")
 
         })
         it("if is not yet canceled", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -440,14 +441,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 2)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 2, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
 
             // Try to cancel again
             try {
@@ -462,14 +463,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 2, "The process should now be canceled")
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should now be canceled")
         })
 
-        it("if it not yet ended", async() => {
+        it("if it not yet ended", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -484,14 +485,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 1, "The process should now be ended")
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
 
             // Try to cancel
             try {
@@ -506,14 +507,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 1, "The process should not be canceled")
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should not be canceled")
         })
 
         it("should emit an event", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -527,7 +528,7 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 2)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
         })
     })
 
@@ -535,7 +536,7 @@ describe('VotingProcess', function () {
         it("only when the entity account requests it", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
-            const result1 = await instance.methods.create(1, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.PETITION_SIGNING, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -549,12 +550,12 @@ describe('VotingProcess', function () {
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 1, "The process should now be ended")
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
 
             // CREATE AGAIN
             const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
             // Create
-            const result2 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result2 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,  // <<--
                 nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
             })
@@ -574,14 +575,14 @@ describe('VotingProcess', function () {
             assert.equal(processData2.mode, 0)
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 0, "The process should remain open")
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should remain open")
         })
 
         it("if is not yet ended", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -595,14 +596,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 1, "The process should now be ended")
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
 
             // Try to end again
             try {
@@ -617,14 +618,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 1, "The process should now be canceled")
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should now be canceled")
         })
 
-        it("if it not canceled", async() => {
+        it("if it not canceled", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -639,14 +640,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 2)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 2, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
 
             // Try to end
             try {
@@ -661,14 +662,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 2, "The process should be canceled")
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should be canceled")
         })
 
         it("should emit an event", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -682,16 +683,16 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
         })
     })
 
     describe("should pause the process", () => {
-        
+
         it("only if the entity account requests it", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
-            const result1 = await instance.methods.create(1, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.PETITION_SIGNING, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -705,13 +706,13 @@ describe('VotingProcess', function () {
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 3, "The process should now be paused")
+            assert.equal(processData1.status, ProcessStatus.PAUSED, "The process should now be paused")
 
             // CREATE AGAIN
             const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
 
             // Create
-            const result2 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result2 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,  // <<--
                 nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
             })
@@ -731,14 +732,14 @@ describe('VotingProcess', function () {
             assert.equal(processData2.mode, 0)
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 0, "The process should remain open")
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should remain open")
         })
 
         it("if not canceled", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -752,14 +753,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 2)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 2, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
 
             // Try to pause
             try {
@@ -774,14 +775,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 2, "The process should be canceled")
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should be canceled")
         })
-        
+
         it("if not ended", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -796,14 +797,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 1, "The process should now be ended")
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
 
             // Try to pause
             try {
@@ -818,14 +819,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 1, "The process should be ended")
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should be ended")
         })
 
         it("if not paused yet", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -839,14 +840,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 3)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.PAUSED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 3, "The process should now be paused")
+            assert.equal(processData1.status, ProcessStatus.PAUSED, "The process should now be paused")
 
             // Try to pause
             try {
@@ -861,14 +862,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 3, "The process should be paused")
+            assert.equal(processData2.status, ProcessStatus.PAUSED, "The process should be paused")
         })
 
-        it("if opened", async() => {
+        it("if opened", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -882,21 +883,21 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 2)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 2, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
         })
 
         it("should emit an event", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -910,7 +911,7 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 3)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.PAUSED)
 
         })
     })
@@ -920,7 +921,7 @@ describe('VotingProcess', function () {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -934,14 +935,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 2)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 2, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
 
             // Try to open
             try {
@@ -957,14 +958,14 @@ describe('VotingProcess', function () {
 
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 2, "The process should be canceled")
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should be canceled")
         })
-        
+
         it("if not ended", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -978,14 +979,14 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 1, "The process should now be ended")
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
 
             // Try to open
             try {
@@ -1000,14 +1001,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 1, "The process should be ended")
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should be ended")
         })
 
         it("if not opened yet", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1026,14 +1027,14 @@ describe('VotingProcess', function () {
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 0, "The process should be open")
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should be open")
         })
 
-        it("if paused", async() => {
+        it("if paused", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1047,31 +1048,31 @@ describe('VotingProcess', function () {
             assert.ok(result2.events.ProcessStatusUpdated.returnValues)
             assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, 3)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.PAUSED)
 
             const processData1 = await instance.methods.get(processId1).call()
             assert.equal(processData1.envelopeType, 0)
             assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.status, 3, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.PAUSED, "The process should now be canceled")
 
-             // Open by the creator
-             const result3 = await setProcessStatus(instance, entityAddress, processId1, 0)
+            // Open by the creator
+            const result3 = await setProcessStatus(instance, entityAddress, processId1, 0)
             assert.ok(result3)
             assert.ok(result3.events)
             assert.ok(result3.events.ProcessStatusUpdated)
             assert.ok(result3.events.ProcessStatusUpdated.returnValues)
             assert.equal(result3.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
             assert.equal(result3.events.ProcessStatusUpdated.returnValues.processId, processId1)
-            assert.equal(result3.events.ProcessStatusUpdated.returnValues.status, 0)
+            assert.equal(result3.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.OPEN)
 
             const processData2 = await instance.methods.get(processId1).call()
             assert.equal(processData2.envelopeType, 0)
             assert.equal(processData2.mode, 0)
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.status, 0, "The process should now be open")
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should now be open")
         })
     })
 
@@ -1134,7 +1135,7 @@ describe('VotingProcess', function () {
             assert.deepEqual(result2, [validatorPublicKey])
 
             // Adding validator #2
-            try{
+            try {
                 await addValidator(instance, deployAddress, validatorPublicKey)
                 assert.fail("The transaction should have thrown an error but didn't")
             } catch (err) {
@@ -1285,7 +1286,7 @@ describe('VotingProcess', function () {
             assert.deepEqual(result2, [authorizedOracle1])
 
             // Adding oracle #2
-            try{
+            try {
                 await addOracle(instance, deployAddress, authorizedOracle1)
                 assert.fail("The transaction should have thrown an error but didn't")
             } catch (err) {
@@ -1343,7 +1344,7 @@ describe('VotingProcess', function () {
             // Register a oracle
             const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
             assert.ok(result1.transactionHash)
-            
+
             // Register a oracle
             const result2 = await addOracle(instance, deployAddress, authorizedOracle2)
             assert.ok(result2.transactionHash)
@@ -1367,7 +1368,7 @@ describe('VotingProcess', function () {
             // Register a oracle
             const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
             assert.ok(result1.transactionHash)
-            
+
             // Register a oracle
             const result2 = await addOracle(instance, deployAddress, authorizedOracle2)
             assert.ok(result2.transactionHash)
@@ -1409,7 +1410,7 @@ describe('VotingProcess', function () {
         it("only when the sender is an oracle", async () => {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
             // Create
-            const result1 = await instance.methods.create(4, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.ENCRYPTED_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1431,7 +1432,7 @@ describe('VotingProcess', function () {
             // Register an oracle
             const result3 = await addOracle(instance, deployAddress, authorizedOracle1)
             assert.ok(result3.transactionHash)
-            
+
             // Publish the results
             await publishResults(instance, authorizedOracle1, processId, results)
 
@@ -1460,7 +1461,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(4, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.ENCRYPTED_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1495,7 +1496,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1518,7 +1519,7 @@ describe('VotingProcess', function () {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1546,14 +1547,14 @@ describe('VotingProcess', function () {
 
             // Get results
             const result4 = await instance.methods.getResults(processId).call()
-            assert.equal(result4,  "INVALID_PRIVATE_KEY", "The results should match")
+            assert.equal(result4, "INVALID_PRIVATE_KEY", "The results should match")
         }).timeout(5000)
 
         it("should emit an event", async () => {  // NOW + 3
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create(0, 0, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -1577,5 +1578,155 @@ describe('VotingProcess', function () {
             assert.equal(result3.events.ResultsPublished.returnValues.processId, processId)
             assert.equal(result3.events.ResultsPublished.returnValues.results, results)
         }).timeout(5000)
+    })
+
+    describe("enum wrappers", () => {
+        it("should handle valid envelope types", () => {
+            let et = new ProcessEnvelopeType(0)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, true)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, true)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(1)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, true)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(4)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, true)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(6)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, true)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(8)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, true)
+            assert.equal(et.isRealtimeElection, true)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(10)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, true)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(12)
+            assert.equal(et.isElection, true)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(14)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, true)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, true)
+        })
+
+        it("should fail on invalid envelope types", () => {
+            assert.throws(() => new ProcessEnvelopeType(2))
+            assert.throws(() => new ProcessEnvelopeType(3))
+            assert.throws(() => new ProcessEnvelopeType(5))
+            assert.throws(() => new ProcessEnvelopeType(7))
+            assert.throws(() => new ProcessEnvelopeType(9))
+            assert.throws(() => new ProcessEnvelopeType(11))
+            assert.throws(() => new ProcessEnvelopeType(13))
+            assert.throws(() => new ProcessEnvelopeType(15))
+            for (let i = 17; i < 1024; i++) assert.throws(() => new ProcessEnvelopeType(i))
+        })
+
+        it("should handle valid process modes", () => {
+            let pm = new ProcessMode(0)
+            assert.equal(pm.isScheduled, true)
+            assert.equal(pm.isOnDemand, false)
+            assert.equal(pm.isSingleEnvelope, true)
+
+            pm = new ProcessMode(1)
+            assert.equal(pm.isScheduled, false)
+            assert.equal(pm.isOnDemand, true)
+            assert.equal(pm.isSingleEnvelope, true)
+        })
+
+        it("should fail on invalid process modes", () => {
+            for (let i = 2; i < 1024; i++) assert.throws(() => new ProcessMode(i))
+        })
+
+        it("should handle valid process status", () => {
+            let pm = new ProcessStatus(0)
+            assert.equal(pm.isOpen, true)
+            assert.equal(pm.isEnded, false)
+            assert.equal(pm.isCanceled, false)
+            assert.equal(pm.isPaused, false)
+
+            pm = new ProcessStatus(1)
+            assert.equal(pm.isOpen, false)
+            assert.equal(pm.isEnded, true)
+            assert.equal(pm.isCanceled, false)
+            assert.equal(pm.isPaused, false)
+
+            pm = new ProcessStatus(2)
+            assert.equal(pm.isOpen, false)
+            assert.equal(pm.isEnded, false)
+            assert.equal(pm.isCanceled, true)
+            assert.equal(pm.isPaused, false)
+
+            pm = new ProcessStatus(3)
+            assert.equal(pm.isOpen, false)
+            assert.equal(pm.isEnded, false)
+            assert.equal(pm.isCanceled, false)
+            assert.equal(pm.isPaused, true)
+        })
+
+        it("should fail on invalid process status", () => {
+            for (let i = 4; i < 1024; i++) assert.throws(() => new ProcessStatus(i))
+        })
     })
 })
