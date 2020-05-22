@@ -7,7 +7,11 @@ const { getWeb3,
     addValidator,
     removeOracle,
     removeValidator,
-    publishResults
+    publishResults,
+    addEnvelopeType,
+    removeEnvelopeType,
+    addMode,
+    removeMode
 } = require("../lib/util")
 const { ProcessEnvelopeType, ProcessMode, ProcessStatus } = require("..")
 
@@ -40,13 +44,15 @@ describe('VotingProcess', function () {
 
         genesis = "0x1234567890123456789012345678901234567890123123123"
         chainId = 1
+        validEnvelopeTypes = [0,1,4,6,8,10,12,14]
+        validModes = [0,1]
 
-        instance = await deployVotingProcess(deployAddress, chainId)
+        instance = await deployVotingProcess(deployAddress, chainId, validEnvelopeTypes, validModes)
     })
 
 
     it("should deploy the contract", async () => {
-        const localInstance = await deployVotingProcess(deployAddress, chainId)
+        const localInstance = await deployVotingProcess(deployAddress, chainId, validEnvelopeTypes, validModes)
 
         assert.ok(localInstance)
         assert.ok(localInstance.options)
@@ -230,6 +236,160 @@ describe('VotingProcess', function () {
             assert.ok(result.events.ChainIdChanged.returnValues)
             assert.equal(result.events.ChainIdChanged.event, "ChainIdChanged")
             assert.equal(result.events.ChainIdChanged.returnValues.chainId, newChainId)
+        })
+    })
+
+    describe("should modify envelopeTypes", () => {
+        it("should add an envelopeType", async() => {
+            // add envelope type
+            result1 = await addEnvelopeType(instance, deployAddress, 3)
+            assert.ok(result1.transactionHash)
+
+            result2 = await instance.methods.checkEnvelopeType(3).call()
+            assert.equal(result2, true)
+
+            // cannot add twice
+            try {
+                await addEnvelopeType(instance, deployAddress, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // check already added
+            result4 = await instance.methods.checkEnvelopeType(3).call()
+            assert.equal(result4, true)
+        })
+        
+        it("should remove an envelopeType", async() => {
+            // remove envelope type
+            result1 = await removeEnvelopeType(instance, deployAddress, 0)
+            assert.ok(result1)
+
+            result2 = await instance.methods.checkEnvelopeType(0).call()
+            assert.equal(result2, false)
+
+            // cannot remove twice
+            try {
+                await removeEnvelopeType(instance, deployAddress, 0)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // check already removed
+            result4 = await instance.methods.checkEnvelopeType(0).call()
+            assert.equal(result4, false)
+        })
+        
+        it("should only be modified by contract owner", async() => {
+            // cannot add
+            try {
+                await addEnvelopeType(instance, randomAddress1, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+            result1 = await instance.methods.checkEnvelopeType(3).call()
+            assert.equal(result1, false)
+        })
+        
+        it("should emit an event when added", async() => {
+            result1 = await addEnvelopeType(instance, deployAddress, 3)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.EnvelopeTypeAdded)
+            assert.ok(result1.events.EnvelopeTypeAdded.returnValues)
+            assert.equal(result1.events.EnvelopeTypeAdded.event, "EnvelopeTypeAdded")
+            assert.equal(result1.events.EnvelopeTypeAdded.returnValues.envelopeType, 3)
+        })
+
+        it("should emit an event when removed", async() => {
+            result2 = await removeEnvelopeType(instance, deployAddress, 0)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.EnvelopeTypeRemoved)
+            assert.ok(result2.events.EnvelopeTypeRemoved.returnValues)
+            assert.equal(result2.events.EnvelopeTypeRemoved.event, "EnvelopeTypeRemoved")
+            assert.equal(result2.events.EnvelopeTypeRemoved.returnValues.envelopeType, 0)
+        })
+    })
+
+    describe("should modify process modes", () => {
+        it("should add a mode", async() => {
+              // add mode
+              result1 = await addMode(instance, deployAddress, 3)
+              assert.ok(result1.transactionHash)
+  
+              result2 = await instance.methods.checkMode(3).call()
+              assert.equal(result2, true)
+  
+              // cannot add twice
+              try {
+                  await addMode(instance, deployAddress, 3)
+                  assert.fail("The transaction should have thrown an error but didn't")
+              }
+              catch (err) {
+                  assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+              }
+  
+              // check already added
+              result4 = await instance.methods.checkMode(3).call()
+              assert.equal(result4, true)
+        })
+        it("should remove a mode", async() => {
+            // remove mode
+            result1 = await removeMode(instance, deployAddress, 0)
+            assert.ok(result1)
+
+            result2 = await instance.methods.checkMode(0).call()
+            assert.equal(result2, false)
+
+            // cannot remove twice
+            try {
+                await removeMode(instance, deployAddress, 0)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // check already removed
+            result4 = await instance.methods.checkMode(0).call()
+            assert.equal(result4, false)
+        })
+        it("should only be modified by contract owner", async() => {
+            // cannot add
+            try {
+                await addMode(instance, randomAddress1, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+            result1 = await instance.methods.checkMode(3).call()
+            assert.equal(result1, false)
+        })
+        it("should emit an event when added", async() => {
+            result1 = await addMode(instance, deployAddress, 3)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.ModeAdded)
+            assert.ok(result1.events.ModeAdded.returnValues)
+            assert.equal(result1.events.ModeAdded.event, "ModeAdded")
+            assert.equal(result1.events.ModeAdded.returnValues.mode, 3)
+        })
+        it("should emit an event when removed", async() => {
+            result1 = await removeMode(instance, deployAddress, 0)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.ModeRemoved)
+            assert.ok(result1.events.ModeRemoved.returnValues)
+            assert.equal(result1.events.ModeRemoved.event, "ModeRemoved")
+            assert.equal(result1.events.ModeRemoved.returnValues.mode, 0)  
         })
     })
 

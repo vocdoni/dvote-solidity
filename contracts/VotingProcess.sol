@@ -25,6 +25,9 @@ contract VotingProcess {
     address[] oracles; // Public key array
     string genesis; // Content Hashed URI
     uint256 chainId;
+    mapping(uint8 => bool) envelopeTypes; // valid envelope types
+    mapping(uint8 => bool) modes; // valid process modes
+
 
     // PER-PROCESS DATA
 
@@ -51,6 +54,10 @@ contract VotingProcess {
     event OracleAdded(address oracleAddress);
     event OracleRemoved(address oracleAddress);
     event ResultsPublished(bytes32 indexed processId, string results);
+    event EnvelopeTypeAdded(uint8 envelopeType);
+    event EnvelopeTypeRemoved(uint8 envelopeType);
+    event ModeAdded(uint8 mode);
+    event ModeRemoved(uint8 mode);
 
     // MODIFIERS
 
@@ -63,12 +70,12 @@ contract VotingProcess {
         _;
     }
 
-    modifier onlyContractOwner() {
+    modifier onlyContractOwner {
         require(msg.sender == contractOwner, "Only contract owner");
         _;
     }
 
-    modifier onlyOracle() {
+    modifier onlyOracle {
         bool authorized = false;
         for (uint256 i = 0; i < oracles.length; i++) {
             if (msg.sender == oracles[i]) {
@@ -155,12 +162,27 @@ contract VotingProcess {
 
     // METHODS
 
-    constructor(uint256 chainIdValue) public {
+    constructor(uint256 chainIdValue, uint8[] memory validEnvelopeTypes, uint8[] memory validModes) public {
         contractOwner = msg.sender;
         chainId = chainIdValue;
+        // add supported envelopeTypes and modes
+        for (uint i = 0; i < validEnvelopeTypes.length; i++) {
+            // avoid setting same envelopeType twice
+            if (envelopeTypes[validEnvelopeTypes[i]] == true) {
+                continue;
+            }
+            envelopeTypes[validEnvelopeTypes[i]] = true;
+        }
+        for (uint i = 0; i < validModes.length; i++) {
+            // avoid setting same mode twice
+            if (modes[validModes[i]] == true) {
+                continue;
+            }
+            modes[validModes[i]] = true;
+        }
     }
 
-    function setGenesis(string memory newValue) public onlyContractOwner() {
+    function setGenesis(string memory newValue) public onlyContractOwner {
         require(
             equalStrings(genesis, newValue) == false,
             "New genesis can't be the same"
@@ -175,7 +197,7 @@ contract VotingProcess {
         return genesis;
     }
 
-    function setChainId(uint256 newValue) public onlyContractOwner() {
+    function setChainId(uint256 newValue) public onlyContractOwner {
         require(chainId != newValue, "New chainId can't be the same");
         chainId = newValue;
 
@@ -198,18 +220,8 @@ contract VotingProcess {
         require(bytes(metadata).length > 0, "Empty metadata");
         require(bytes(merkleRoot).length > 0, "Empty merkleRoot");
         require(bytes(merkleTree).length > 0, "Empty merkleTree");
-        require(
-            envelopeType == 0 || // Realtime poll
-                envelopeType == 1 || // Petition sign
-                envelopeType == 4 || // Encrypted poll
-                envelopeType == 6 || // Encrypted private poll
-                envelopeType == 8 || // Realtime election
-                envelopeType == 10 || // Private election
-                envelopeType == 12 || // Election
-                envelopeType == 14, // Realtime private election
-            "Invalid envelope type"
-        );
-        require(mode == 0 || mode == 1, "Invalid process mode");
+        require(envelopeTypes[envelopeType] == true, "Invalid envelope type");
+        require(modes[mode] == true, "Invalid mode");
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
@@ -300,9 +312,57 @@ contract VotingProcess {
         emit ProcessStatusUpdated(msg.sender, processId, status);
     }
 
+    function addEnvelopeType(uint8 envelopeType)
+        public
+        onlyContractOwner
+    {
+        require(envelopeTypes[envelopeType] == false, "Envelope type already supported");
+        envelopeTypes[envelopeType] = true;
+
+        emit EnvelopeTypeAdded(envelopeType);
+    }
+
+    function removeEnvelopeType(uint8 envelopeType)
+        public
+        onlyContractOwner
+    {
+        require(envelopeTypes[envelopeType] == true, "Envelope type already not supported");
+        envelopeTypes[envelopeType] = false;
+
+        emit EnvelopeTypeRemoved(envelopeType);
+    }
+
+    function checkEnvelopeType(uint8 envelopeType) public view returns (bool) {
+        return envelopeTypes[envelopeType];
+    }
+
+    function addMode(uint8 mode)
+        public
+        onlyContractOwner
+    {
+        require(modes[mode] == false, "Mode already supported");
+        modes[mode] = true;
+
+        emit ModeAdded(mode);
+    }
+
+    function removeMode(uint8 mode)
+        public
+        onlyContractOwner
+    {
+        require(modes[mode] == true, "Mode already not supported");
+        modes[mode] = false;
+
+        emit ModeRemoved(mode);
+    }
+
+    function checkMode(uint8 mode) public view returns(bool) {
+        return modes[mode];
+    }
+
     function addValidator(string memory validatorPublicKey)
         public
-        onlyContractOwner()
+        onlyContractOwner
     {
         require(
             validatorExists(validatorPublicKey) == false,
@@ -315,7 +375,7 @@ contract VotingProcess {
 
     function removeValidator(uint256 idx, string memory validatorPublicKey)
         public
-        onlyContractOwner()
+        onlyContractOwner
     {
         require(
             equalStrings(validators[idx], validatorPublicKey),
@@ -341,7 +401,7 @@ contract VotingProcess {
 
     function removeOracle(uint256 idx, address oracleAddress)
         public
-        onlyContractOwner()
+        onlyContractOwner
     {
         require(idx < oracles.length, "Invalid index");
         require(

@@ -200,6 +200,19 @@ export interface VotingProcessContractMethods {
     /** Update the voting process status that corresponds to the given Id */
     setProcessStatus(processId: string, status: IStatus): Promise<ContractTransaction>,
 
+    /** Add a valid envelope type */
+    addEnvelopeType(envelopeType: number): Promise<ContractTransaction>,
+    /** Remove a valid envelope type */
+    removeEnvelopeType(envelopeType: number): Promise<ContractTransaction>,
+    /** check if envelopeType is accepted */
+    checkEnvelopeType(envelopeType: number): Promise<boolean>, 
+    /** Add a valid mode type */
+    addMode(mode: number): Promise<ContractTransaction>,
+    /** Remove a valid mode type */
+    removeMode(mode: number): Promise<ContractTransaction>,
+    /** check if mode is accepted */
+    checkMode(mode: number): Promise<boolean>,
+
     /** Register the public key of a new validator */
     addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
     /** Remove the public key at the given index for a validator */
