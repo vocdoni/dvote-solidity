@@ -32,9 +32,9 @@ all: node_modules js-output contract-output
 node_modules: package.json package-lock.json
 	npm install || true
 	if [ -d node_modules/web3-providers/node_modules/websocket ]; then \
-      rm -Rf node_modules/web3-providers/node_modules/websocket/.git ; \
-      rm -Rf node_modules/web3-providers-ws/node_modules/websocket/.git ; \
-   fi
+	  rm -Rf node_modules/web3-providers/node_modules/websocket/.git ; \
+	  rm -Rf node_modules/web3-providers-ws/node_modules/websocket/.git ; \
+	fi
 	@touch $@
 
 js-output: build/index.js
@@ -60,7 +60,7 @@ build/solc: $(CONTRACT_SOURCES)
 	$(SOLC) --optimize --bin --abi -o $@ $(CONTRACT_SOURCES)
 	@touch $@
 
-test: all
+test: clean all
 	npm run test
 
 clean: 

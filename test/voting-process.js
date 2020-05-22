@@ -1,5 +1,19 @@
 const assert = require("assert")
-const { getWeb3, increaseTimestamp, deployVotingProcess } = require("../lib/util")
+const { getWeb3,
+    increaseTimestamp,
+    deployVotingProcess,
+    setProcessStatus,
+    addOracle,
+    addValidator,
+    removeOracle,
+    removeValidator,
+    publishResults,
+    addEnvelopeType,
+    removeEnvelopeType,
+    addMode,
+    removeMode
+} = require("../lib/util")
+const { ProcessEnvelopeType, ProcessMode, ProcessStatus } = require("..")
 
 const web3 = getWeb3()
 
@@ -25,16 +39,20 @@ describe('VotingProcess', function () {
         entityAddress = accounts[1]
         randomAddress1 = accounts[2]
         randomAddress2 = accounts[3]
+        authorizedOracle1 = accounts[4]
+        authorizedOracle2 = accounts[5]
 
         genesis = "0x1234567890123456789012345678901234567890123123123"
         chainId = 1
+        validEnvelopeTypes = [0,1,4,6,8,10,12,14]
+        validModes = [0,1]
 
-        instance = await deployVotingProcess(deployAddress, chainId)
+        instance = await deployVotingProcess(deployAddress, chainId, validEnvelopeTypes, validModes)
     })
 
 
     it("should deploy the contract", async () => {
-        const localInstance = await deployVotingProcess(deployAddress, chainId)
+        const localInstance = await deployVotingProcess(deployAddress, chainId, validEnvelopeTypes, validModes)
 
         assert.ok(localInstance)
         assert.ok(localInstance.options)
@@ -81,7 +99,7 @@ describe('VotingProcess', function () {
 
         assert.equal(processId1Expected, processId1Actual)
 
-        const creationResult = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+        const creationResult = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
             from: entityAddress,
             nonce: await web3.eth.getTransactionCount(entityAddress)
         })
@@ -221,12 +239,166 @@ describe('VotingProcess', function () {
         })
     })
 
+    describe("should modify envelopeTypes", () => {
+        it("should add an envelopeType", async() => {
+            // add envelope type
+            result1 = await addEnvelopeType(instance, deployAddress, 3)
+            assert.ok(result1.transactionHash)
+
+            result2 = await instance.methods.checkEnvelopeType(3).call()
+            assert.equal(result2, true)
+
+            // cannot add twice
+            try {
+                await addEnvelopeType(instance, deployAddress, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // check already added
+            result4 = await instance.methods.checkEnvelopeType(3).call()
+            assert.equal(result4, true)
+        })
+        
+        it("should remove an envelopeType", async() => {
+            // remove envelope type
+            result1 = await removeEnvelopeType(instance, deployAddress, 0)
+            assert.ok(result1)
+
+            result2 = await instance.methods.checkEnvelopeType(0).call()
+            assert.equal(result2, false)
+
+            // cannot remove twice
+            try {
+                await removeEnvelopeType(instance, deployAddress, 0)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // check already removed
+            result4 = await instance.methods.checkEnvelopeType(0).call()
+            assert.equal(result4, false)
+        })
+        
+        it("should only be modified by contract owner", async() => {
+            // cannot add
+            try {
+                await addEnvelopeType(instance, randomAddress1, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+            result1 = await instance.methods.checkEnvelopeType(3).call()
+            assert.equal(result1, false)
+        })
+        
+        it("should emit an event when added", async() => {
+            result1 = await addEnvelopeType(instance, deployAddress, 3)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.EnvelopeTypeAdded)
+            assert.ok(result1.events.EnvelopeTypeAdded.returnValues)
+            assert.equal(result1.events.EnvelopeTypeAdded.event, "EnvelopeTypeAdded")
+            assert.equal(result1.events.EnvelopeTypeAdded.returnValues.envelopeType, 3)
+        })
+
+        it("should emit an event when removed", async() => {
+            result2 = await removeEnvelopeType(instance, deployAddress, 0)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.EnvelopeTypeRemoved)
+            assert.ok(result2.events.EnvelopeTypeRemoved.returnValues)
+            assert.equal(result2.events.EnvelopeTypeRemoved.event, "EnvelopeTypeRemoved")
+            assert.equal(result2.events.EnvelopeTypeRemoved.returnValues.envelopeType, 0)
+        })
+    })
+
+    describe("should modify process modes", () => {
+        it("should add a mode", async() => {
+              // add mode
+              result1 = await addMode(instance, deployAddress, 3)
+              assert.ok(result1.transactionHash)
+  
+              result2 = await instance.methods.checkMode(3).call()
+              assert.equal(result2, true)
+  
+              // cannot add twice
+              try {
+                  await addMode(instance, deployAddress, 3)
+                  assert.fail("The transaction should have thrown an error but didn't")
+              }
+              catch (err) {
+                  assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+              }
+  
+              // check already added
+              result4 = await instance.methods.checkMode(3).call()
+              assert.equal(result4, true)
+        })
+        it("should remove a mode", async() => {
+            // remove mode
+            result1 = await removeMode(instance, deployAddress, 0)
+            assert.ok(result1)
+
+            result2 = await instance.methods.checkMode(0).call()
+            assert.equal(result2, false)
+
+            // cannot remove twice
+            try {
+                await removeMode(instance, deployAddress, 0)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // check already removed
+            result4 = await instance.methods.checkMode(0).call()
+            assert.equal(result4, false)
+        })
+        it("should only be modified by contract owner", async() => {
+            // cannot add
+            try {
+                await addMode(instance, randomAddress1, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+            result1 = await instance.methods.checkMode(3).call()
+            assert.equal(result1, false)
+        })
+        it("should emit an event when added", async() => {
+            result1 = await addMode(instance, deployAddress, 3)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.ModeAdded)
+            assert.ok(result1.events.ModeAdded.returnValues)
+            assert.equal(result1.events.ModeAdded.event, "ModeAdded")
+            assert.equal(result1.events.ModeAdded.returnValues.mode, 3)
+        })
+        it("should emit an event when removed", async() => {
+            result1 = await removeMode(instance, deployAddress, 0)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.ModeRemoved)
+            assert.ok(result1.events.ModeRemoved.returnValues)
+            assert.equal(result1.events.ModeRemoved.event, "ModeRemoved")
+            assert.equal(result1.events.ModeRemoved.returnValues.mode, 0)  
+        })
+    })
+
     describe("should create a process", () => {
         it("should allow anyone to create one", async () => {
             assert(instance.methods.create)
 
             // TODO: CHANGEME
-            await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
                 .send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
@@ -236,7 +408,7 @@ describe('VotingProcess', function () {
             let processIdActual = await instance.methods.getNextProcessId(entityAddress).call()
             assert.equal(processIdExpected, processIdActual)
 
-            await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
                 .send({
                     from: randomAddress1,
                     nonce: await web3.eth.getTransactionCount(randomAddress1)
@@ -246,7 +418,7 @@ describe('VotingProcess', function () {
             processIdActual = await instance.methods.getNextProcessId(randomAddress1).call()
             assert.equal(processIdExpected, processIdActual)
 
-            await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks)
                 .send({
                     from: randomAddress2,
                     nonce: await web3.eth.getTransactionCount(randomAddress2)
@@ -259,7 +431,7 @@ describe('VotingProcess', function () {
         it("should emit an event", async () => {
             const expectedProcessId = await instance.methods.getNextProcessId(entityAddress).call()
 
-            let result = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            let result = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -277,7 +449,7 @@ describe('VotingProcess', function () {
             const prev = Number(await instance.methods.entityProcessCount(entityAddress).call())
             assert.equal(prev, 0)
 
-            await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -291,7 +463,7 @@ describe('VotingProcess', function () {
             assert.equal(prev, 0)
 
             try {
-                await instance.methods.create("snark-vote", "", "", "", 0, 0).send({
+                await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, "", "", "", 0, 0).send({
                     from: entityAddress,
                     nonce: await web3.eth.getTransactionCount(entityAddress)
                 })
@@ -311,12 +483,11 @@ describe('VotingProcess', function () {
             let metadata = "ipfs://ipfs/some-hash-here!sha3-hash"
             let censusMerkleRoot = "0x1234567890"
             let censusMerkleTree = "ipfs://ipfs/some-hash-there!sha3-hash-there"
-            // let voteEncryptionPublicKey = "TESTING-ENCRYPTION_KEY"
             let startBlock = 12345678
             let numberOfBlocks = 50000
 
             // 1
-            await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -326,17 +497,15 @@ describe('VotingProcess', function () {
 
             let processData = await instance.methods.get(processId).call()
 
-            assert.equal(processData.processType, "snark-vote")
+            assert.equal(processData.envelopeType, 0)
+            assert.equal(processData.mode, 0)
             assert.equal(processData.entityAddress, entityAddress)
             assert.equal(processData.metadata, metadata)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
-            assert.equal(processData.canceled, false, "The process should not start as canceled")
+            assert.equal(processData.status, ProcessStatus.OPEN, "The process should start open")
             assert.equal(processData.startBlock, startBlock)
             assert.equal(processData.numberOfBlocks, numberOfBlocks)
-
-            let privateKey = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(privateKey, "")
 
             // 2
             metadata = "ipfs://ipfs/more-hash-there!sha3-hash"
@@ -346,7 +515,7 @@ describe('VotingProcess', function () {
             startBlock = 23456789
             numberOfBlocks = 1000
 
-            await instance.methods.create("poll-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            await instance.methods.create(ProcessEnvelopeType.ENCRYPTED_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -356,67 +525,49 @@ describe('VotingProcess', function () {
 
             processData = await instance.methods.get(processId).call()
 
-            assert.equal(processData.processType, "poll-vote")
+            assert.equal(processData.envelopeType, 4)
+            assert.equal(processData.mode, 0)
             assert.equal(processData.entityAddress, entityAddress)
             assert.equal(processData.metadata, metadata)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
             assert.equal(processData.censusMerkleRoot, censusMerkleRoot)
-            assert.equal(processData.canceled, false, "The process should not start as canceled")
+            assert.equal(processData.status, ProcessStatus.OPEN, "The process should start as open")
             assert.equal(processData.startBlock, startBlock)
             assert.equal(processData.numberOfBlocks, numberOfBlocks)
-
-            privateKey = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(privateKey, "")
         })
     })
 
     describe("should cancel the process", () => {
         it("only when the entity account requests it", async () => {
-
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
-
             // Create
-            const result1 = await instance.methods.create("petition-sign", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.PETITION_SIGNING, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
-
             assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
 
-
             // Canceled by the creator
-            await instance.methods.cancel(processId1).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
+            await setProcessStatus(instance, entityAddress, processId1, 2)
             const processData1 = await instance.methods.get(processId1).call()
-
-
-            assert.equal(processData1.processType, "petition-sign")
+            assert.equal(processData1.envelopeType, 1)
+            assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.canceled, true, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
 
-            // CREATE AGAIN
-
+            // Create again
             const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
-
             // Create
-            const result3 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result2 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,  // <<--
                 nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
             })
-
-            assert.equal(result3.events.ProcessCreated.returnValues.processId, processId2)
+            assert.equal(result2.events.ProcessCreated.returnValues.processId, processId2)
 
             // Try to cancel from another account
             try {
-                await instance.methods.cancel(processId2).send({
-                    from: randomAddress1,  // <<--
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)  // <<--
-                })
-
+                await setProcessStatus(instance, randomAddress1, processId2, 2)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -424,20 +575,18 @@ describe('VotingProcess', function () {
             }
 
             const processData2 = await instance.methods.get(processId2).call()
-
-            assert.equal(processData2.processType, "snark-vote")
+            assert.equal(processData2.envelopeType, 0)
+            assert.equal(processData2.mode, 0)
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.canceled, false, "The process should remain active")
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should remain open")
 
         })
-        it("only if is not yet canceled", async () => {
-
+        it("if is not yet canceled", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
-
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
@@ -445,33 +594,519 @@ describe('VotingProcess', function () {
             assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
 
             // Canceled by the creator
-            const result2 = await instance.methods.cancel(processId1).send({
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 2)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
+
+            // Try to cancel again
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 2)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should now be canceled")
+        })
+
+        it("if it not yet ended", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
 
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Ended by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 1)
             assert.ok(result2)
             assert.ok(result2.events)
-            assert.ok(result2.events.ProcessCanceled)
-            assert.ok(result2.events.ProcessCanceled.returnValues)
-            assert.equal(result2.events.ProcessCanceled.event, "ProcessCanceled")
-            assert.equal(result2.events.ProcessCanceled.returnValues.processId, processId1)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
 
             const processData1 = await instance.methods.get(processId1).call()
-
-
-            assert.equal(processData1.processType, "snark-vote")
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
             assert.equal(processData1.entityAddress, entityAddress)
             assert.equal(processData1.metadata, metadata)
-            assert.equal(processData1.canceled, true, "The process should now be canceled")
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
 
-            // Try to cancel again
+            // Try to cancel
             try {
-                await instance.methods.cancel(processId1).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
+                await setProcessStatus(instance, entityAddress, processId1, 2)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
 
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should not be canceled")
+        })
+
+        it("should emit an event", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 2)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
+        })
+    })
+
+    describe("should end the process", () => {
+        it("only when the entity account requests it", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            const result1 = await instance.methods.create(ProcessEnvelopeType.PETITION_SIGNING, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Ended by the creator
+            await setProcessStatus(instance, entityAddress, processId1, 1)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 1)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
+
+            // CREATE AGAIN
+            const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
+            // Create
+            const result2 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,  // <<--
+                nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
+            })
+            assert.equal(result2.events.ProcessCreated.returnValues.processId, processId2)
+
+            // Try to end from another account
+            try {
+                await setProcessStatus(instance, randomAddress1, processId2, 1)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData2 = await instance.methods.get(processId2).call()
+            assert.equal(processData2.envelopeType, 0)
+            assert.equal(processData2.mode, 0)
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should remain open")
+        })
+
+        it("if is not yet ended", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Ended by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 1)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
+
+            // Try to end again
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 1)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should now be canceled")
+        })
+
+        it("if it not canceled", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 2)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
+
+            // Try to end
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 1)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should be canceled")
+        })
+
+        it("should emit an event", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 1)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
+        })
+    })
+
+    describe("should pause the process", () => {
+
+        it("only if the entity account requests it", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            const result1 = await instance.methods.create(ProcessEnvelopeType.PETITION_SIGNING, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Paused by the creator
+            await setProcessStatus(instance, entityAddress, processId1, 3)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 1)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.PAUSED, "The process should now be paused")
+
+            // CREATE AGAIN
+            const processId2 = await instance.methods.getProcessId(entityAddress, 1).call()
+
+            // Create
+            const result2 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,  // <<--
+                nonce: await web3.eth.getTransactionCount(entityAddress)  // <<--
+            })
+            assert.equal(result2.events.ProcessCreated.returnValues.processId, processId2)
+
+            // Try to end from another account
+            try {
+                await setProcessStatus(instance, randomAddress1, processId2, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData2 = await instance.methods.get(processId2).call()
+            assert.equal(processData2.envelopeType, 0)
+            assert.equal(processData2.mode, 0)
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should remain open")
+        })
+
+        it("if not canceled", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 2)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
+
+            // Try to pause
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should be canceled")
+        })
+
+        it("if not ended", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Ended by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 1)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
+
+            // Try to pause
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should be ended")
+        })
+
+        it("if not paused yet", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Paused by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 3)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.PAUSED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.PAUSED, "The process should now be paused")
+
+            // Try to pause
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 3)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.PAUSED, "The process should be paused")
+        })
+
+        it("if opened", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 2)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
+        })
+
+        it("should emit an event", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 3)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.PAUSED)
+
+        })
+    })
+
+    describe("should open the process", () => {
+        it("if not canceled", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Canceled by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 2)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.CANCELED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.CANCELED, "The process should now be canceled")
+
+            // Try to open
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 0)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -483,66 +1118,141 @@ describe('VotingProcess', function () {
 
             assert.equal(processData2.entityAddress, entityAddress)
             assert.equal(processData2.metadata, metadata)
-            assert.equal(processData2.canceled, true, "The process should now be canceled")
+            assert.equal(processData2.status, ProcessStatus.CANCELED, "The process should be canceled")
         })
 
-        it("should emit an event", async () => {
+        it("if not ended", async () => {
             const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
-
             // Create
             // TODO: CHANGEME
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
-
             assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
 
-            // Canceled by the creator
-            const result2 = await instance.methods.cancel(processId1).send({
+            // Ended by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 1)
+            assert.ok(result2)
+            assert.ok(result2.events)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.ENDED)
+
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.ENDED, "The process should now be ended")
+
+            // Try to open
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 0)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.ENDED, "The process should be ended")
+        })
+
+        it("if not opened yet", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
 
+            // Try to open
+            try {
+                await setProcessStatus(instance, entityAddress, processId1, 0)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Nothing else should have changed
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should be open")
+        })
+
+        it("if paused", async () => {
+            const processId1 = await instance.methods.getProcessId(entityAddress, 0).call()
+            // Create
+            // TODO: CHANGEME
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+                from: entityAddress,
+                nonce: await web3.eth.getTransactionCount(entityAddress)
+            })
+            assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
+
+            // Paused by the creator
+            const result2 = await setProcessStatus(instance, entityAddress, processId1, 3)
             assert.ok(result2)
             assert.ok(result2.events)
-            assert.ok(result2.events.ProcessCanceled)
-            assert.ok(result2.events.ProcessCanceled.returnValues)
-            assert.equal(result2.events.ProcessCanceled.event, "ProcessCanceled")
-            assert.equal(result2.events.ProcessCanceled.returnValues.processId, processId1)
+            assert.ok(result2.events.ProcessStatusUpdated)
+            assert.ok(result2.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result2.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result2.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.PAUSED)
 
+            const processData1 = await instance.methods.get(processId1).call()
+            assert.equal(processData1.envelopeType, 0)
+            assert.equal(processData1.mode, 0)
+            assert.equal(processData1.entityAddress, entityAddress)
+            assert.equal(processData1.metadata, metadata)
+            assert.equal(processData1.status, ProcessStatus.PAUSED, "The process should now be canceled")
+
+            // Open by the creator
+            const result3 = await setProcessStatus(instance, entityAddress, processId1, 0)
+            assert.ok(result3)
+            assert.ok(result3.events)
+            assert.ok(result3.events.ProcessStatusUpdated)
+            assert.ok(result3.events.ProcessStatusUpdated.returnValues)
+            assert.equal(result3.events.ProcessStatusUpdated.event, "ProcessStatusUpdated")
+            assert.equal(result3.events.ProcessStatusUpdated.returnValues.processId, processId1)
+            assert.equal(result3.events.ProcessStatusUpdated.returnValues.status, ProcessStatus.OPEN)
+
+            const processData2 = await instance.methods.get(processId1).call()
+            assert.equal(processData2.envelopeType, 0)
+            assert.equal(processData2.mode, 0)
+            assert.equal(processData2.entityAddress, entityAddress)
+            assert.equal(processData2.metadata, metadata)
+            assert.equal(processData2.status, ProcessStatus.OPEN, "The process should now be open")
         })
     })
 
     describe("should register a validator", () => {
 
         const validatorPublicKey = "0x1234"
+        const validatorPublicKey2 = "0x4321"
 
         it("only when the contract owner requests it", async () => {
-
             // Register a validator
-            const result2 = await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result2.transactionHash)
+            const result1 = await addValidator(instance, deployAddress, validatorPublicKey)
+            assert.ok(result1.transactionHash)
 
             // Get validator list
-            const result3 = await instance.methods.getValidators().call()
-            assert.equal(result3.length, 1)
+            const result2 = await instance.methods.getValidators().call()
+            assert.equal(result2.length, 1)
 
             // Attempt to add a validator by someone else
             try {
-                await instance.methods.addValidator(
-                    validatorPublicKey,
-                ).send({
-                    from: randomAddress1, // <<--
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
-
+                await addValidator(instance, randomAddress1, validatorPublicKey)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -550,99 +1260,62 @@ describe('VotingProcess', function () {
             }
 
             // Get validator list
-            const result4 = await instance.methods.getValidators().call()
-            assert.equal(result4.length, 1)
-
-        })
-
-        it("should fail if NOT owner adds Validator", async () => {
-
-
-            // Register a validator
-            const result2 = await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result2.transactionHash)
-
-            // Get validator list
             const result3 = await instance.methods.getValidators().call()
             assert.equal(result3.length, 1)
-
-            // Attempt to add a validator by someone else
-            try {
-                await instance.methods.addValidator(
-                    validatorPublicKey,
-                ).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-
-                assert.fail("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get validator list
-            const result4 = await instance.methods.getValidators().call()
-            assert.equal(result4.length, 1)
-
         })
+
         it("should add the validator public key to the validator list", async () => {
-
             // Register validator 1
-            const result2 = await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result2.transactionHash)
+            const result1 = await addValidator(instance, deployAddress, validatorPublicKey)
+            assert.ok(result1.transactionHash)
 
             // Get validator list
-            const result3 = await instance.methods.getValidators().call()
-            assert.equal(result3.length, 1)
-            assert.deepEqual(result3, [validatorPublicKey])
+            const result2 = await instance.methods.getValidators().call()
+            assert.equal(result2.length, 1)
+            assert.deepEqual(result2, [validatorPublicKey])
 
             // Adding validator #2
-            const result4 = await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result4.transactionHash)
+            const result3 = await addValidator(instance, deployAddress, validatorPublicKey2)
+            assert.ok(result3.transactionHash)
 
             // Get validator list
-            const result5 = await instance.methods.getValidators().call()
-            assert.equal(result5.length, 2)
+            const result4 = await instance.methods.getValidators().call()
+            assert.equal(result4.length, 2)
 
+        })
+
+        it("should not add the validator public key to the validator list if exists", async () => {
+            // Register validator 1
+            const result1 = await addValidator(instance, deployAddress, validatorPublicKey)
+            assert.ok(result1.transactionHash)
+
+            // Get validator list
+            const result2 = await instance.methods.getValidators().call()
+            assert.equal(result2.length, 1)
+            assert.deepEqual(result2, [validatorPublicKey])
+
+            // Adding validator #2
+            try {
+                await addValidator(instance, deployAddress, validatorPublicKey)
+                assert.fail("The transaction should have thrown an error but didn't")
+            } catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get validator list
+            const result3 = await instance.methods.getValidators().call()
+            assert.equal(result3.length, 1)
         })
 
         it("should emit an event", async () => {
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
             // Register validator
-            const result2 = await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result2)
-            assert.ok(result2.events)
-            assert.ok(result2.events.ValidatorAdded)
-            assert.ok(result2.events.ValidatorAdded.returnValues)
-            assert.equal(result2.events.ValidatorAdded.event, "ValidatorAdded")
-            assert.equal(result2.events.ValidatorAdded.returnValues.validatorPublicKey, validatorPublicKey)
-
+            const result1 = await addValidator(instance, deployAddress, validatorPublicKey)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.ValidatorAdded)
+            assert.ok(result1.events.ValidatorAdded.returnValues)
+            assert.equal(result1.events.ValidatorAdded.event, "ValidatorAdded")
+            assert.equal(result1.events.ValidatorAdded.returnValues.validatorPublicKey, validatorPublicKey)
         })
     })
 
@@ -650,25 +1323,15 @@ describe('VotingProcess', function () {
 
         const validatorPublicKey = "0x1234"
 
-        it("only when the entity account requests it", async () => {
+        it("only when the contract owner account requests it", async () => {
 
             // Register validator
-            await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            const result1 = await addValidator(instance, deployAddress, validatorPublicKey)
+            assert.ok(result1.transactionHash)
 
             // Attempt to disable the validator from someone else
             try {
-                await instance.methods.removeValidator(
-                    0,
-                    validatorPublicKey
-                ).send({
-                    from: randomAddress1,   // <<--
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
+                await removeValidator(instance, randomAddress1, 0, validatorPublicKey)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -680,47 +1343,25 @@ describe('VotingProcess', function () {
             assert.equal(result2.length, 1)
 
             // Disable validator from the creator
-            const result3 = await instance.methods.removeValidator(
-                0,
-                validatorPublicKey
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            const result3 = await removeValidator(instance, deployAddress, 0, validatorPublicKey)
+            assert.ok(result3.transactionHash)
 
             // Get validator list
             const result4 = await instance.methods.getValidators().call()
             assert.equal(result4.length, 0)
             assert.deepEqual(result4, [])
-
         })
 
         it("should fail if the idx does not match validatorPublicKey", async () => {
-
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
             const nonExistingValidatorPublicKey = "0x123123"
 
             // Register a validator
-            const result2 = await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-
+            const result2 = await addValidator(instance, deployAddress, validatorPublicKey)
             assert.ok(result2.transactionHash)
 
             // Attempt to disable non-existing validator
             try {
-                await instance.methods.removeValidator(
-                    5,
-                    nonExistingValidatorPublicKey   // <<--
-                ).send({
-                    from: randomAddress1,
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
-
+                await removeValidator(instance, randomAddress1, 5, nonExistingValidatorPublicKey)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -731,68 +1372,38 @@ describe('VotingProcess', function () {
             const result4 = await instance.methods.getValidators().call()
             assert.equal(result4.length, 1)
             assert.deepEqual(result4, [validatorPublicKey])
-
         })
 
         it("should emit an event", async () => {
-
             // Register validator
-            await instance.methods.addValidator(
-                validatorPublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
+            await addValidator(instance, deployAddress, validatorPublicKey)
             // Disable validator
-            const result3 = await instance.methods.removeValidator(
-                0,
-                validatorPublicKey
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result3)
-            assert.ok(result3.events)
-            assert.ok(result3.events.ValidatorRemoved)
-            assert.ok(result3.events.ValidatorRemoved.returnValues)
-            assert.equal(result3.events.ValidatorRemoved.event, "ValidatorRemoved")
-            assert.equal(result3.events.ValidatorRemoved.returnValues.validatorPublicKey, validatorPublicKey)
+            const result1 = await removeValidator(instance, deployAddress, 0, validatorPublicKey)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.ValidatorRemoved)
+            assert.ok(result1.events.ValidatorRemoved.returnValues)
+            assert.equal(result1.events.ValidatorRemoved.event, "ValidatorRemoved")
+            assert.equal(result1.events.ValidatorRemoved.returnValues.validatorPublicKey, validatorPublicKey)
         })
     })
 
 
-    describe("should register a oracle", () => {
-
-        const oraclePublicKey = "0x1234"
+    describe("should register an oracle", () => {
 
         it("only when the contract owner requests it", async () => {
-
             // Register a oracle
-            const result2 = await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result2.transactionHash)
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1.transactionHash)
 
             // Get oracle list
-            const result3 = await instance.methods.getOracles().call()
-            assert.equal(result3.length, 1)
-            assert.deepEqual(result3, [oraclePublicKey])
+            const result2 = await instance.methods.getOracles().call()
+            assert.equal(result2.length, 1)
+            assert.deepEqual(result2, [authorizedOracle1])
 
             // Attempt to add a oracle by someone else
             try {
-                await instance.methods.addOracle(
-                    oraclePublicKey,
-                ).send({
-                    from: randomAddress1, // <<--
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
-
+                await addOracle(instance, randomAddress2, authorizedOracle1)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -800,86 +1411,75 @@ describe('VotingProcess', function () {
             }
 
             // Get oracle list
-            const result4 = await instance.methods.getOracles().call()
-            assert.equal(result4.length, 1)
-            assert.deepEqual(result4, [oraclePublicKey])
+            const result3 = await instance.methods.getOracles().call()
+            assert.equal(result3.length, 1)
+            assert.deepEqual(result3, [authorizedOracle1])
         })
 
-        it("should add the oracle public key to the oracle list", async () => {
-
+        it("should add the oracle address to the oracle list", async () => {
             // Register oracle 1
-            const result2 = await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1.transactionHash)
 
-            assert.ok(result2.transactionHash)
+            // Get oracle list
+            const result2 = await instance.methods.getOracles().call()
+            assert.equal(result2.length, 1)
+            assert.deepEqual(result2, [authorizedOracle1])
+
+            // Adding oracle #2
+            const result3 = await addOracle(instance, deployAddress, authorizedOracle2)
+            assert.ok(result3.transactionHash)
+
+            // Get oracle list
+            const result4 = await instance.methods.getOracles().call()
+            assert.equal(result4.length, 2)
+        })
+
+        it("should not add the oracle address to the oracle list if exists", async () => {
+            // Register oracle 1
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1.transactionHash)
+
+            // Get oracle list
+            const result2 = await instance.methods.getOracles().call()
+            assert.equal(result2.length, 1)
+            assert.deepEqual(result2, [authorizedOracle1])
+
+            // Adding oracle #2
+            try {
+                await addOracle(instance, deployAddress, authorizedOracle1)
+                assert.fail("The transaction should have thrown an error but didn't")
+            } catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
 
             // Get oracle list
             const result3 = await instance.methods.getOracles().call()
             assert.equal(result3.length, 1)
-            assert.deepEqual(result3, [oraclePublicKey])
-
-            // Adding oracle #2
-            const result4 = await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result4.transactionHash)
-
-            // Get oracle list
-            const result5 = await instance.methods.getOracles().call()
-            assert.equal(result5.length, 2)
-
         })
 
         it("should emit an event", async () => {
             // Register oracle
-            const result2 = await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result2)
-            assert.ok(result2.events)
-            assert.ok(result2.events.OracleAdded)
-            assert.ok(result2.events.OracleAdded.returnValues)
-            assert.equal(result2.events.OracleAdded.event, "OracleAdded")
-            assert.equal(result2.events.OracleAdded.returnValues.oraclePublicKey, oraclePublicKey)
-
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.OracleAdded)
+            assert.ok(result1.events.OracleAdded.returnValues)
+            assert.equal(result1.events.OracleAdded.event, "OracleAdded")
+            assert.equal(result1.events.OracleAdded.returnValues.oracleAddress, authorizedOracle1)
         })
     })
 
-    describe("should remove a oracle", () => {
+    describe("should remove an oracle", () => {
 
-        const oraclePublicKey = "0x1234"
-
-        it("only when the entity account requests it", async () => {
-
+        it("only when the contract owner requests it", async () => {
             // Register oracle
-            await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1.transactionHash)
 
             // Attempt to disable the oracle from someone else
             try {
-                await instance.methods.removeOracle(
-                    0,
-                    oraclePublicKey
-                ).send({
-                    from: randomAddress1,   // <<--
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
+                await removeOracle(instance, randomAddress2, 0, authorizedOracle1)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -891,46 +1491,51 @@ describe('VotingProcess', function () {
             assert.equal(result2.length, 1)
 
             // Disable oracle from the creator
-            const result3 = await instance.methods.removeOracle(
-                0,
-                oraclePublicKey
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            const result3 = await removeOracle(instance, deployAddress, 0, authorizedOracle1)
+            assert.ok(result3.transactionHash)
 
             // Get oracle list
             const result4 = await instance.methods.getOracles().call()
             assert.equal(result4.length, 0)
             assert.deepEqual(result4, [])
-
         })
 
-        it("should fail if the idx does not match oraclePublicKey", async () => {
-
-            const nonExistingoraclePublicKey = "0x123123"
+        it("should fail if the idx is not valid", async () => {
+            // Register a oracle
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1.transactionHash)
 
             // Register a oracle
-            const result2 = await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-
+            const result2 = await addOracle(instance, deployAddress, authorizedOracle2)
             assert.ok(result2.transactionHash)
 
             // Attempt to disable non-existing oracle
             try {
-                await instance.methods.removeOracle(
-                    5,
-                    nonExistingoraclePublicKey   // <<--
-                ).send({
-                    from: randomAddress1,
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
+                await removeOracle(instance, deployAddress, 5, authorizedOracle2)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
 
+            // Get oracle list
+            const result3 = await instance.methods.getOracles().call()
+            assert.equal(result3.length, 2)
+            assert.deepEqual(result3, [authorizedOracle1, authorizedOracle2])
+        })
+
+        it("should fail if the idx does not match oracleAddress", async () => {
+            // Register a oracle
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1.transactionHash)
+
+            // Register a oracle
+            const result2 = await addOracle(instance, deployAddress, authorizedOracle2)
+            assert.ok(result2.transactionHash)
+
+            // Attempt to disable non-existing oracle
+            try {
+                await removeOracle(instance, deployAddress, 1, randomAddress2)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -939,257 +1544,41 @@ describe('VotingProcess', function () {
 
             // Get oracle list
             const result4 = await instance.methods.getOracles().call()
-            assert.equal(result4.length, 1)
-            assert.deepEqual(result4, [oraclePublicKey])
-
+            assert.equal(result4.length, 2)
+            assert.deepEqual(result4, [authorizedOracle1, authorizedOracle2])
         })
 
         it("should emit an event", async () => {
-
             // Register oracle
-            await instance.methods.addOracle(
-                oraclePublicKey,
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
+            await addOracle(instance, deployAddress, authorizedOracle1)
 
             // Disable oracle
-            const result3 = await instance.methods.removeOracle(
-                0,
-                oraclePublicKey
-            ).send({
-                from: deployAddress,
-                nonce: await web3.eth.getTransactionCount(deployAddress)
-            })
-
-            assert.ok(result3)
-            assert.ok(result3.events)
-            assert.ok(result3.events.OracleRemoved)
-            assert.ok(result3.events.OracleRemoved.returnValues)
-            assert.equal(result3.events.OracleRemoved.event, "OracleRemoved")
-            assert.equal(result3.events.OracleRemoved.returnValues.oraclePublicKey, oraclePublicKey)
+            const result1 = await removeOracle(instance, deployAddress, 0, authorizedOracle1)
+            assert.ok(result1)
+            assert.ok(result1.events)
+            assert.ok(result1.events.OracleRemoved)
+            assert.ok(result1.events.OracleRemoved.returnValues)
+            assert.equal(result1.events.OracleRemoved.event, "OracleRemoved")
+            assert.equal(result1.events.OracleRemoved.returnValues.oracleAddress, authorizedOracle1)
         })
     })
-
-    describe("should accept the encryption private key", () => {
-
-        // const validatorPublicKey = "0x1234"
-        const privateKey = "0x01234567890"
-
-        it("only when the entity account requests it", async () => {
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result1.transactionHash)
-
-            // Attempt to publish the private key by someone else
-            try {
-                await instance.methods.publishPrivateKey(processId, privateKey).send({
-                    from: randomAddress1,
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
-                assert.fail("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get private key
-            const result2 = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(result2, "", "There should be no private key")
-
-            // Reveal the private key
-            await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            // Get private key
-            const result3 = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(result3, privateKey, "The private key should match")
-
-        }).timeout(6000)
-
-        it("only when the processId exists", async () => {
-            const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
-
-            // Attempt to publish the key of a random processId
-            try {
-                // Reveal the private key
-                await instance.methods.publishPrivateKey(nonExistingProcessId, privateKey).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-
-                assert.fail("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                assert(err.message.match(/opcode/), "The transaction threw an unexpected error:\n" + err.message)
-            }
-        })
-
-        it("only when the process is not canceled", async () => {
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-            assert.ok(result1.transactionHash)
-
-            // Cancel the process
-            const result2 = await instance.methods.cancel(processId).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-            assert.ok(result2.transactionHash)
-
-            // wait until endTime
-            await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
-            // await increaseTimestamp(4)    // Not working with ganache by now
-
-            // Attempt to publish the private key after canceling
-            try {
-                await instance.methods.publishPrivateKey(processId, privateKey).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-                assert.fail("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get private key
-            const result3 = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(result3, "", "There should be no private key")
-
-        }).timeout(5000)
-
-        it("should retrieve the submited private key", async () => {
-
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-            assert.ok(result1.transactionHash)
-
-            // Reveal the private key
-            await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            // Get private key
-            const result2 = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(result2, privateKey, "The private key should match")
-
-        }).timeout(5000)
-
-        it("should overwrite it in case of a mistake", async () => {
-            // NOW + 3
-
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-            assert.ok(result1.transactionHash)
-
-            // Reveal the wrong private key
-            await instance.methods.publishPrivateKey(processId, "INVALID_PRIVATE_KEY").send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            // Get private key
-            const result2 = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(result2, "INVALID_PRIVATE_KEY", "The private key should match the invalid one")
-
-            // Update the private key
-            await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            // Get private key
-            const result3 = await instance.methods.getPrivateKey(processId).call()
-            assert.equal(result3, privateKey, "The private key should match")
-
-        }).timeout(5000)
-
-        it("should emit an event", async () => {  // NOW + 3
-            const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-
-            // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-            assert.ok(result1.transactionHash)
-
-            // wait until endTime
-            await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
-            // await increaseTimestamp(4)    // Not working with ganache by now
-
-            // Reveal the wrong private key
-            const result2 = await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result2)
-            assert.ok(result2.events)
-            assert.ok(result2.events.PrivateKeyPublished)
-            assert.ok(result2.events.PrivateKeyPublished.returnValues)
-            assert.equal(result2.events.PrivateKeyPublished.event, "PrivateKeyPublished")
-            assert.equal(result2.events.PrivateKeyPublished.returnValues.processId, processId)
-            assert.equal(result2.events.PrivateKeyPublished.returnValues.privateKey, privateKey)
-        }).timeout(5000)
-    })
-
 
     describe("should accept the results", () => {
 
         const results = "ipfs://12345!0987654321"
 
-        it("only when the entity account requests it", async () => {
-
+        it("only when the sender is an oracle", async () => {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
-            const privateKey = "0x1234"
             // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.ENCRYPTED_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
-
             assert.ok(result1.transactionHash)
-
-            result2 = await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result2.transactionHash)
 
             // Attempt to publish the results by someone else
             try {
-                await instance.methods.publishResults(processId, results).send({
-                    from: randomAddress1,
-                    nonce: await web3.eth.getTransactionCount(randomAddress1)
-                })
+                await publishResults(instance, randomAddress1, processId, results)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -1197,14 +1586,15 @@ describe('VotingProcess', function () {
             }
 
             // Get results
-            const result3 = await instance.methods.getResults(processId).call()
-            assert.equal(result3, "", "There should be no results")
+            const result2 = await instance.methods.getResults(processId).call()
+            assert.equal(result2, "", "There should be no results")
 
-            // Reveal the results
-            await instance.methods.publishResults(processId, results).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
+            // Register an oracle
+            const result3 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result3.transactionHash)
+
+            // Publish the results
+            await publishResults(instance, authorizedOracle1, processId, results)
 
             // Get results
             const result4 = await instance.methods.getResults(processId).call()
@@ -1213,17 +1603,13 @@ describe('VotingProcess', function () {
 
         it("only when the processId exists", async () => {
             const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
+            // Register an oracle
+            const result1 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result1.transactionHash)
 
-
-            assert.ok(result2.transactionHash)
-            // Attempt to publish the key of a random processId
             try {
                 // Reveal the results
-                await instance.methods.publishResults(nonExistingProcessId, results).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-
+                await publishResults(instance, authorizedOracle1, nonExistingProcessId, results)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -1231,65 +1617,30 @@ describe('VotingProcess', function () {
             }
         })
 
-        it("only when privatekey has been published", async () => {
-            // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-            assert.ok(result1.transactionHash)
-
-            const processCount = await instance.methods.getEntityProcessCount(entityAddress).call()
-            const processId = await instance.methods.getProcessId(entityAddress, processCount - 1).call()
-
-            // Attempt to publish the results before publishing private key
-            try {
-                await instance.methods.publishResults(processId, results).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
-                assert.fail("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get results
-            const result3 = await instance.methods.getResults(processId).call()
-            assert.equal(result3, "", "There should be no results")
-        }).timeout(5000)
-
         it("only when the process is not canceled", async () => {
-            const privateKey = "0x123"
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.ENCRYPTED_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
             assert.ok(result1.transactionHash)
 
-            result2 = await instance.methods.publishPrivateKey(processId, privateKey).send({
+            // Cancel the process
+            const result2 = await instance.methods.setProcessStatus(processId, 2).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
-
             assert.ok(result2.transactionHash)
 
-            // Cancel the process
-            const result3 = await instance.methods.cancel(processId).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
+            // Register an oracle
+            const result3 = await addOracle(instance, deployAddress, authorizedOracle1)
             assert.ok(result3.transactionHash)
 
             // Attempt to publish the results after canceling
             try {
-                await instance.methods.publishResults(processId, results).send({
-                    from: entityAddress,
-                    nonce: await web3.eth.getTransactionCount(entityAddress)
-                })
+                await publishResults(instance, authorizedOracle1, processId, results)
                 assert.fail("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -1299,34 +1650,24 @@ describe('VotingProcess', function () {
             // Get results
             const result4 = await instance.methods.getResults(processId).call()
             assert.equal(result4, "", "There should be no results")
-
         }).timeout(5000)
 
-
         it("should retrieve the submited results", async () => {
-
-            const privateKey = "0x123"
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
             assert.ok(result1.transactionHash)
 
-            result2 = await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
+            // Register an oracle
+            const result2 = await addOracle(instance, deployAddress, authorizedOracle1)
             assert.ok(result2.transactionHash)
 
-            // Reveal the results
-            await instance.methods.publishResults(processId, results).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
+            // Publish the results
+            await publishResults(instance, authorizedOracle1, processId, results)
 
             // Get results
             const result3 = await instance.methods.getResults(processId).call()
@@ -1334,75 +1675,61 @@ describe('VotingProcess', function () {
 
         }).timeout(5000)
 
-        it("should overwrite it in case of a mistake", async () => {
-            const privateKey = "0x123"
+        it("should not publish twice", async () => {
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
             assert.ok(result1.transactionHash)
 
-
-            result2 = await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
+            // Register an oracle
+            const result2 = await addOracle(instance, deployAddress, authorizedOracle1)
             assert.ok(result2.transactionHash)
 
-            // Reveal the wrong results
-            await instance.methods.publishResults(processId, "INVALID_PRIVATE_KEY").send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
+            // publish results
+            await publishResults(instance, authorizedOracle1, processId, "INVALID_PRIVATE_KEY")
 
             // Get results
             const result3 = await instance.methods.getResults(processId).call()
             assert.equal(result3, "INVALID_PRIVATE_KEY", "The results should match the invalid one")
 
-            // Update the results
-            await instance.methods.publishResults(processId, results).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
+            // Try update the results
+            try {
+                await publishResults(instance, authorizedOracle1, processId, results)
+                assert.fail("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                assert(err.message.match(/revert/), "The transaction threw an unexpected error:\n" + err.message)
+            }
 
             // Get results
             const result4 = await instance.methods.getResults(processId).call()
-            assert.equal(result4, results, "The results should match")
+            assert.equal(result4, "INVALID_PRIVATE_KEY", "The results should match")
         }).timeout(5000)
 
         it("should emit an event", async () => {  // NOW + 3
-            const privateKey = "0x123"
             const processId = await instance.methods.getProcessId(entityAddress, 0).call()
 
             // Create
-            const result1 = await instance.methods.create("snark-vote", metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
+            const result1 = await instance.methods.create(ProcessEnvelopeType.REALTIME_POLL, ProcessMode.SCHEDULED_SINGLE_ENVELOPE, metadata, censusMerkleRoot, censusMerkleTree, startBlock, numberOfBlocks).send({
                 from: entityAddress,
                 nonce: await web3.eth.getTransactionCount(entityAddress)
             })
             assert.ok(result1.transactionHash)
 
-
-            result2 = await instance.methods.publishPrivateKey(processId, privateKey).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
-
-            assert.ok(result2.transactionHash)
-
             // wait until endTime
             await (new Promise(resolve => setTimeout(resolve, 4 * 1000)))
             // await increaseTimestamp(4)    // Not working with ganache by now
 
-            // Reveal the wrong results
-            const result3 = await instance.methods.publishResults(processId, results).send({
-                from: entityAddress,
-                nonce: await web3.eth.getTransactionCount(entityAddress)
-            })
+            // Register an oracle
+            const result2 = await addOracle(instance, deployAddress, authorizedOracle1)
+            assert.ok(result2.transactionHash)
 
+            // Reveal the wrong results
+            const result3 = await publishResults(instance, authorizedOracle1, processId, results)
             assert.ok(result3)
             assert.ok(result3.events)
             assert.ok(result3.events.ResultsPublished)
@@ -1411,5 +1738,155 @@ describe('VotingProcess', function () {
             assert.equal(result3.events.ResultsPublished.returnValues.processId, processId)
             assert.equal(result3.events.ResultsPublished.returnValues.results, results)
         }).timeout(5000)
+    })
+
+    describe("enum wrappers", () => {
+        it("should handle valid envelope types", () => {
+            let et = new ProcessEnvelopeType(0)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, true)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, true)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(1)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, true)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(4)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, true)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(6)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, true)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(8)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, true)
+            assert.equal(et.isRealtimeElection, true)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(10)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, true)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(12)
+            assert.equal(et.isElection, true)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, false)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, false)
+
+            et = new ProcessEnvelopeType(14)
+            assert.equal(et.isElection, false)
+            assert.equal(et.isEncryptedPoll, false)
+            assert.equal(et.isEncryptedPrivatePoll, false)
+            assert.equal(et.isPetitionSigning, false)
+            assert.equal(et.isPrivateElection, false)
+            assert.equal(et.isRealtime, true)
+            assert.equal(et.isRealtimeElection, false)
+            assert.equal(et.isRealtimePoll, false)
+            assert.equal(et.isRealtimePrivateElection, true)
+        })
+
+        it("should fail on invalid envelope types", () => {
+            assert.throws(() => new ProcessEnvelopeType(2))
+            assert.throws(() => new ProcessEnvelopeType(3))
+            assert.throws(() => new ProcessEnvelopeType(5))
+            assert.throws(() => new ProcessEnvelopeType(7))
+            assert.throws(() => new ProcessEnvelopeType(9))
+            assert.throws(() => new ProcessEnvelopeType(11))
+            assert.throws(() => new ProcessEnvelopeType(13))
+            assert.throws(() => new ProcessEnvelopeType(15))
+            for (let i = 17; i < 1024; i++) assert.throws(() => new ProcessEnvelopeType(i))
+        })
+
+        it("should handle valid process modes", () => {
+            let pm = new ProcessMode(0)
+            assert.equal(pm.isScheduled, true)
+            assert.equal(pm.isOnDemand, false)
+            assert.equal(pm.isSingleEnvelope, true)
+
+            pm = new ProcessMode(1)
+            assert.equal(pm.isScheduled, false)
+            assert.equal(pm.isOnDemand, true)
+            assert.equal(pm.isSingleEnvelope, true)
+        })
+
+        it("should fail on invalid process modes", () => {
+            for (let i = 2; i < 1024; i++) assert.throws(() => new ProcessMode(i))
+        })
+
+        it("should handle valid process status", () => {
+            let pm = new ProcessStatus(0)
+            assert.equal(pm.isOpen, true)
+            assert.equal(pm.isEnded, false)
+            assert.equal(pm.isCanceled, false)
+            assert.equal(pm.isPaused, false)
+
+            pm = new ProcessStatus(1)
+            assert.equal(pm.isOpen, false)
+            assert.equal(pm.isEnded, true)
+            assert.equal(pm.isCanceled, false)
+            assert.equal(pm.isPaused, false)
+
+            pm = new ProcessStatus(2)
+            assert.equal(pm.isOpen, false)
+            assert.equal(pm.isEnded, false)
+            assert.equal(pm.isCanceled, true)
+            assert.equal(pm.isPaused, false)
+
+            pm = new ProcessStatus(3)
+            assert.equal(pm.isOpen, false)
+            assert.equal(pm.isEnded, false)
+            assert.equal(pm.isCanceled, false)
+            assert.equal(pm.isPaused, true)
+        })
+
+        it("should fail on invalid process status", () => {
+            for (let i = 4; i < 1024; i++) assert.throws(() => new ProcessStatus(i))
+        })
     })
 })

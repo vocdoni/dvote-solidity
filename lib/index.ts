@@ -91,7 +91,86 @@ export type EntityResolverContractMethods = {
 // VOTING PROCESS TYPES
 ///////////////////////////////////////////////////////////////////////////////
 
-export type ProcessType = "snark-vote" | "poll-vote" | "encrypted-poll" | "petition-sign"
+type IEnvelopeType = 0 | 1 | 4 | 6 | 8 | 10 | 12 | 14
+const envelopeTypeValues = [0, 1, 4, 6, 8, 10, 12, 14]
+
+export class ProcessEnvelopeType {
+    private _type: IEnvelopeType
+    constructor(envelopeType: IEnvelopeType) {
+        if (!envelopeTypeValues.includes(envelopeType)) throw new Error("Invalid envelope type")
+        this._type = envelopeType
+    }
+
+    public static REALTIME_POLL = 0
+    public static PETITION_SIGNING = 1
+    public static ENCRYPTED_POLL = 4
+    public static ENCRYPTED_PRIVATE_POLL = 6
+    public static REALTIME_ELECTION = 8
+    public static PRIVATE_ELECTION = 10
+    public static ELECTION = 12
+    public static REALTIME_PRIVATE_ELECTION = 14
+
+    get isRealtimePoll(): boolean { return this._type == ProcessEnvelopeType.REALTIME_POLL }
+    get isPetitionSigning(): boolean { return this._type == ProcessEnvelopeType.PETITION_SIGNING }
+    get isEncryptedPoll(): boolean { return this._type == ProcessEnvelopeType.ENCRYPTED_POLL }
+    get isEncryptedPrivatePoll(): boolean {
+        return this._type == ProcessEnvelopeType.ENCRYPTED_PRIVATE_POLL
+    }
+    get isRealtimeElection(): boolean { return this._type == ProcessEnvelopeType.REALTIME_ELECTION }
+    get isPrivateElection(): boolean { return this._type == ProcessEnvelopeType.PRIVATE_ELECTION }
+    get isElection(): boolean { return this._type == ProcessEnvelopeType.ELECTION }
+    get isRealtimePrivateElection(): boolean {
+        return this._type == ProcessEnvelopeType.REALTIME_PRIVATE_ELECTION
+    }
+
+    get isRealtime(): boolean {
+        return this._type == ProcessEnvelopeType.REALTIME_POLL ||
+            this._type == ProcessEnvelopeType.REALTIME_ELECTION ||
+            this._type == ProcessEnvelopeType.REALTIME_PRIVATE_ELECTION
+    }
+}
+
+type IMode = 0 | 1
+const modeValues = [0, 1]
+
+export class ProcessMode {
+    private _mode: IMode
+    constructor(processMode: IMode) {
+        if (!modeValues.includes(processMode)) throw new Error("Invalid process mode")
+        this._mode = processMode
+    }
+
+    public static SCHEDULED_SINGLE_ENVELOPE = 0
+    public static ON_DEMAND_SINGLE_ENVELOPE = 1
+
+    get isScheduled(): boolean { return this._mode == ProcessMode.SCHEDULED_SINGLE_ENVELOPE }
+    get isOnDemand(): boolean { return this._mode == ProcessMode.ON_DEMAND_SINGLE_ENVELOPE }
+    get isSingleEnvelope(): boolean {
+        return this._mode == ProcessMode.SCHEDULED_SINGLE_ENVELOPE ||
+            this._mode == ProcessMode.ON_DEMAND_SINGLE_ENVELOPE
+    }
+}
+
+type IStatus = 0 | 1 | 2 | 3
+const statusValues = [0, 1, 2, 3]
+
+export class ProcessStatus {
+    private _status: IStatus
+    constructor(processStatus: IStatus) {
+        if (!statusValues.includes(processStatus)) throw new Error("Invalid process mode")
+        this._status = processStatus
+    }
+
+    public static OPEN = 0
+    public static ENDED = 1
+    public static CANCELED = 2
+    public static PAUSED = 3
+
+    get isOpen(): boolean { return this._status == ProcessStatus.OPEN }
+    get isEnded(): boolean { return this._status == ProcessStatus.ENDED }
+    get isCanceled(): boolean { return this._status == ProcessStatus.CANCELED }
+    get isPaused(): boolean { return this._status == ProcessStatus.PAUSED }
+}
 
 /** Smart Contract operations for a Voting Process contract */
 export interface VotingProcessContractMethods {
@@ -115,11 +194,24 @@ export interface VotingProcessContractMethods {
     getChainId(): Promise<BigNumber>,
 
     /** Publish a new voting process using the given metadata link */
-    create(processType: ProcessType, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number | BigNumber, numberOfBlocks: number | BigNumber): Promise<ContractTransaction>,
+    create(envelopeType: IEnvelopeType, mode: IMode, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number | BigNumber, numberOfBlocks: number | BigNumber): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{ processType: ProcessType, entityAddress: string, startBlock: BigNumber, numberOfBlocks: BigNumber, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, voteEncryptionPrivateKey: string, canceled: boolean }>,
-    /** Cancel the voting process that corresponds to the given Id */
-    cancel(processId: string): Promise<ContractTransaction>,
+    get(processId: string): Promise<{ envelopeType: IEnvelopeType, mode: IMode, entityAddress: string, startBlock: BigNumber, numberOfBlocks: BigNumber, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, status: IStatus }>,
+    /** Update the voting process status that corresponds to the given Id */
+    setProcessStatus(processId: string, status: IStatus): Promise<ContractTransaction>,
+
+    /** Add a valid envelope type */
+    addEnvelopeType(envelopeType: number): Promise<ContractTransaction>,
+    /** Remove a valid envelope type */
+    removeEnvelopeType(envelopeType: number): Promise<ContractTransaction>,
+    /** check if envelopeType is accepted */
+    checkEnvelopeType(envelopeType: number): Promise<boolean>, 
+    /** Add a valid mode type */
+    addMode(mode: number): Promise<ContractTransaction>,
+    /** Remove a valid mode type */
+    removeMode(mode: number): Promise<ContractTransaction>,
+    /** check if mode is accepted */
+    checkMode(mode: number): Promise<boolean>,
 
     /** Register the public key of a new validator */
     addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
@@ -129,16 +221,11 @@ export interface VotingProcessContractMethods {
     getValidators(): Promise<string[]>,
 
     /** Register the public key of a new oracle */
-    addOracle(oraclePublicKey: string): Promise<ContractTransaction>,
+    addOracle(oracleAddr: string): Promise<ContractTransaction>,
     /** Remove the public key at the given index for an oracle */
-    removeOracle(idx: number, oraclePublicKey: string): Promise<ContractTransaction>,
+    removeOracle(idx: number, oracleAddr: string): Promise<ContractTransaction>,
     /** Retrieve the current list of oracles on the Vocchain */
     getOracles(): Promise<string[]>,
-
-    /** Reveal the private key for the given voting process */
-    publishPrivateKey(processId: string, privateKey: string): Promise<ContractTransaction>,
-    /** Retrieve the current decryption key for the given process */
-    getPrivateKey(processId: string): Promise<string>,
 
     /** Publish the results for the given process */
     publishResults(processId: string, results: string): Promise<ContractTransaction>,

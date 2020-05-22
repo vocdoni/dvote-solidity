@@ -1,9 +1,10 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "../EntityResolverBase.sol";
 
-contract AddrResolver is ResolverBase {
-    bytes4 constant private ADDR_INTERFACE_ID = 0x3b3b57de;
+
+abstract contract AddrResolver is ResolverBase {
+    bytes4 private constant ADDR_INTERFACE_ID = 0x3b3b57de;
 
     event AddrChanged(bytes32 indexed node, address a);
 
@@ -29,7 +30,15 @@ contract AddrResolver is ResolverBase {
         return addresses[node];
     }
 
-    function supportsInterface(bytes4 interfaceID) public pure returns(bool) {
-        return interfaceID == ADDR_INTERFACE_ID || super.supportsInterface(interfaceID);
+    function supportsInterface(bytes4 interfaceID)
+        public
+        virtual
+        override
+        pure
+        returns (bool)
+    {
+        return
+            interfaceID == ADDR_INTERFACE_ID ||
+            super.supportsInterface(interfaceID);
     }
 }
