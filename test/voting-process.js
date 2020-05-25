@@ -511,7 +511,6 @@ describe('VotingProcess', function () {
             metadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             censusMerkleRoot = "0x00000001111122222333334444"
             censusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            // voteEncryptionPublicKey = "TESTING-ENCRYPTION_KEY"
             startBlock = 23456789
             numberOfBlocks = 1000
 
