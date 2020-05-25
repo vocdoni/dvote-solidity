@@ -1,5 +1,6 @@
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
+pragma solidity ^0.6.0;
 
 abstract contract ResolverBase {
     bytes4 private constant INTERFACE_META_ID = 0x01ffc9a7;
