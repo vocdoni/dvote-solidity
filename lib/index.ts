@@ -103,21 +103,21 @@ export class ProcessEnvelopeType {
     }
 
     /** A public poll. Votes are visible and voter public keys can be recovered. */
-    public static REALTIME_POLL = 0
+    public static REALTIME_POLL: IProcessEnvelopeType = 0
     /** A process where voters can simply support the given cause, no other choice is available. Signatures are visible and voter public keys can be recovered. */
-    public static PETITION_SIGNING = 1
+    public static PETITION_SIGNING: IProcessEnvelopeType = 1
     /** A poll where votes remain encrypted until the end of the process and voter public keys can be recovered. */
-    public static ENCRYPTED_POLL = 4
+    public static ENCRYPTED_POLL: IProcessEnvelopeType = 4
     /** A poll where votes remain encrypted until the end of the process. The metadata is encrypted and voter public keys could be recovered for those within the private group. */
-    public static ENCRYPTED_PRIVATE_POLL = 6
+    public static ENCRYPTED_PRIVATE_POLL: IProcessEnvelopeType = 6
     /** A public election where votes are visible as soon as they are computed. The voter's identity is verified, but it remains anonymous even after the process has ended. */
-    public static REALTIME_ELECTION = 8
+    public static REALTIME_ELECTION: IProcessEnvelopeType = 8
     /** An election where the metadata is encrypted and votes remain encrypted until the process ends. The voter's identity is verified, but it remains anonymous even after the process has ended. */
-    public static PRIVATE_ELECTION = 10
+    public static PRIVATE_ELECTION: IProcessEnvelopeType = 10
     /** A standard election where votes remain encrypted until the process has ended. The voter's identity is verified but it remains anonymous even after the process has ended. */
-    public static ELECTION = 12
+    public static ELECTION: IProcessEnvelopeType = 12
     /** An election where the metadata is encrypted but votes are visible as soon as they are computed. The voter's identity is verified, but it remains anonymous even after the process has ended. */
-    public static REALTIME_PRIVATE_ELECTION = 14
+    public static REALTIME_PRIVATE_ELECTION: IProcessEnvelopeType = 14
 
     get isRealtimePoll(): boolean { return this._type == ProcessEnvelopeType.REALTIME_POLL }
     get isPetitionSigning(): boolean { return this._type == ProcessEnvelopeType.PETITION_SIGNING }
@@ -151,13 +151,13 @@ export class ProcessMode {
     }
 
     /** A process where voters can vote after `startBlock` and before `endBlock`. Only one envelope is accepted. */
-    public static SCHEDULED_SINGLE = 0
+    public static SCHEDULED_SINGLE: IProcessMode = 0
     /** A process that can be started and stopped when the creator deems it appropriate. Only one envelope is accepted. */
-    public static ON_DEMAND_SINGLE = 1
+    public static ON_DEMAND_SINGLE: IProcessMode = 1
     /**
      * An on-demand process where only one question can be voted at a time. The currently active question is defined by `questionIndex` on the contract.
      * One envelope is expected for each question of the process. */
-    public static ASSEMBLY = 3
+    public static ASSEMBLY: IProcessMode = 3
 
     /** Returns true if the process relies on `startBlock` and `numberOfBlocks` */
     get isScheduled(): boolean { return this._mode == ProcessMode.SCHEDULED_SINGLE }
@@ -187,13 +187,13 @@ export class ProcessStatus {
     }
 
     /** The process is accepting votes normally. */
-    public static OPEN = 0
+    public static OPEN: IProcessStatus = 0
     /** The process has already ended. Results will be available soon. */
-    public static ENDED = 1
+    public static ENDED: IProcessStatus = 1
     /** The process has been canceled. Results will not be available anytime. */
-    public static CANCELED = 2
+    public static CANCELED: IProcessStatus = 2
     /** The process is temporarily paused and votes are not accepted at the time. It might be resumed in the future. */
-    public static PAUSED = 3
+    public static PAUSED: IProcessStatus = 3
 
     get isOpen(): boolean { return this._status == ProcessStatus.OPEN }
     get isEnded(): boolean { return this._status == ProcessStatus.ENDED }
