@@ -3,7 +3,13 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "./math/SafeAdd.sol";
+
 contract VotingProcess {
+    // LIBRARIES
+
+    using SafeAdd for uint8;
+
     // GLOBAL STRUCTS
 
     struct Process {
@@ -431,12 +437,8 @@ contract VotingProcess {
         //     (processes[processIndex].mode & 0x02) == 0x02,
         //     "The question index only works in assembly mode"
         // );
-        require(
-            processes[processIndex].questionIndex < 255,
-            "The question index cannot overflow"
-        );
 
-        uint8 nextIdx = processes[processIndex].questionIndex + 1;
+        uint8 nextIdx = processes[processIndex].questionIndex.add8(1);
         processes[processIndex].questionIndex = nextIdx;
 
         emit QuestionIndexIncremented(processId, nextIdx);
