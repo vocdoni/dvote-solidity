@@ -75,7 +75,7 @@ const processFactory = new ethers.ContractFactory(votingProcessAbi, votingProces
 const resolverInstance = await resolverFactory.deploy()
 console.log(resolverInstance.address)
 
-const processInstance = await processFactory.deploy()
+const processInstance = await processFactory.deploy(0, [0, 1, 4, 6, 8, 10, 12, 14], [0, 1, 3])
 console.log(processInstance.address)
 
 // or attaching
