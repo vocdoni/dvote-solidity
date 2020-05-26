@@ -8,7 +8,7 @@ import "../EntityResolverBase.sol";
 abstract contract TextResolver is ResolverBase {
     bytes4 private constant TEXT_INTERFACE_ID = 0x59d1d43c;
 
-    event TextChanged(bytes32 indexed node, string indexedKey, string key);
+    event TextChanged(bytes32 indexed node, string key, string value);
 
     mapping(bytes32 => mapping(string => string)) texts;
 
@@ -25,7 +25,7 @@ abstract contract TextResolver is ResolverBase {
         string calldata value
     ) external authorised(node) {
         texts[node][key] = value;
-        emit TextChanged(node, key, key);
+        emit TextChanged(node, key, value);
     }
 
     /**

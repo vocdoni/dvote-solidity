@@ -261,8 +261,10 @@ export interface VotingProcessContractMethods {
         paramsSignature: string,
         namespace: number
     }>,
-    /** Update the voting process status that corresponds to the given Id */
-    setProcessStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
+    /** Update the process status that corresponds to the given ID */
+    setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
+    /** Updates the census of the given process (only if the mode allows dynamic census) */
+    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
 
     /** Registers the public key of a new validator */
     addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
@@ -278,10 +280,10 @@ export interface VotingProcessContractMethods {
     /** Retrieves the current list of oracles on the Vocchain */
     getOracles(): Promise<string[]>,
 
-    /** Increments the index of the current question (assembly votes) */
+    /** Increments the index of the current question (multi-envelope mode only) */
     incrementQuestionIndex(processId: string): Promise<ContractTransaction>
 
-    /** Publish the results for the given process */
+    /** Sets the given results for the given process */
     publishResults(processId: string, results: string): Promise<ContractTransaction>,
     /** Retrieve the available results for the given process */
     getResults(processId: string): Promise<{ results: string }>

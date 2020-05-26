@@ -114,17 +114,17 @@ contract VotingProcess {
         bytes32 processId,
         string merkleTree
     );
-    event ProcessStatusUpdated(
+    event StatusUpdated(
         address indexed entityAddress,
         bytes32 processId,
         uint8 status
     );
+    event CensusUpdated(address indexed entityAddress, bytes32 processId);
     event ValidatorAdded(string validatorPublicKey);
     event ValidatorRemoved(string validatorPublicKey);
     event OracleAdded(address oracleAddress);
     event OracleRemoved(address oracleAddress);
     event QuestionIndexIncremented(bytes32 indexed processId, uint8 newIndex);
-    event CensusUpdated(bytes32 indexed processId);
     event ResultsPublished(bytes32 indexed processId, string results);
 
     // MODIFIERS
@@ -350,10 +350,10 @@ contract VotingProcess {
         bytes32 processId = getNextProcessId(entityAddress);
         // require(processesIndex[processId] == 0, "ProcessId already exists");
 
-        // by default status is `OPEN`
+        // by default status is OPEN
         uint8 status = uint8(Status.OPEN);
         if (mode & MODE_AUTO_START != 0) {
-            // by default on-demand processes status is `PAUSED`
+            // by default on-demand processes status is PAUSED
             status = uint8(Status.PAUSED);
         }
 
@@ -431,7 +431,7 @@ contract VotingProcess {
         namespace = processes[processIndex].namespace;
     }
 
-    function setProcessStatus(bytes32 processId, uint8 status)
+    function setStatus(bytes32 processId, uint8 status)
         public
         onlyEntity(processId)
     {
@@ -468,7 +468,7 @@ contract VotingProcess {
 
         processes[processIndex].status = Status(status);
 
-        emit ProcessStatusUpdated(msg.sender, processId, status);
+        emit StatusUpdated(msg.sender, processId, status);
     }
 
     function incrementQuestionIndex(bytes32 processId)
@@ -492,6 +492,9 @@ contract VotingProcess {
         string memory censusMerkleRoot,
         string memory censusMerkleTree
     ) public onlyEntity(processId) {
+        require(bytes(censusMerkleRoot).length > 0, "Empty Merkle Root");
+        require(bytes(censusMerkleTree).length > 0, "Empty Merkle Tree");
+
         uint256 processIndex = getProcessIndex(processId);
         require(
             processes[processIndex].mode & MODE_DYNAMIC_CENSUS != 0,
@@ -506,23 +509,25 @@ contract VotingProcess {
         processes[processIndex].censusMerkleRoot = censusMerkleRoot;
         processes[processIndex].censusMerkleTree = censusMerkleTree;
 
-        emit CensusUpdated(processId);
+        emit CensusUpdated(msg.sender, processId);
     }
 
     function publishResults(bytes32 processId, string memory results)
         public
         onlyOracle
     {
+        require(bytes(results).length > 0, "Empty results");
+
         uint256 processIndex = getProcessIndex(processId);
 
         // cannot publish results of a canceled process
         require(
             processes[processIndex].status != Status.CANCELED,
-            "Process must not be canceled"
+            "Process is canceled"
         );
         // results can only be published once
         require(
-            equalStrings(processes[processIndex].results, "") == true,
+            bytes(processes[processIndex].results).length == 0,
             "Results already published"
         );
 
