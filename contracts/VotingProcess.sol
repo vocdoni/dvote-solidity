@@ -1,20 +1,28 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "./math/SafeAdd.sol";
 
 contract VotingProcess {
+    // LIBRARIES
+
+    using SafeAdd for uint8;
+
     // GLOBAL STRUCTS
 
     struct Process {
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/components/process
-        uint8 mode; // 0 [scheduled-single-envelope], 1 [ondemand-single-envelope]
+        uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/components/process
         address entityAddress; // The Ethereum address of the Entity
         uint256 startBlock; // Tendermint block number on which the voting process starts
         uint256 numberOfBlocks; // Amount of Tendermint blocks during which the voting process is active
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
         string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
-        uint8 status; // 0 [open], 1 [ended], 2 [canceled], 3 [paused]
+        uint8 status; // One of 0 [open], 1 [ended], 2 [canceled], 3 [paused]
+        uint8 questionIndex; // The index of the currently active question (only assembly processes)
         string results; // string containing the results
     }
 
@@ -27,7 +35,6 @@ contract VotingProcess {
     uint256 chainId;
     mapping(uint8 => bool) envelopeTypes; // valid envelope types
     mapping(uint8 => bool) modes; // valid process modes
-
 
     // PER-PROCESS DATA
 
@@ -53,6 +60,7 @@ contract VotingProcess {
     event ValidatorRemoved(string validatorPublicKey);
     event OracleAdded(address oracleAddress);
     event OracleRemoved(address oracleAddress);
+    event QuestionIndexIncremented(bytes32 indexed processId, uint8 newIndex);
     event ResultsPublished(bytes32 indexed processId, string results);
     event EnvelopeTypeAdded(uint8 envelopeType);
     event EnvelopeTypeRemoved(uint8 envelopeType);
@@ -162,18 +170,22 @@ contract VotingProcess {
 
     // METHODS
 
-    constructor(uint256 chainIdValue, uint8[] memory validEnvelopeTypes, uint8[] memory validModes) public {
+    constructor(
+        uint256 chainIdValue,
+        uint8[] memory validEnvelopeTypes,
+        uint8[] memory validModes
+    ) public {
         contractOwner = msg.sender;
         chainId = chainIdValue;
         // add supported envelopeTypes and modes
-        for (uint i = 0; i < validEnvelopeTypes.length; i++) {
+        for (uint256 i = 0; i < validEnvelopeTypes.length; i++) {
             // avoid setting same envelopeType twice
             if (envelopeTypes[validEnvelopeTypes[i]] == true) {
                 continue;
             }
             envelopeTypes[validEnvelopeTypes[i]] = true;
         }
-        for (uint i = 0; i < validModes.length; i++) {
+        for (uint256 i = 0; i < validModes.length; i++) {
             // avoid setting same mode twice
             if (modes[validModes[i]] == true) {
                 continue;
@@ -244,6 +256,7 @@ contract VotingProcess {
             censusMerkleRoot: merkleRoot,
             censusMerkleTree: merkleTree,
             status: status,
+            questionIndex: 0,
             results: ""
         });
 
@@ -312,51 +325,45 @@ contract VotingProcess {
         emit ProcessStatusUpdated(msg.sender, processId, status);
     }
 
-    function addEnvelopeType(uint8 envelopeType)
-        public
-        onlyContractOwner
-    {
-        require(envelopeTypes[envelopeType] == false, "Envelope type already supported");
+    function addEnvelopeType(uint8 envelopeType) public onlyContractOwner {
+        require(
+            envelopeTypes[envelopeType] == false,
+            "Envelope type already supported"
+        );
         envelopeTypes[envelopeType] = true;
 
         emit EnvelopeTypeAdded(envelopeType);
     }
 
-    function removeEnvelopeType(uint8 envelopeType)
-        public
-        onlyContractOwner
-    {
-        require(envelopeTypes[envelopeType] == true, "Envelope type already not supported");
+    function removeEnvelopeType(uint8 envelopeType) public onlyContractOwner {
+        require(
+            envelopeTypes[envelopeType] == true,
+            "Envelope type already not supported"
+        );
         envelopeTypes[envelopeType] = false;
 
         emit EnvelopeTypeRemoved(envelopeType);
     }
 
-    function checkEnvelopeType(uint8 envelopeType) public view returns (bool) {
+    function isEnvelopeTypeSupported(uint8 envelopeType) public view returns (bool) {
         return envelopeTypes[envelopeType];
     }
 
-    function addMode(uint8 mode)
-        public
-        onlyContractOwner
-    {
+    function addMode(uint8 mode) public onlyContractOwner {
         require(modes[mode] == false, "Mode already supported");
         modes[mode] = true;
 
         emit ModeAdded(mode);
     }
 
-    function removeMode(uint8 mode)
-        public
-        onlyContractOwner
-    {
+    function removeMode(uint8 mode) public onlyContractOwner {
         require(modes[mode] == true, "Mode already not supported");
         modes[mode] = false;
 
         emit ModeRemoved(mode);
     }
 
-    function checkMode(uint8 mode) public view returns(bool) {
+    function isModeSupported(uint8 mode) public view returns (bool) {
         return modes[mode];
     }
 
@@ -418,6 +425,32 @@ contract VotingProcess {
 
     function getOracles() public view returns (address[] memory) {
         return oracles;
+    }
+
+    function incrementQuestionIndex(bytes32 processId)
+        public
+        onlyEntity(processId)
+    {
+        uint256 processIndex = getProcessIndex(processId);
+
+        // require(
+        //     (processes[processIndex].mode & 0x02) == 0x02,
+        //     "The question index only works in assembly mode"
+        // );
+
+        uint8 nextIdx = processes[processIndex].questionIndex.add8(1);
+        processes[processIndex].questionIndex = nextIdx;
+
+        emit QuestionIndexIncremented(processId, nextIdx);
+    }
+
+    function getQuestionIndex(bytes32 processId)
+        public
+        view
+        returns (uint8 questionIndex)
+    {
+        uint256 processIndex = processesIndex[processId];
+        questionIndex = processes[processIndex].questionIndex;
     }
 
     function publishResults(bytes32 processId, string memory results)
