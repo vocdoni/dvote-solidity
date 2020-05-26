@@ -23,11 +23,11 @@ dvote-solidity-build:
       - build/
 
 
-#dvote-solidity-test:
-#  stage: test
-#  script:
-#    - apt-get install make
-#    - make all test
+dvote-solidity-test:
+ stage: test
+ script:
+   - apt-get install make
+   - make test
 
 
 # dvote-solidity-release:

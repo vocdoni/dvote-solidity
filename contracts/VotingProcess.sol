@@ -442,7 +442,7 @@ contract VotingProcess {
         uint256 processIndex = getProcessIndex(processId);
         require(
             processes[processIndex].mode & MODE_INTERRUPTIBLE != 0,
-            "Process is not interruptible"
+            "Process not interruptible"
         );
 
         // check status code and conditions for changing it
@@ -482,7 +482,15 @@ contract VotingProcess {
         );
 
         uint8 nextIdx = processes[processIndex].questionIndex.add8(1);
-        processes[processIndex].questionIndex = nextIdx;
+
+        if (nextIdx < processes[processIndex].questionCount) {
+            processes[processIndex].questionIndex = nextIdx;
+
+            emit QuestionIndexIncremented(processId, nextIdx);
+        } else {
+            // Set the process as ended
+            setStatus(processId, uint8(Status.ENDED));
+        }
 
         emit QuestionIndexIncremented(processId, nextIdx);
     }
@@ -498,7 +506,7 @@ contract VotingProcess {
         uint256 processIndex = getProcessIndex(processId);
         require(
             processes[processIndex].mode & MODE_DYNAMIC_CENSUS != 0,
-            "Process is not DYNAMIC_CENSUS"
+            "DYNAMIC_CENSUS is disabled"
         );
         require(
             processes[processIndex].status == Status.OPEN ||
@@ -528,7 +536,7 @@ contract VotingProcess {
         // results can only be published once
         require(
             bytes(processes[processIndex].results).length == 0,
-            "Results already published"
+            "Results already set"
         );
 
         processes[processIndex].results = results;

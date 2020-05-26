@@ -88,59 +88,11 @@ export type EntityResolverContractMethods = {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// VOTING PROCESS TYPES
+// VOTING PROCESS FLAGS
 ///////////////////////////////////////////////////////////////////////////////
 
-export type IProcessEnvelopeType = 0 | 1 | 4 | 6 | 8 | 10 | 12 | 14
-export const processEnvelopeTypeValues = [0, 1, 4, 6, 8, 10, 12, 14]
-
-/** Wrapper class to enumerate and handle valid values of a process envelope type */
-export class ProcessEnvelopeType {
-    private _type: IProcessEnvelopeType
-    constructor(envelopeType: IProcessEnvelopeType) {
-        if (!processEnvelopeTypeValues.includes(envelopeType)) throw new Error("Invalid envelope type")
-        this._type = envelopeType
-    }
-
-    /** A public poll. Votes are visible and voter public keys can be recovered. */
-    public static REALTIME_POLL: IProcessEnvelopeType = 0
-    /** A process where voters can simply support the given cause, no other choice is available. Signatures are visible and voter public keys can be recovered. */
-    public static PETITION_SIGNING: IProcessEnvelopeType = 1
-    /** A poll where votes remain encrypted until the end of the process and voter public keys can be recovered. */
-    public static ENCRYPTED_POLL: IProcessEnvelopeType = 4
-    /** A poll where votes remain encrypted until the end of the process. The metadata is encrypted and voter public keys could be recovered for those within the private group. */
-    public static ENCRYPTED_PRIVATE_POLL: IProcessEnvelopeType = 6
-    /** A public election where votes are visible as soon as they are computed. The voter's identity is verified, but it remains anonymous even after the process has ended. */
-    public static REALTIME_ELECTION: IProcessEnvelopeType = 8
-    /** An election where the metadata is encrypted and votes remain encrypted until the process ends. The voter's identity is verified, but it remains anonymous even after the process has ended. */
-    public static PRIVATE_ELECTION: IProcessEnvelopeType = 10
-    /** A standard election where votes remain encrypted until the process has ended. The voter's identity is verified but it remains anonymous even after the process has ended. */
-    public static ELECTION: IProcessEnvelopeType = 12
-    /** An election where the metadata is encrypted but votes are visible as soon as they are computed. The voter's identity is verified, but it remains anonymous even after the process has ended. */
-    public static REALTIME_PRIVATE_ELECTION: IProcessEnvelopeType = 14
-
-    get isRealtimePoll(): boolean { return this._type == ProcessEnvelopeType.REALTIME_POLL }
-    get isPetitionSigning(): boolean { return this._type == ProcessEnvelopeType.PETITION_SIGNING }
-    get isEncryptedPoll(): boolean { return this._type == ProcessEnvelopeType.ENCRYPTED_POLL }
-    get isEncryptedPrivatePoll(): boolean {
-        return this._type == ProcessEnvelopeType.ENCRYPTED_PRIVATE_POLL
-    }
-    get isRealtimeElection(): boolean { return this._type == ProcessEnvelopeType.REALTIME_ELECTION }
-    get isPrivateElection(): boolean { return this._type == ProcessEnvelopeType.PRIVATE_ELECTION }
-    get isElection(): boolean { return this._type == ProcessEnvelopeType.ELECTION }
-    get isRealtimePrivateElection(): boolean {
-        return this._type == ProcessEnvelopeType.REALTIME_PRIVATE_ELECTION
-    }
-
-    get isRealtime(): boolean {
-        return this._type == ProcessEnvelopeType.REALTIME_POLL ||
-            this._type == ProcessEnvelopeType.REALTIME_ELECTION ||
-            this._type == ProcessEnvelopeType.REALTIME_PRIVATE_ELECTION
-    }
-}
-
-export type IProcessMode = 0 | 1 | 3
-export const processModeValues = [0, 1, 3]
+export type IProcessMode = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
+export const processModeValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 /** Wrapper class to enumerate and handle valid values of a process mode */
 export class ProcessMode {
@@ -150,29 +102,77 @@ export class ProcessMode {
         this._mode = processMode
     }
 
-    /** A process where voters can vote after `startBlock` and before `endBlock`. Only one envelope is accepted. */
-    public static SCHEDULED_SINGLE: IProcessMode = 0
-    /** A process that can be started and stopped when the creator deems it appropriate. Only one envelope is accepted. */
-    public static ON_DEMAND_SINGLE: IProcessMode = 1
-    /**
-     * An on-demand process where only one question can be voted at a time. The currently active question is defined by `questionIndex` on the contract.
-     * One envelope is expected for each question of the process. */
-    public static ASSEMBLY: IProcessMode = 3
+    /** Sets the process so that it accepts vote from `startBlock` until `startBlock + numberOfBlocks`. The process is set to be on demand, by default. */
+    public static SCHEDULED: IProcessMode = 1 << 0 as IProcessMode
+    /** Allows the process creator to update the census while it is `open` or `paused`. Disabled by default. */
+    public static DYNAMIC_CENSUS: IProcessMode = 1 << 0 as IProcessMode
+    /** Allows the process creator to update the metadata while it is `open` or `paused`. Disabled by default. */
+    public static DYNAMIC_METADATA: IProcessMode = 1 << 0 as IProcessMode
+    /** Sets the process so that the metadata is encrypted. Disabled by default. */
+    public static ENCRYPTED_METADATA: IProcessMode = 1 << 0 as IProcessMode
 
-    /** Returns true if the process relies on `startBlock` and `numberOfBlocks` */
-    get isScheduled(): boolean { return this._mode == ProcessMode.SCHEDULED_SINGLE }
-    /** Returns true if the process relies on the creator to be started, stopped, etc. */
-    get isOnDemand(): boolean {
-        return this._mode == ProcessMode.ON_DEMAND_SINGLE ||
-            this._mode == ProcessMode.ASSEMBLY
+    /** Returns the value that represents the given process mode */
+    public static make(flags: { scheduled?: boolean, dynamicCensus?: boolean, dynamicMetadata?: boolean, encryptedMetadata?: boolean } = {}): IProcessMode {
+        let result = 0
+        result |= flags.scheduled ? ProcessMode.SCHEDULED : 0
+        result |= flags.dynamicCensus ? ProcessMode.DYNAMIC_CENSUS : 0
+        result |= flags.dynamicMetadata ? ProcessMode.DYNAMIC_METADATA : 0
+        result |= flags.encryptedMetadata ? ProcessMode.ENCRYPTED_METADATA : 0
+        return result as IProcessMode
     }
-    /** Returns true if the current mode accepte only one envelope per voter. */
-    get isSingleEnvelope(): boolean {
-        return this._mode == ProcessMode.SCHEDULED_SINGLE ||
-            this._mode == ProcessMode.ON_DEMAND_SINGLE
+
+    /** Returns true if the process relies on `startBlock` and `numberOfBlocks`. Returns false if it works on demand. */
+    get isScheduled(): boolean { return (this._mode & ProcessMode.SCHEDULED) != 0 }
+    /** Returns true if the process does not rely on `startBlock` and `numberOfBlocks`. */
+    get isOnDemand(): boolean { return (this._mode & ProcessMode.SCHEDULED) == 0 }
+
+    /** Returns true if the census can be updated by the creator. */
+    get hasDynamicCensus(): boolean { return (this._mode & ProcessMode.DYNAMIC_CENSUS) != 0 }
+    /** Returns true if the metadata can be updated by the creator. */
+    get hasDynamicMetadata(): boolean { return (this._mode & ProcessMode.DYNAMIC_METADATA) != 0 }
+    /** Returns true if the process metadata is expected to be encrypted. */
+    get hasMetadataEncrypted(): boolean { return (this._mode & ProcessMode.ENCRYPTED_METADATA) != 0 }
+}
+
+export type IProcessEnvelopeType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+export const processEnvelopeTypeValues = [0, 1, 2, 3, 4, 5, 6, 7]
+
+/** Wrapper class to enumerate and handle valid values of a process envelope type */
+export class ProcessEnvelopeType {
+    private _type: IProcessEnvelopeType
+    constructor(envelopeType: IProcessEnvelopeType) {
+        if (!processEnvelopeTypeValues.includes(envelopeType)) throw new Error("Invalid envelope type")
+        this._type = envelopeType
     }
-    /** Returns true if the process questions must be voted separately, according to the current `questionIndex` in the contract. */
-    get isAssembly(): boolean { return this._mode == ProcessMode.ASSEMBLY }
+
+    /** Sets the flag to enforce votes to be sent encrypted. Votes will become public when the process ends. Disabled by default. */
+    public static ENCRYPTED_VOTES: IProcessEnvelopeType = 1 << 0 as IProcessEnvelopeType
+    /** Sets the process to verify votes with ZK-Snarks. By default, the vote signature is checked (this can reveal the voter's identity). */
+    public static ANONYMOUS_VOTERS: IProcessEnvelopeType = 1 << 1 as IProcessEnvelopeType
+    /** Sets the process so that questions are voted one by one, instead of all at once. Enables `questionIndex` and `questionCount`. Single envelope by default. */
+    public static MULTI_ENVELOPE: IProcessEnvelopeType = 1 << 2 as IProcessEnvelopeType
+
+    /** Returns the value that represents the given envelope type */
+    public static make(flags: { encryptedVotes?: boolean, anonymousVoters?: boolean, multiEnvelope?: boolean } = {}): IProcessEnvelopeType {
+        let result = 0
+        result |= flags.encryptedVotes ? ProcessEnvelopeType.ENCRYPTED_VOTES : 0
+        result |= flags.anonymousVoters ? ProcessEnvelopeType.ANONYMOUS_VOTERS : 0
+        result |= flags.multiEnvelope ? ProcessEnvelopeType.MULTI_ENVELOPE : 0
+        return result as IProcessEnvelopeType
+    }
+
+    /** Returns true if envelopes are expected to be sent encrypted. Inverse of `isRealtime` */
+    get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
+    /** Returns true if envelopes are not encrypted and results can be seen in real time. Inverse of `hasEncryptedVotes` */
+    get isRealtime(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) == 0 }
+
+    /** Returns true if franchise proofs are validated with ZK-Snarks. */
+    get hasAnonymousVoters(): boolean { return (this._type & ProcessEnvelopeType.ANONYMOUS_VOTERS) != 0 }
+
+    /** Returns true if the process expects an envelope to be sent for each question. */
+    get isMultiEnvelope(): boolean { return (this._type & ProcessEnvelopeType.MULTI_ENVELOPE) != 0 }
+    /** Returns true if the process expects a single envelope to be sent with all the votes. */
+    get isSingleEnvelope(): boolean { return (this._type & ProcessEnvelopeType.MULTI_ENVELOPE) == 0 }
 }
 
 export type IProcessStatus = 0 | 1 | 2 | 3
@@ -280,7 +280,7 @@ export interface VotingProcessContractMethods {
     /** Retrieves the current list of oracles on the Vocchain */
     getOracles(): Promise<string[]>,
 
-    /** Increments the index of the current question (multi-envelope mode only) */
+    /** Increments the index of the current question (only when INCREMENTAL mode is set) */
     incrementQuestionIndex(processId: string): Promise<ContractTransaction>
 
     /** Sets the given results for the given process */
