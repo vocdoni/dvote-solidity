@@ -21,11 +21,11 @@ export default class EntityResolverBuilder {
 
     async build(): Promise<EntityResolverContractMethods & Contract> {
         const resolverFactory = new ContractFactory(entityResolverAbi, entityResolverByteCode, this.entityAccount.wallet)
-        const contractInstance = await resolverFactory.deploy()
+        const contractInstance = await resolverFactory.deploy() as EntityResolverContractMethods & Contract
 
         // const entityId = utils.keccak256(this.entityAccount.address)
         // await contractInstance.setText(entityId, "key-name", this.name)
-        return contractInstance as any
+        return contractInstance
     }
 
     // custom modifiers

@@ -57,8 +57,8 @@ contract VotingProcess {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/components/process
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/components/process
         address entityAddress; // The Ethereum address of the Entity
-        uint256 startBlock; // Tendermint block number on which the voting process starts
-        uint256 blockCount; // Amount of Tendermint blocks during which the voting process should be active
+        uint64 startBlock; // Tendermint block number on which the voting process starts
+        uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
         string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
@@ -233,6 +233,31 @@ contract VotingProcess {
     constructor(uint256 chainIdValue) public {
         contractOwner = msg.sender;
         chainId = chainIdValue;
+
+        // Create an empty process at index 0.
+        // This way, existing processes will always have a positive index on processesIndex.
+        Process memory process = Process({
+            mode: 0,
+            envelopeType: 0,
+            entityAddress: address(0x0),
+            startBlock: 0,
+            blockCount: 0,
+            metadata: "",
+            censusMerkleRoot: "",
+            censusMerkleTree: "",
+            status: Status.CANCELED,
+            questionIndex: 0,
+            questionCount: 0,
+            maxValue: 0,
+            uniqueValues: false,
+            maxTotalCost: 0,
+            costExponent: 0,
+            maxVoteOverwrites: 0,
+            paramsSignature: 0,
+            namespace: 0,
+            results: ""
+        });
+        processes.push(process); // Take the [0] index
     }
 
     function setGenesis(string memory newValue) public onlyContractOwner {
@@ -327,8 +352,8 @@ contract VotingProcess {
         string memory metadata,
         string memory merkleRoot,
         string memory merkleTree,
-        uint256 startBlock,
-        uint256 blockCount,
+        uint64 startBlock,
+        uint32 blockCount,
         uint8 questionCount,
         uint8 maxValue,
         bool uniqueValues,
@@ -343,8 +368,9 @@ contract VotingProcess {
         require(bytes(merkleTree).length > 0, "Empty merkleTree");
         require(questionCount > 0, "Empty questionCount");
         require(maxValue > 0, "Empty maxValue");
-        if (mode & MODE_AUTO_START != 0)
+        if (mode & MODE_AUTO_START != 0) {
             require(startBlock > 0, "AUTO_START requires startBlock > 0");
+        }
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
@@ -379,8 +405,8 @@ contract VotingProcess {
             results: ""
         });
 
+        processesIndex[processId] = processes.length; // N - 1 after the entry is pushed to the processes list
         processes.push(process);
-        processesIndex[processId] = processes.length - 1;
         entityProcessCount[entityAddress]++;
 
         emit ProcessCreated(entityAddress, processId, merkleTree);
@@ -393,8 +419,8 @@ contract VotingProcess {
             uint8 mode,
             uint8 envelopeType,
             address entityAddress,
-            uint256 startBlock,
-            uint256 blockCount,
+            uint64 startBlock,
+            uint32 blockCount,
             string memory metadata,
             string memory censusMerkleRoot,
             string memory censusMerkleTree,
@@ -410,7 +436,9 @@ contract VotingProcess {
             uint16 namespace
         )
     {
-        uint256 processIndex = processesIndex[processId];
+        uint256 processIndex = getProcessIndex(processId);
+        require(processIndex > 0, "Process not found");
+
         mode = processes[processIndex].mode;
         envelopeType = processes[processIndex].envelopeType;
         entityAddress = processes[processIndex].entityAddress;
@@ -439,7 +467,12 @@ contract VotingProcess {
             status >= uint8(Status.OPEN) && status <= uint8(Status.PAUSED),
             "Invalid status code"
         );
+
         uint256 processIndex = getProcessIndex(processId);
+
+        // processId is guaranteed to exist since onlyEntity(processId) enforces that
+        // such process has been created by msg.sender
+
         require(
             processes[processIndex].mode & MODE_INTERRUPTIBLE != 0,
             "Process not interruptible"
@@ -476,6 +509,10 @@ contract VotingProcess {
         onlyEntity(processId)
     {
         uint256 processIndex = getProcessIndex(processId);
+
+        // processId is guaranteed to exist since onlyEntity(processId) enforces that
+        // such process has been created by msg.sender
+
         require(
             processes[processIndex].envelopeType & ENV_TYPE_SERIAL != 0,
             "Process is not SERIAL"
@@ -504,9 +541,13 @@ contract VotingProcess {
         require(bytes(censusMerkleTree).length > 0, "Empty Merkle Tree");
 
         uint256 processIndex = getProcessIndex(processId);
+
+        // processId is guaranteed to exist since onlyEntity(processId) enforces that
+        // such process has been created by msg.sender
+
         require(
             processes[processIndex].mode & MODE_DYNAMIC_CENSUS != 0,
-            "DYNAMIC_CENSUS is disabled"
+            "Read-only census"
         );
         require(
             processes[processIndex].status == Status.OPEN ||
@@ -527,6 +568,12 @@ contract VotingProcess {
         require(bytes(results).length > 0, "Empty results");
 
         uint256 processIndex = getProcessIndex(processId);
+        require(processIndex > 0, "Process not found");
+
+        require(
+            processes[processIndex].entityAddress != address(0x0),
+            "Empty process"
+        );
 
         // cannot publish results of a canceled process
         require(
@@ -550,6 +597,8 @@ contract VotingProcess {
         returns (string memory results)
     {
         uint256 processIndex = getProcessIndex(processId);
+        require(processIndex > 0, "Process not found");
+
         results = processes[processIndex].results;
     }
 }

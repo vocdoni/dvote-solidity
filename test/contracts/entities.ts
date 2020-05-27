@@ -34,6 +34,7 @@ describe('Entity Resolver', function () {
         randomAccount = accounts[2]
         randomAccount1 = accounts[3]
         randomAccount2 = accounts[4]
+        tx = null
 
         entityId = utils.keccak256(entityAccount.address)
         contractInstance = await new EntityResolverBuilder().build()

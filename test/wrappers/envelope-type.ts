@@ -48,8 +48,8 @@ describe("Envelope Type wrapper", () => {
     })
 
     it("Should fail for invalid types", () => {
-        for (let i = 16; i < 2000; i++) {
-            expect(() => { new ProcessEnvelopeType(2000 as any) }).to.throw
+        for (let i = 8; i < 256; i++) {
+            expect(() => { new ProcessEnvelopeType(i as any) }).to.throw
         }
     })
 })

@@ -102,14 +102,14 @@ export class ProcessMode {
         this._mode = processMode
     }
 
-    /** Sets the process so that it accepts vote from `startBlock` until `startBlock + numberOfBlocks`. The process is set to be on demand, by default. */
+    /** If set, the process will work like `status=PAUSED` before `startBlock` and like `status=ENDED` after `startBlock + blockCount`. The process works on demand, by default. */
     public static SCHEDULED: IProcessMode = 1 << 0 as IProcessMode
     /** Allows the process creator to update the census while it is `open` or `paused`. Disabled by default. */
-    public static DYNAMIC_CENSUS: IProcessMode = 1 << 0 as IProcessMode
+    public static DYNAMIC_CENSUS: IProcessMode = 1 << 1 as IProcessMode
     /** Allows the process creator to update the metadata while it is `open` or `paused`. Disabled by default. */
-    public static DYNAMIC_METADATA: IProcessMode = 1 << 0 as IProcessMode
+    public static DYNAMIC_METADATA: IProcessMode = 1 << 2 as IProcessMode
     /** Sets the process so that the metadata is encrypted. Disabled by default. */
-    public static ENCRYPTED_METADATA: IProcessMode = 1 << 0 as IProcessMode
+    public static ENCRYPTED_METADATA: IProcessMode = 1 << 3 as IProcessMode
 
     /** Returns the value that represents the given process mode */
     public static make(flags: { scheduled?: boolean, dynamicCensus?: boolean, dynamicMetadata?: boolean, encryptedMetadata?: boolean } = {}): IProcessMode {
@@ -121,9 +121,9 @@ export class ProcessMode {
         return result as IProcessMode
     }
 
-    /** Returns true if the process relies on `startBlock` and `numberOfBlocks`. Returns false if it works on demand. */
+    /** Returns true if the process relies on `startBlock` and `blockCount`. Returns false if it works on demand. */
     get isScheduled(): boolean { return (this._mode & ProcessMode.SCHEDULED) != 0 }
-    /** Returns true if the process does not rely on `startBlock` and `numberOfBlocks`. */
+    /** Returns true if the process does not rely on `startBlock` and `blockCount`. */
     get isOnDemand(): boolean { return (this._mode & ProcessMode.SCHEDULED) == 0 }
 
     /** Returns true if the census can be updated by the creator. */
