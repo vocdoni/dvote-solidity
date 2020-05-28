@@ -155,7 +155,7 @@ describe("Voting Process", () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
             const result: { genesis: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("GenesisChanged", (genesis: string) => {
+                contractInstance.on("GenesisUpdated", (genesis: string) => {
                     resolve({ genesis })
                 })
                 contractInstance.setGenesis(genesis).then(tx => tx.wait()).catch(reject)
@@ -213,7 +213,7 @@ describe("Voting Process", () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
             const result: { chainId: BigNumber } = await new Promise((resolve, reject) => {
-                contractInstance.on("ChainIdChanged", (chainId: BigNumber) => {
+                contractInstance.on("ChainIdUpdated", (chainId: BigNumber) => {
                     resolve({ chainId })
                 })
                 contractInstance.setChainId(newChainId).then(tx => tx.wait()).catch(reject)
