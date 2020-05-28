@@ -539,6 +539,8 @@ describe("Voting Process", () => {
         const validatorPublicKey2 = "0x4321"
 
         it("only when the contract owner requests it", async () => {
+            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.false
+
             // Register a validator
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
             tx = await contractInstance.addValidator(validatorPublicKey)
@@ -547,11 +549,15 @@ describe("Voting Process", () => {
             // Get validator list
             const result2 = await contractInstance.getValidators()
             expect(result2.length).to.eq(1)
+            expect(result2).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
 
             // Attempt to add a validator by someone else
             try {
                 contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.addValidator(validatorPublicKey)
+                tx = await contractInstance.addValidator(validatorPublicKey2)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -562,6 +568,10 @@ describe("Voting Process", () => {
             // Get validator list
             const result3 = await contractInstance.getValidators()
             expect(result3.length).to.eq(1)
+            expect(result3).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(validatorPublicKey2)).to.be.false
         })
 
         it("should add the validator public key to the validator list", async () => {
@@ -575,6 +585,9 @@ describe("Voting Process", () => {
             expect(result2.length).to.eq(1)
             expect(result2).to.deep.eq([validatorPublicKey])
 
+            // Check validator
+            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
+
             // Adding validator #2
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
             tx = await contractInstance.addValidator(validatorPublicKey2)
@@ -583,6 +596,10 @@ describe("Voting Process", () => {
             // Get validator list
             const result4 = await contractInstance.getValidators()
             expect(result4.length).to.eq(2)
+            expect(result4).to.deep.eq([validatorPublicKey, validatorPublicKey2])
+
+            // Check validator
+            expect(await contractInstance.isValidator(validatorPublicKey2)).to.be.true
         })
 
         it("should not add the validator public key to the validator list if exists", async () => {
@@ -610,6 +627,9 @@ describe("Voting Process", () => {
             const result3 = await contractInstance.getValidators()
             expect(result3).to.deep.eq([validatorPublicKey])
             expect(result3.length).to.eq(1)
+
+            // Still valid
+            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
         })
 
         it("should emit an event", async () => {
@@ -655,6 +675,10 @@ describe("Voting Process", () => {
             // Get validator list
             const result2 = await contractInstance.getValidators()
             expect(result2.length).to.eq(1)
+            expect(result2).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
 
             // Disable validator from the owner
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
@@ -687,6 +711,13 @@ describe("Voting Process", () => {
                 expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
             }
 
+            // Get validator list
+            expect(await contractInstance.getValidators()).to.deep.eq([validatorPublicKey])
+
+            // Check validators
+            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
+            expect(await contractInstance.isValidator(nonExistingValidatorPublicKey)).to.be.false
+
             // Attempt to disable non-existing validator
             try {
                 contractInstance = contractInstance.connect(randomAccount1.wallet) as any
@@ -702,6 +733,9 @@ describe("Voting Process", () => {
             const result4 = await contractInstance.getValidators()
             expect(result4.length).to.eq(1)
             expect(result4).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
         })
 
         it("should emit an event", async () => {
@@ -725,6 +759,9 @@ describe("Voting Process", () => {
     describe("should register an oracle", () => {
 
         it("only when the contract owner requests it", async () => {
+            // Check validator
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
+
             // Register a oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
             tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
@@ -735,10 +772,13 @@ describe("Voting Process", () => {
             expect(result2.length).to.eq(1)
             expect(result2).to.deep.eq([authorizedOracleAccount1.address])
 
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
+
             // Attempt to add a oracle by someone else
             try {
                 contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-                tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+                tx = await contractInstance.addOracle(authorizedOracleAccount2.address)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -750,6 +790,10 @@ describe("Voting Process", () => {
             const result3 = await contractInstance.getOracles()
             expect(result3.length).to.eq(1)
             expect(result3).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(authorizedOracleAccount2.address)).to.be.false
         })
 
         it("should add the oracle address to the oracle list", async () => {
@@ -763,6 +807,9 @@ describe("Voting Process", () => {
             expect(result2.length).to.eq(1)
             expect(result2).to.deep.eq([authorizedOracleAccount1.address])
 
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
+
             // Adding oracle #2
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
             tx = await contractInstance.addOracle(authorizedOracleAccount2.address)
@@ -771,6 +818,11 @@ describe("Voting Process", () => {
             // Get oracle list
             const result4 = await contractInstance.getOracles()
             expect(result4.length).to.eq(2)
+            expect(result4).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(authorizedOracleAccount2.address)).to.be.true
         })
 
         it("should not add the oracle address to the oracle list if exists", async () => {
@@ -783,6 +835,9 @@ describe("Voting Process", () => {
             const result2 = await contractInstance.getOracles()
             expect(result2.length).to.eq(1)
             expect(result2).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
 
             // Adding oracle #2
             try {
@@ -797,6 +852,10 @@ describe("Voting Process", () => {
             // Get oracle list
             const result3 = await contractInstance.getOracles()
             expect(result3.length).to.eq(1)
+            expect(result3).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
         })
 
         it("should emit an event", async () => {
@@ -817,10 +876,16 @@ describe("Voting Process", () => {
     describe("should remove an oracle", () => {
 
         it("only when the contract owner requests it", async () => {
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
+
             // Register oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
             tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
             await tx.wait()
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
 
             // Attempt to disable the oracle from someone else
             try {
@@ -835,6 +900,10 @@ describe("Voting Process", () => {
             // Get oracle list
             const result2 = await contractInstance.getOracles()
             expect(result2.length).to.eq(1)
+            expect(result2).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
 
             // Disable oracle from the creator
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
@@ -844,9 +913,15 @@ describe("Voting Process", () => {
             const result4 = await contractInstance.getOracles()
             expect(result4.length).to.eq(0)
             expect(result4).to.deep.eq([])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
         })
 
         it("should fail if the idx is not valid", async () => {
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
+
             // Register a oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
             tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
@@ -871,6 +946,10 @@ describe("Voting Process", () => {
             const result3 = await contractInstance.getOracles()
             expect(result3.length).to.eq(2)
             expect(result3).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
         })
 
         it("should fail if the idx does not match oracleAddress", async () => {
@@ -898,6 +977,10 @@ describe("Voting Process", () => {
             const result4 = await contractInstance.getOracles()
             expect(result4.length).to.eq(2)
             expect(result4).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
         })
 
         it("should emit an event", async () => {
