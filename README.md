@@ -3,7 +3,7 @@ This repo provides toolkit to interact with the EntityResolver and the VotingPro
 
 * Smart Contracts source code in Solidity
 * JSON files with the contract ABI and the Bytecode of each
-* Javascript file to import the JSON ABI and Bytecode
+* JS/Typescript support to import the JSON ABI and Bytecode
 
 ## Get started
 
@@ -15,17 +15,19 @@ npm install dvote-solidity
 
 ## Usage
 
-From NodeJS, import the library:
+To import the ABI and the bytecode:
 
 ```javascript
-const { EntityResolver, VotingProcess } = require("dvote-js")
+const { EntityResolver, VotingProcess } = require("dvote-solidity")
 
-console.log(EntityResolver.abi, EntityResolver.bytecode)
-console.log(VotingProcess.abi, VotingProcess.bytecode)
+console.log(EntityResolver.abi)
+console.log(EntityResolver.bytecode)
 
+console.log(VotingProcess.abi)
+console.log(VotingProcess.bytecode)
 ```
 
-If you use Typescript, you may need to add `"resolveJsonModule": true` n your `tsconfig.json` file.
+If you use Typescript, you may need to add `"resolveJsonModule": true` in your `tsconfig.json` file.
 
 Then use Web3 or Ethers.js to attach to an instance or deploy your own:
 
@@ -55,11 +57,12 @@ function deployVotingProcess() {
 ### Ethers.js
 
 ```javascript
+const { EntityResolver, VotingProcess } = require("dvote-solidity")
 const ethers = require("ethers")
 const config = ...
 
-const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = require("../build/entity-resolver.json")
-const { abi: votingProcessAbi, bytecode: votingProcessByteCode } = require("../build/voting-process.json")
+const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = EntityResolver
+const { abi: votingProcessAbi, bytecode: votingProcessByteCode } = VotingProcess
 
 const provider = new ethers.providers.JsonRpcProvider(config.GATEWAY_URL)
 
@@ -86,7 +89,6 @@ const tx1 = await resolver.setText(...)
 await tx1.wait()
 const tx2 = await process.create(...)
 await tx2.wait()
-
 ```
 
 ## Types and values
@@ -95,80 +97,133 @@ A Voting Process is defined by the following fields within the contract:
 
 ```solidity
 struct Process {
-    uint8 envelopeType;
-    uint8 mode;
-    address entityAddress;
-    uint256 startBlock;
-    uint256 numberOfBlocks;
-    string metadata;
-    string censusMerkleRoot;
-    string censusMerkleTree;
-    uint8 status;
-    uint8 questionIndex;
-    string results;
+    uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/components/process
+    uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/components/process
+    address entityAddress; // The Ethereum address of the Entity
+    uint256 startBlock; // Tendermint block number on which the voting process starts
+    uint256 blockCount; // Amount of Tendermint blocks during which the voting process is active
+    string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
+    string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
+    string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
+    uint8 status; // One of 0 [open], 1 [ended], 2 [canceled], 3 [paused]
+    uint8 questionIndex; // The index of the currently active question (only assembly processes)
+    uint8 questionCount; // How many questions the process has (only assembly processes)
+    string results; // string containing the results
 }
 ```
 
-### Envelope Type
-A voting process can have different types of envelopes. They are defined in `envelopeType` and they relate to:
-
-- **Anonymous voters** (vs Known voter)
-- **Encrypted vote** (until endBlock) (vs Plain vote)
-- **Public metadata** (vs Private metadata)
-- **Static census** (vs Dynamic census)
-
-The following combinations are available:
-
-| name | type | anonymous | encrypted vote | encrypted metadata | dynamic census | 
-| ------ | ------ | ------ | ------ | ------ | ------ |
-| (Realtime) Poll | 0000 = 0 | - | - | - | - |
-| Petition Sign | 0001 = 1  | - | - | - | Yes |
-| Encrypted Poll | 0100 = 4  | - | Yes | - | - |
-| Encrypted Private Poll | 0110 = 6 | - | Yes | Yes | - |
-| Realtime Election | 1000 = 8  | Yes | - | - | - |
-| Realtime Private Election | 1010 = 10  | Yes | - | Yes | - |
-| Election | 1100 = 12  | Yes | Yes | - | - |
-| Private Election | 1110 = 14  | Yes | Yes | Yes | - |
-
-An enum wrapper is available:
-
-```typescript
-import { ProcessEnvelopeType } from "dvote-solidity"
-ProcessEnvelopeType.REALTIME_POLL // => 0
-ProcessEnvelopeType.PETITION_SIGNING // => 1
-ProcessEnvelopeType.ENCRYPTED_POLL // => 4
-ProcessEnvelopeType.ENCRYPTED_PRIVATE_POLL // => 6
-ProcessEnvelopeType.REALTIME_ELECTION // => 8
-ProcessEnvelopeType.PRIVATE_ELECTION // => 10
-ProcessEnvelopeType.ELECTION // => 12
-ProcessEnvelopeType.REALTIME_PRIVATE_ELECTION // => 14
-
-const myType = new ProcessEnvelopeType(ProcessEnvelopeType.REALTIME_POLL) // 0
-myType.isRealtime() // true
-```
+Behaviour is defined by the flags on these variables:
+- `mode`
+  - The process mode (how it behaves)
+- `envelopeType`
+  - How votes look like
+- `status`
+  - Whether the process is open, ended, canceled or paused
 
 ### Process Mode
-The behaviour of the process itself is defined by the `processMode`. The key flags are:
+Available flags:
+- Public / encrypted metadata
+- Static / dynamic metadata
+- Static / dynamic census
+- On-demand / scheduled
 
-- **Scheduled** vs **On demand**
-- **Assembly** vs **Single envelope**
+Flag encoding: 
+```
+0x00001111
+      ||||
+      |||`- On-demand / Scheduled
+      ||`- Static / Dynamic census
+      |`- Static / Dynamic metadata
+      `- Plain / Encrypted meta
+```
 
-| name | type | assembly | on demand |
-| --- | --- | --- | --- |
-| Scheduled | 00 = 0 | - | - |
-| On demand single | 01 = 1 | - | Yes |
-| Assembly | 11 = 3 | Yes | Yes |
+- `0` implies the first option
+- `1` implies the second option
+
+|Name|Value|Plain/Encrypted meta|Static/Dynamic meta|Static/Dynamic census|On-demand/Scheduled|
+|---|---|---|---|---|---|
+|On-demand static|0|0|0|0|0|
+|Scheduled static|1|0|0|0|1|
+|On-demand dynamic census|2|0|0|1|0|
+|Scheduled dynamic census|3|0|0|1|1|
+|On-demand dynamic metadata|4|0|1|0|0|
+|Scheduled dynamic metadata|5|0|1|0|1|
+|On-demand dynamic|6|0|1|1|0|
+|Scheduled dynamic|7|0|1|1|1|
+|Encrypted on-demand static|8|1|0|0|0|
+|Ecrypted scheduled static|9|1|0|0|1|
+|Encrypted on-demand dynamic census|10|1|0|1|0|
+|Encrypted Scheduled dynamic census|11|1|0|1|1|
+|Encrypted on-demand dynamic metadata|12|1|1|0|0|
+|Encrypted scheduled dynamic metadata|13|1|1|0|1|
+|Encrypted dynamic on-demand|14|1|1|1|0|
+|Encrypted dynamic scheduled|15|1|1|1|1|
 
 An enum wrapper is available:
 
 ```typescript
 import { ProcessMode } from "dvote-solidity"
-ProcessMode.SCHEDULED_SINGLE // => 0
-ProcessMode.ON_DEMAND_SINGLE // => 1
-ProcessMode.ASSEMBLY // => 3
+// Flags
+ProcessMode.SCHEDULED // => 1
+ProcessMode.DYNAMIC_CENSUS // => 2
+ProcessMode.DYNAMIC_METADATA // => 4
+ProcessMode.ENCRYPTED_METADATA // => 8
 
-const myMode = new ProcessMode(ProcessMode.ASSEMBLY) // 3
-myMode.isOnDemand() // true
+// Also
+const mode = ProcessMode.make({ encryptedMetadata: true, dynamicMetadata: true, dynamicCensus: false, scheduled: true })
+// => 13
+
+// And also
+const wrappedMode = new ProcessMode(mode)
+wrappedMode.hasDynamicCensus // true
+```
+
+### Envelope types
+Available flags:
+- Single / multi envelope
+- Public / anonymous voter
+- Realtime / encrypted vote
+
+Flag encoding:
+```
+0x00000111
+       |||
+       ||`- Realtime / encrypted vote
+       |`- Public / anonymous voter
+       `- Single / multi envelope
+```
+
+- `0` implies the first option
+- `1` implies the second option
+
+|Name|Value|Single/Multi envelope|Public/Anonymous voter|Realtime/Encrypted vote|
+|---|---|---|---|---|
+|Realtime Public Single (Open Poll)|0|0|0|0|
+|Encrypted Public Single (Encrypted Poll)|1|0|0|1|
+|Realtime Anonymous Single (Anonymous Poll)|2|0|1|0|
+|Encrypted Anonymous Single (Election)|3|0|1|1|
+|Realtime Public Multi-envelope (Realtime Assembly)|4|1|0|0|
+|Encrypted Public Multi-envelope (Encrypted Assembly)|5|1|0|1|
+|Realtime Anonymous Multi-envelope (Multi vote realtime election)|6|1|1|0|
+|Encrypted Anonymous Multi-envelope (Multi vote election)|7|1|1|1|
+
+
+An enum wrapper is available:
+
+```typescript
+import { ProcessEnvelopeType } from "dvote-solidity"
+// Flags
+ProcessEnvelopeType.ENCRYPTED_VOTES // => 1
+ProcessEnvelopeType.ANONYMOUS_VOTERS // => 2
+ProcessEnvelopeType.MULTI_ENVELOPE // => 4
+
+// Also
+const type = ProcessEnvelopeType.make({ multiEnvelope: true, anonymousVoters: false, encryptedVotes: true })
+// => 5
+
+// And also
+const wrappedType = new ProcessEnvelopeType(type)
+wrappedType.hasAnonymousVoters // false
 ```
 
 ### Process Status
@@ -183,14 +238,10 @@ The status of a process is defined in `status`. It is a simple enum, defined as 
 - `ProcessStatus.PAUSED // 3`
   - The process might be resumed in the future, but the Vochain is not processing any votes.
 
-
 ## Development
 
 Compile and export the contracts ABI and Bytecode:
     `make all`
-
-Start a local blockchain:
-    `npm run ganache`
 
 Run the test suite locally
     `make test`

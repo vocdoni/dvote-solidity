@@ -270,21 +270,25 @@ export interface VotingProcessContractMethods {
     addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
     /** Removes the public key at the given index for a validator */
     removeValidator(idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
-    /** Retrieves the current list of validators on the Vocchain */
+    /** Retrieves the current list of validators on the Vochain */
     getValidators(): Promise<string[]>,
+    /** Checks whether the given public key is registered as a validator */
+    isValidator(validatorPublicKey: string): Promise<boolean>,
 
     /** Registers the address of a new oracle */
     addOracle(oracleAddr: string): Promise<ContractTransaction>,
     /** Removes the address at the given index for an oracle */
     removeOracle(idx: number, oracleAddr: string): Promise<ContractTransaction>,
-    /** Retrieves the current list of oracles on the Vocchain */
+    /** Retrieves the current list of oracles on the Vochain */
     getOracles(): Promise<string[]>,
+    /** Checks whether the given address is registered as an oracle */
+    isOracle(oracleAddress: string): Promise<boolean>,
 
     /** Increments the index of the current question (only when INCREMENTAL mode is set) */
     incrementQuestionIndex(processId: string): Promise<ContractTransaction>
 
     /** Sets the given results for the given process */
-    publishResults(processId: string, results: string): Promise<ContractTransaction>,
+    setResults(processId: string, results: string): Promise<ContractTransaction>,
     /** Retrieve the available results for the given process */
     getResults(processId: string): Promise<{ results: string }>
 }

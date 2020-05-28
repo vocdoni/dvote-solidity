@@ -12,6 +12,7 @@
         - Anonymous voters
     - Adding `questionIndex` and `questionCount`
     - Adding `maxValue`, `uniqueValues`, `maxTotalCost`, `costExponent`, `maxVotesOverwrite`, `paramsSignature` and `namespace`
+    - Unify the naming conventions of the getters/setters
 - Providing TypeScript wrappers for the process flags (mode, envelopetype and status)
 - Using Solidity 0.6.0
 

@@ -51,7 +51,15 @@ contract VotingProcess {
 
     using SafeAdd for uint8;
 
-    // GLOBAL STRUCTS
+    // GLOBAL DATA
+
+    address contractOwner; // See `onlyContractOwner`
+    string[] validators; // Public key array
+    address[] oracles; // Address array. See `onlyContractOwner`
+    string genesis; // Content Hashed URI
+    uint256 chainId;
+
+    // DATA STRUCTS
 
     struct Process {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/components/process
@@ -91,19 +99,11 @@ contract VotingProcess {
         string results; // string containing the results
     }
 
-    // GLOBAL DATA
-
-    address contractOwner;
-    string[] validators; // Public key array
-    address[] oracles; // Public key array
-    string genesis; // Content Hashed URI
-    uint256 chainId;
-
     // PER-PROCESS DATA
 
-    Process[] public processes; // Array of Process struct
-    mapping(bytes32 => uint256) processesIndex; // Mapping of processIds with processess idx
-    mapping(address => uint256) public entityProcessCount; // index of the last process for a given address
+    Process[] public processes; // Array of processes. Index [0] is reserved (see setResults)
+    mapping(bytes32 => uint256) processesIndex; // Mapping between processId's and their index in `processes[]`
+    mapping(address => uint256) public entityProcessCount; // Index of the last process for each entity address
 
     // EVENTS
 
@@ -124,7 +124,11 @@ contract VotingProcess {
     event ValidatorRemoved(string validatorPublicKey);
     event OracleAdded(address oracleAddress);
     event OracleRemoved(address oracleAddress);
-    event QuestionIndexIncremented(bytes32 indexed processId, uint8 newIndex);
+    event QuestionIndexIncremented(
+        address indexed entityAddress,
+        bytes32 processId,
+        uint8 newIndex
+    );
     event ResultsPublished(bytes32 indexed processId, string results);
 
     // MODIFIERS
@@ -206,29 +210,29 @@ contract VotingProcess {
             keccak256(abi.encodePacked((str2)));
     }
 
-    function validatorExists(string memory validator)
+    function isValidator(string memory validatorPublicKey)
         public
         view
         returns (bool)
     {
         for (uint256 i = 0; i < validators.length; i++) {
-            if (equalStrings(validators[i], validator)) {
+            if (equalStrings(validators[i], validatorPublicKey)) {
                 return true;
             }
         }
         return false;
     }
 
-    function oracleExists(address oracle) public view returns (bool) {
+    function isOracle(address oracleAddress) public view returns (bool) {
         for (uint256 i = 0; i < oracles.length; i++) {
-            if (oracles[i] == oracle) {
+            if (oracles[i] == oracleAddress) {
                 return true;
             }
         }
         return false;
     }
 
-    // METHODS
+    // GLOBAL METHODS
 
     constructor(uint256 chainIdValue) public {
         contractOwner = msg.sender;
@@ -236,6 +240,7 @@ contract VotingProcess {
 
         // Create an empty process at index 0.
         // This way, existing processes will always have a positive index on processesIndex.
+        // See `setResults`
         Process memory process = Process({
             mode: 0,
             envelopeType: 0,
@@ -291,7 +296,7 @@ contract VotingProcess {
         onlyContractOwner
     {
         require(
-            validatorExists(validatorPublicKey) == false,
+            isValidator(validatorPublicKey) == false,
             "Validator already exists"
         );
         validators.push(validatorPublicKey);
@@ -318,8 +323,8 @@ contract VotingProcess {
         return validators;
     }
 
-    function addOracle(address oracleAddress) public onlyContractOwner() {
-        require(oracleExists(oracleAddress) == false, "Oracle already exists");
+    function addOracle(address oracleAddress) public onlyContractOwner {
+        require(isOracle(oracleAddress) == false, "Oracle already exists");
         oracles.push(oracleAddress);
 
         emit OracleAdded(oracleAddress);
@@ -345,6 +350,8 @@ contract VotingProcess {
     function getOracles() public view returns (address[] memory) {
         return oracles;
     }
+
+    // ENTITY METHODS
 
     function create(
         uint8 mode,
@@ -374,7 +381,6 @@ contract VotingProcess {
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
-        // require(processesIndex[processId] == 0, "ProcessId already exists");
 
         // by default status is OPEN
         uint8 status = uint8(Status.OPEN);
@@ -459,12 +465,13 @@ contract VotingProcess {
         namespace = processes[processIndex].namespace;
     }
 
-    function setStatus(bytes32 processId, uint8 status)
+    function setStatus(bytes32 processId, uint8 newStatus)
         public
         onlyEntity(processId)
     {
         require(
-            status >= uint8(Status.OPEN) && status <= uint8(Status.PAUSED),
+            newStatus >= uint8(Status.OPEN) &&
+                newStatus <= uint8(Status.PAUSED),
             "Invalid status code"
         );
 
@@ -479,29 +486,30 @@ contract VotingProcess {
         );
 
         // check status code and conditions for changing it
-        if (status == uint8(Status.OPEN)) {
+        if (newStatus == uint8(Status.OPEN)) {
             require(
                 processes[processIndex].status == Status.PAUSED,
                 "Process not paused"
             );
         } else if (
-            status == uint8(Status.ENDED) || status == uint8(Status.CANCELED)
+            newStatus == uint8(Status.ENDED) ||
+            newStatus == uint8(Status.CANCELED)
         ) {
             require(
                 processes[processIndex].status == Status.OPEN ||
                     processes[processIndex].status == Status.PAUSED,
                 "Process not open or paused"
             );
-        } else if (status == uint8(Status.PAUSED)) {
+        } else if (newStatus == uint8(Status.PAUSED)) {
             require(
                 processes[processIndex].status == Status.OPEN,
                 "Process not open"
             );
         }
 
-        processes[processIndex].status = Status(status);
+        processes[processIndex].status = Status(newStatus);
 
-        emit StatusUpdated(msg.sender, processId, status);
+        emit StatusUpdated(msg.sender, processId, newStatus);
     }
 
     function incrementQuestionIndex(bytes32 processId)
@@ -523,13 +531,11 @@ contract VotingProcess {
         if (nextIdx < processes[processIndex].questionCount) {
             processes[processIndex].questionIndex = nextIdx;
 
-            emit QuestionIndexIncremented(processId, nextIdx);
+            emit QuestionIndexIncremented(msg.sender, processId, nextIdx);
         } else {
             // Set the process as ended
             setStatus(processId, uint8(Status.ENDED));
         }
-
-        emit QuestionIndexIncremented(processId, nextIdx);
     }
 
     function setCensus(
@@ -561,7 +567,7 @@ contract VotingProcess {
         emit CensusUpdated(msg.sender, processId);
     }
 
-    function publishResults(bytes32 processId, string memory results)
+    function setResults(bytes32 processId, string memory results)
         public
         onlyOracle
     {

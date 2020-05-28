@@ -1541,7 +1541,7 @@ describe("Voting Process", () => {
             // Attempt to publish the results by someone else
             try {
                 contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.publishResults(processId, results)
+                tx = await contractInstance.setResults(processId, results)
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -1559,7 +1559,7 @@ describe("Voting Process", () => {
 
             // Publish the results
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.publishResults(processId, results)
+            tx = await contractInstance.setResults(processId, results)
 
             // Get results
             const result4 = await contractInstance.getResults(processId)
@@ -1567,7 +1567,8 @@ describe("Voting Process", () => {
         }).timeout(6000)
 
         it("should be accepted when the processId exists", async () => {
-            const nonExistingProcessId = "0x0123456789012345678901234567890123456789012345678901234567890123"
+            const nonExistingProcessId1 = "0x0123456789012345678901234567890123456789012345678901234567890123"
+            const nonExistingProcessId2 = "0x1234567890123456789012345678901234567890123456789012345678901234"
 
             // Register an oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
@@ -1575,9 +1576,20 @@ describe("Voting Process", () => {
             await tx.wait()
 
             try {
-                // Reveal the results
+                // Try to publish
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.publishResults(nonExistingProcessId, results)
+                tx = await contractInstance.setResults(nonExistingProcessId1, results)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            try {
+                // Try to publish
+                contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
+                tx = await contractInstance.setResults(nonExistingProcessId2, results)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -1603,7 +1615,7 @@ describe("Voting Process", () => {
             // Attempt to publish the results after canceling
             try {
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.publishResults(processId, results)
+                tx = await contractInstance.setResults(processId, results)
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -1627,7 +1639,7 @@ describe("Voting Process", () => {
 
             // Publish the results
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.publishResults(processId, results)
+            tx = await contractInstance.setResults(processId, results)
 
             // Get results
             const result3 = await contractInstance.getResults(processId)
@@ -1648,7 +1660,7 @@ describe("Voting Process", () => {
 
             // publish results
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.publishResults(processId, originalResults)
+            tx = await contractInstance.setResults(processId, originalResults)
 
             // Get results
             const result3 = await contractInstance.getResults(processId)
@@ -1657,7 +1669,7 @@ describe("Voting Process", () => {
             // Try update the results
             try {
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.publishResults(processId, results)
+                tx = await contractInstance.setResults(processId, results)
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -1684,7 +1696,7 @@ describe("Voting Process", () => {
                 contractInstance.on("ResultsPublished", (processId: string, results: string) => {
                     resolve({ processId, results })
                 })
-                contractInstance.publishResults(processId1, results).then(tx => tx.wait()).catch(reject)
+                contractInstance.setResults(processId1, results).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
