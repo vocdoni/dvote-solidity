@@ -223,24 +223,46 @@ export interface VotingProcessContractMethods {
     getChainId(): Promise<BigNumber>,
 
     /** Publish a new voting process using the given metadata link */
-    create(envelopeType: IProcessEnvelopeType, mode: IProcessMode, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, startBlock: number | BigNumber, numberOfBlocks: number | BigNumber): Promise<ContractTransaction>,
+    create(
+        mode: IProcessMode,
+        envelopeType: IProcessEnvelopeType,
+        metadata: string,
+        censusMerkleRoot: string,
+        censusMerkleTree: string,
+        startBlock: number | BigNumber,
+        blockCount: number | BigNumber,
+        questionCount: number,
+        maxValue: number,
+        uniqueValues: boolean,
+        maxTotalCost: number,
+        costExponent: number,
+        maxVoteOverwrites: number,
+        paramsSignature: string,
+        namespace: number
+    ): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{ envelopeType: IProcessEnvelopeType, mode: IProcessMode, entityAddress: string, startBlock: BigNumber, numberOfBlocks: BigNumber, metadata: string, censusMerkleRoot: string, censusMerkleTree: string, status: IProcessStatus }>,
+    get(processId: string): Promise<{
+        mode: IProcessMode,
+        envelopeType: IProcessEnvelopeType,
+        entityAddress: string,
+        startBlock: BigNumber,
+        blockCount: BigNumber,
+        metadata: string,
+        censusMerkleRoot: string,
+        censusMerkleTree: string,
+        status: IProcessStatus,
+        questionIndex: number,
+        questionCount: number,
+        maxValue: number,
+        uniqueValues: boolean,
+        maxTotalCost: number,
+        costExponent: number,
+        maxVoteOverwrites: number,
+        paramsSignature: string,
+        namespace: number
+    }>,
     /** Update the voting process status that corresponds to the given Id */
     setProcessStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
-
-    /** Add a valid envelope type */
-    addEnvelopeType(envelopeType: number): Promise<ContractTransaction>,
-    /** Remove a valid envelope type */
-    removeEnvelopeType(envelopeType: number): Promise<ContractTransaction>,
-    /** Returns true if the given envelope type value is supported */
-    isEnvelopeTypeSupported(envelopeType: number): Promise<boolean>,
-    /** Add a valid mode type */
-    addMode(mode: number): Promise<ContractTransaction>,
-    /** Remove a valid mode type */
-    removeMode(mode: number): Promise<ContractTransaction>,
-    /** Returns true if the given process mode value is supported */
-    isModeSupported(mode: number): Promise<boolean>,
 
     /** Registers the public key of a new validator */
     addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
@@ -258,8 +280,6 @@ export interface VotingProcessContractMethods {
 
     /** Increments the index of the current question (assembly votes) */
     incrementQuestionIndex(processId: string): Promise<ContractTransaction>
-    /** Retrieves the index of the currently active question (assembly mode) */
-    getQuestionIndex(processId: string): Promise<number>
 
     /** Publish the results for the given process */
     publishResults(processId: string, results: string): Promise<ContractTransaction>,
