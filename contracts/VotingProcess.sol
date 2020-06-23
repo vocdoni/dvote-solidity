@@ -129,7 +129,7 @@ contract VotingProcess {
         bytes32 processId,
         uint8 newIndex
     );
-    event ResultsPublished(bytes32 indexed processId, string results);
+    event ResultsUpdated(bytes32 indexed processId, string results);
 
     // MODIFIERS
 
@@ -498,7 +498,7 @@ contract VotingProcess {
             require(
                 processes[processIndex].status == Status.OPEN ||
                     processes[processIndex].status == Status.PAUSED,
-                "Process not open or paused"
+                "Already ended or canceled"
             );
         } else if (newStatus == uint8(Status.PAUSED)) {
             require(
@@ -522,6 +522,11 @@ contract VotingProcess {
         // such process has been created by msg.sender
 
         require(
+            processes[processIndex].status == Status.OPEN ||
+                processes[processIndex].status == Status.PAUSED,
+            "Process not active"
+        );
+        require(
             processes[processIndex].envelopeType & ENV_TYPE_SERIAL != 0,
             "Process is not SERIAL"
         );
@@ -533,7 +538,7 @@ contract VotingProcess {
 
             emit QuestionIndexIncremented(msg.sender, processId, nextIdx);
         } else {
-            // Set the process as ended
+            // End the process if already at the last questionIndex
             setStatus(processId, uint8(Status.ENDED));
         }
     }
@@ -552,13 +557,13 @@ contract VotingProcess {
         // such process has been created by msg.sender
 
         require(
-            processes[processIndex].mode & MODE_DYNAMIC_CENSUS != 0,
-            "Read-only census"
-        );
-        require(
             processes[processIndex].status == Status.OPEN ||
                 processes[processIndex].status == Status.PAUSED,
-            "Process not open or paused"
+            "Process not active"
+        );
+        require(
+            processes[processIndex].mode & MODE_DYNAMIC_CENSUS != 0,
+            "Read-only census"
         );
 
         processes[processIndex].censusMerkleRoot = censusMerkleRoot;
@@ -594,7 +599,7 @@ contract VotingProcess {
 
         processes[processIndex].results = results;
 
-        emit ResultsPublished(processId, results);
+        emit ResultsUpdated(processId, results);
     }
 
     function getResults(bytes32 processId)
