@@ -507,6 +507,8 @@ contract VotingProcess {
             );
         }
 
+        // Note: the process can also be ended from incrementQuestionIndex
+        // if questionIndex is already at the last one
         processes[processIndex].status = Status(newStatus);
 
         emit StatusUpdated(msg.sender, processId, newStatus);
@@ -538,8 +540,16 @@ contract VotingProcess {
 
             emit QuestionIndexIncremented(msg.sender, processId, nextIdx);
         } else {
-            // End the process if already at the last questionIndex
-            setStatus(processId, uint8(Status.ENDED));
+            require(
+                processes[processIndex].mode & MODE_INTERRUPTIBLE != 0,
+                "Process not interruptible"
+            );
+
+            // End the process if the last question is already active and
+            // the process is interruptible
+            processes[processIndex].status = Status.ENDED;
+
+            emit StatusUpdated(msg.sender, processId, uint8(Status.ENDED));
         }
     }
 
