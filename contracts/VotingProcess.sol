@@ -437,7 +437,10 @@ contract VotingProcess {
         require(questionCount > 0, "Empty questionCount");
         require(maxValue > 0, "Empty maxValue");
         if (mode & MODE_AUTO_START != 0) {
-            require(startBlock > 0, "AUTO_START requires startBlock > 0");
+            require(startBlock > 0, "Auto start requires a start block");
+        }
+        if (mode & MODE_INTERRUPTIBLE == 0) {
+            require(blockCount > 0, "Uninterruptible needs blockCount");
         }
 
         address entityAddress = msg.sender;
@@ -604,13 +607,12 @@ contract VotingProcess {
 
         uint256 processIndex = getProcessIndex(processId);
         require(processIndex > 0, "Process not found");
-
+        // The process must be created
         require(
             processes[processIndex].entityAddress != address(0x0),
             "Empty process"
         );
-
-        // cannot publish results of a canceled process
+        // cannot publish results on a canceled process
         require(
             processes[processIndex].status != Status.CANCELED,
             "Process is canceled"
