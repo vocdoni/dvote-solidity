@@ -91,88 +91,80 @@ export type EntityResolverContractMethods = {
 // VOTING PROCESS FLAGS
 ///////////////////////////////////////////////////////////////////////////////
 
-export type IProcessMode = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
-export const processModeValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-
 /** Wrapper class to enumerate and handle valid values of a process mode */
 export class ProcessMode {
-    private _mode: IProcessMode
-    constructor(processMode: IProcessMode) {
-        if (!processModeValues.includes(processMode)) throw new Error("Invalid process mode")
+    private _mode: number
+    constructor(processMode: number) {
+        const allFlags = ProcessMode.AUTO_START | ProcessMode.INTERRUPTIBLE | ProcessMode.DYNAMIC_CENSUS | ProcessMode.ALLOW_VOTE_OVERWRITE | ProcessMode.ENCRYPTED_METADATA
+        if (processMode > allFlags) throw new Error("Invalid process mode")
         this._mode = processMode
     }
 
-    /** If set, the process will work like `status=PAUSED` before `startBlock` and like `status=ENDED` after `startBlock + blockCount`. The process works on demand, by default. */
-    public static SCHEDULED: IProcessMode = 1 << 0 as IProcessMode
-    /** Allows the process creator to update the census while it is `open` or `paused`. Disabled by default. */
-    public static DYNAMIC_CENSUS: IProcessMode = 1 << 1 as IProcessMode
-    /** Allows the process creator to update the metadata while it is `open` or `paused`. Disabled by default. */
-    public static DYNAMIC_METADATA: IProcessMode = 1 << 2 as IProcessMode
-    /** Sets the process so that the metadata is encrypted. Disabled by default. */
-    public static ENCRYPTED_METADATA: IProcessMode = 1 << 3 as IProcessMode
+    /** By default, the process is started on demand (PAUSED). If set, the process will sIf set, the process will work like `status=PAUSED` before `startBlock` and like `status=ENDED` after `startBlock + blockCount`. The process works on demand, by default.tart as OPEN and the Vochain will allow incoming votes after `startBlock` */
+    public static AUTO_START: number = 1 << 0
+    /** By default, the process can't be paused, ended or canceled. If set, the process can be paused, ended or canceled by the creator. */
+    public static INTERRUPTIBLE: number = 1 << 1
+    /** By default, the census is immutable. When set, the creator can update the census while the process remains `OPEN` or `PAUSED`. */
+    public static DYNAMIC_CENSUS: number = 1 << 2
+    /** By default, the first valid vote is final. If set, users will be allowed to vote up to `maxVoteOverwrites` times and the last valid vote will be counted. */
+    public static ALLOW_VOTE_OVERWRITE: number = 1 << 3
+    /** By default, the metadata is not encrypted. If set, clients should fetch the decryption key before trying to display the metadata. */
+    public static ENCRYPTED_METADATA: number = 1 << 4
 
     /** Returns the value that represents the given process mode */
-    public static make(flags: { scheduled?: boolean, dynamicCensus?: boolean, dynamicMetadata?: boolean, encryptedMetadata?: boolean } = {}): IProcessMode {
+    public static make(flags: { autoStart?: boolean, interruptible?: boolean, dynamicCensus?: boolean, allowVoteOverwrite?: boolean, encryptedMetadata?: boolean } = {}): number {
         let result = 0
-        result |= flags.scheduled ? ProcessMode.SCHEDULED : 0
+        result |= flags.autoStart ? ProcessMode.AUTO_START : 0
+        result |= flags.interruptible ? ProcessMode.INTERRUPTIBLE : 0
         result |= flags.dynamicCensus ? ProcessMode.DYNAMIC_CENSUS : 0
-        result |= flags.dynamicMetadata ? ProcessMode.DYNAMIC_METADATA : 0
+        result |= flags.allowVoteOverwrite ? ProcessMode.ALLOW_VOTE_OVERWRITE : 0
         result |= flags.encryptedMetadata ? ProcessMode.ENCRYPTED_METADATA : 0
-        return result as IProcessMode
+        return result
     }
 
-    /** Returns true if the process relies on `startBlock` and `blockCount`. Returns false if it works on demand. */
-    get isScheduled(): boolean { return (this._mode & ProcessMode.SCHEDULED) != 0 }
-    /** Returns true if the process does not rely on `startBlock` and `blockCount`. */
-    get isOnDemand(): boolean { return (this._mode & ProcessMode.SCHEDULED) == 0 }
-
+    /** Returns true if the Vochain will open the process at `startBlock`. */
+    get isAutoStart(): boolean { return (this._mode & ProcessMode.AUTO_START) != 0 }
+    /** Returns true if the process can be paused, ended and canceled by the creator. */
+    get isInterruptible(): boolean { return (this._mode & ProcessMode.INTERRUPTIBLE) != 0 }
     /** Returns true if the census can be updated by the creator. */
     get hasDynamicCensus(): boolean { return (this._mode & ProcessMode.DYNAMIC_CENSUS) != 0 }
-    /** Returns true if the metadata can be updated by the creator. */
-    get hasDynamicMetadata(): boolean { return (this._mode & ProcessMode.DYNAMIC_METADATA) != 0 }
+    /** Returns true if voters can overwrite their last vote. */
+    get allowsVoteOverwrite(): boolean { return (this._mode & ProcessMode.ALLOW_VOTE_OVERWRITE) != 0 }
     /** Returns true if the process metadata is expected to be encrypted. */
-    get hasMetadataEncrypted(): boolean { return (this._mode & ProcessMode.ENCRYPTED_METADATA) != 0 }
+    get hasEncryptedMetadata(): boolean { return (this._mode & ProcessMode.ENCRYPTED_METADATA) != 0 }
 }
-
-export type IProcessEnvelopeType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
-export const processEnvelopeTypeValues = [0, 1, 2, 3, 4, 5, 6, 7]
 
 /** Wrapper class to enumerate and handle valid values of a process envelope type */
 export class ProcessEnvelopeType {
-    private _type: IProcessEnvelopeType
-    constructor(envelopeType: IProcessEnvelopeType) {
-        if (!processEnvelopeTypeValues.includes(envelopeType)) throw new Error("Invalid envelope type")
+    private _type: number
+    constructor(envelopeType: number) {
+        const allFlags = ProcessEnvelopeType.SERIAL | ProcessEnvelopeType.ANONYMOUS | ProcessEnvelopeType.ENCRYPTED_VOTE
+        if (envelopeType > allFlags) throw new Error("Invalid envelope type")
         this._type = envelopeType
     }
 
-    /** Sets the flag to enforce votes to be sent encrypted. Votes will become public when the process ends. Disabled by default. */
-    public static ENCRYPTED_VOTES: IProcessEnvelopeType = 1 << 0 as IProcessEnvelopeType
-    /** Sets the process to verify votes with ZK-Snarks. By default, the vote signature is checked (this can reveal the voter's identity). */
-    public static ANONYMOUS_VOTERS: IProcessEnvelopeType = 1 << 1 as IProcessEnvelopeType
-    /** Sets the process so that questions are voted one by one, instead of all at once. Enables `questionIndex` and `questionCount`. Single envelope by default. */
-    public static MULTI_ENVELOPE: IProcessEnvelopeType = 1 << 2 as IProcessEnvelopeType
+    /** By default, all votes are sent within a single envelope. When set, the process questions are voted one by one (enables `questionIndex`). */
+    public static SERIAL: number = 1 << 0
+    /** By default, the franchise proof relies on an ECDSA signature (this could reveal the voter's identity). When set, the franchise proof will use ZK-Snarks. */
+    public static ANONYMOUS: number = 1 << 1
+    /** By default, votes are sent unencrypted. When the flag is set, votes are sent encrypted and become public when the process ends. */
+    public static ENCRYPTED_VOTE: number = 1 << 2
 
     /** Returns the value that represents the given envelope type */
-    public static make(flags: { encryptedVotes?: boolean, anonymousVoters?: boolean, multiEnvelope?: boolean } = {}): IProcessEnvelopeType {
+    public static make(flags: { serial?: boolean, anonymousVoters?: boolean, encryptedVote?: boolean } = {}): number {
         let result = 0
-        result |= flags.encryptedVotes ? ProcessEnvelopeType.ENCRYPTED_VOTES : 0
-        result |= flags.anonymousVoters ? ProcessEnvelopeType.ANONYMOUS_VOTERS : 0
-        result |= flags.multiEnvelope ? ProcessEnvelopeType.MULTI_ENVELOPE : 0
-        return result as IProcessEnvelopeType
+        result |= flags.serial ? ProcessEnvelopeType.SERIAL : 0
+        result |= flags.anonymousVoters ? ProcessEnvelopeType.ANONYMOUS : 0
+        result |= flags.encryptedVote ? ProcessEnvelopeType.ENCRYPTED_VOTE : 0
+        return result
     }
 
-    /** Returns true if envelopes are expected to be sent encrypted. Inverse of `isRealtime` */
-    get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
-    /** Returns true if envelopes are not encrypted and results can be seen in real time. Inverse of `hasEncryptedVotes` */
-    get isRealtime(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) == 0 }
-
-    /** Returns true if franchise proofs are validated with ZK-Snarks. */
-    get hasAnonymousVoters(): boolean { return (this._type & ProcessEnvelopeType.ANONYMOUS_VOTERS) != 0 }
-
-    /** Returns true if the process expects an envelope to be sent for each question. */
-    get isMultiEnvelope(): boolean { return (this._type & ProcessEnvelopeType.MULTI_ENVELOPE) != 0 }
-    /** Returns true if the process expects a single envelope to be sent with all the votes. */
-    get isSingleEnvelope(): boolean { return (this._type & ProcessEnvelopeType.MULTI_ENVELOPE) == 0 }
+    /** Returns true if the process expects one envelope to be sent for each question. */
+    get hasSerialVoting(): boolean { return (this._type & ProcessEnvelopeType.SERIAL) != 0 }
+    /** Returns true if franchise proofs use ZK-Snarks. */
+    get hasAnonymousVoters(): boolean { return (this._type & ProcessEnvelopeType.ANONYMOUS) != 0 }
+    /** Returns true if envelopes are to be sent encrypted. */
+    get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTE) != 0 }
 }
 
 export type IProcessStatus = 0 | 1 | 2 | 3
@@ -224,8 +216,8 @@ export interface VotingProcessContractMethods {
 
     /** Publish a new voting process using the given metadata link */
     create(
-        mode: IProcessMode,
-        envelopeType: IProcessEnvelopeType,
+        mode: number,
+        envelopeType: number,
         metadata: string,
         censusMerkleRoot: string,
         censusMerkleTree: string,
@@ -242,8 +234,8 @@ export interface VotingProcessContractMethods {
     ): Promise<ContractTransaction>,
     /** Retrieve the current data for the given process */
     get(processId: string): Promise<{
-        mode: IProcessMode,
-        envelopeType: IProcessEnvelopeType,
+        mode: number,
+        envelopeType: number,
         entityAddress: string,
         startBlock: BigNumber,
         blockCount: BigNumber,

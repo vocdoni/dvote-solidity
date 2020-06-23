@@ -442,6 +442,12 @@ contract VotingProcess {
         if (mode & MODE_INTERRUPTIBLE == 0) {
             require(blockCount > 0, "Uninterruptible needs blockCount");
         }
+        if (mode & MODE_ALLOW_VOTE_OVERWRITE != 0) {
+            require(
+                maxVoteOverwrites > 0,
+                "Allow overwrite needs maxVoteOverwrites > 0"
+            );
+        }
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
