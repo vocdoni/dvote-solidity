@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./math/SafeAdd.sol";
 
+
 /*
 Process Mode flags
 
@@ -124,7 +125,7 @@ contract VotingProcess {
     event ValidatorRemoved(string validatorPublicKey);
     event OracleAdded(address oracleAddress);
     event OracleRemoved(address oracleAddress);
-    event QuestionIndexIncremented(
+    event QuestionIndexUpdated(
         address indexed entityAddress,
         bytes32 processId,
         uint8 newIndex
@@ -210,37 +211,15 @@ contract VotingProcess {
             keccak256(abi.encodePacked((str2)));
     }
 
-    function isValidator(string memory validatorPublicKey)
-        public
-        view
-        returns (bool)
-    {
-        for (uint256 i = 0; i < validators.length; i++) {
-            if (equalStrings(validators[i], validatorPublicKey)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function isOracle(address oracleAddress) public view returns (bool) {
-        for (uint256 i = 0; i < oracles.length; i++) {
-            if (oracles[i] == oracleAddress) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // GLOBAL METHODS
 
     constructor(uint256 chainIdValue) public {
         contractOwner = msg.sender;
         chainId = chainIdValue;
 
-        // Create an empty process at index 0.
-        // This way, existing processes will always have a positive index on processesIndex.
-        // See `setResults`
+        // Fill an empty process at index 0.
+        // NOTE: This way, real processes will always have a positive index on processesIndex.
+
         Process memory process = Process({
             mode: 0,
             envelopeType: 0,
@@ -262,13 +241,13 @@ contract VotingProcess {
             namespace: 0,
             results: ""
         });
-        processes.push(process); // Take the [0] index
+        processes.push(process); // Fill the [0] index
     }
 
     function setGenesis(string memory newValue) public onlyContractOwner {
         require(
             equalStrings(genesis, newValue) == false,
-            "Genesis is the same"
+            "Genesis must differ"
         );
 
         genesis = newValue;
@@ -276,19 +255,11 @@ contract VotingProcess {
         emit GenesisUpdated(genesis);
     }
 
-    function getGenesis() public view returns (string memory) {
-        return genesis;
-    }
-
     function setChainId(uint256 newValue) public onlyContractOwner {
-        require(chainId != newValue, "chainId is the same");
+        require(chainId != newValue, "chainId must differ");
         chainId = newValue;
 
         emit ChainIdUpdated(chainId);
-    }
-
-    function getChainId() public view returns (uint256) {
-        return chainId;
     }
 
     function addValidator(string memory validatorPublicKey)
@@ -319,10 +290,6 @@ contract VotingProcess {
         emit ValidatorRemoved(validatorPublicKey);
     }
 
-    function getValidators() public view returns (string[] memory) {
-        return validators;
-    }
-
     function addOracle(address oracleAddress) public onlyContractOwner {
         require(isOracle(oracleAddress) == false, "Oracle already exists");
         oracles.push(oracleAddress);
@@ -347,8 +314,102 @@ contract VotingProcess {
         emit OracleRemoved(oracleAddress);
     }
 
+    // GETTERS
+
+    function getGenesis() public view returns (string memory) {
+        return genesis;
+    }
+
+    function getChainId() public view returns (uint256) {
+        return chainId;
+    }
+
+    function getValidators() public view returns (string[] memory) {
+        return validators;
+    }
+
     function getOracles() public view returns (address[] memory) {
         return oracles;
+    }
+
+    function isValidator(string memory validatorPublicKey)
+        public
+        view
+        returns (bool)
+    {
+        for (uint256 i = 0; i < validators.length; i++) {
+            if (equalStrings(validators[i], validatorPublicKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function isOracle(address oracleAddress) public view returns (bool) {
+        for (uint256 i = 0; i < oracles.length; i++) {
+            if (oracles[i] == oracleAddress) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function get(bytes32 processId)
+        public
+        view
+        returns (
+            uint8 mode,
+            uint8 envelopeType,
+            address entityAddress,
+            uint64 startBlock,
+            uint32 blockCount,
+            string memory metadata,
+            string memory censusMerkleRoot,
+            string memory censusMerkleTree,
+            uint8 status,
+            uint8 questionIndex,
+            uint8 questionCount,
+            uint8 maxValue,
+            bool uniqueValues,
+            uint16 maxTotalCost,
+            uint16 costExponent,
+            uint8 maxVoteOverwrites,
+            bytes32 paramsSignature,
+            uint16 namespace
+        )
+    {
+        uint256 processIndex = getProcessIndex(processId);
+        require(processIndex > 0, "Process not found");
+
+        mode = processes[processIndex].mode;
+        envelopeType = processes[processIndex].envelopeType;
+        entityAddress = processes[processIndex].entityAddress;
+        startBlock = processes[processIndex].startBlock;
+        blockCount = processes[processIndex].blockCount;
+        metadata = processes[processIndex].metadata;
+        censusMerkleRoot = processes[processIndex].censusMerkleRoot;
+        censusMerkleTree = processes[processIndex].censusMerkleTree;
+        status = uint8(processes[processIndex].status);
+        questionIndex = processes[processIndex].questionIndex;
+        questionCount = processes[processIndex].questionCount;
+        maxValue = processes[processIndex].maxValue;
+        uniqueValues = processes[processIndex].uniqueValues;
+        maxTotalCost = processes[processIndex].maxTotalCost;
+        costExponent = processes[processIndex].costExponent;
+        maxVoteOverwrites = processes[processIndex].maxVoteOverwrites;
+        paramsSignature = processes[processIndex].paramsSignature;
+        namespace = processes[processIndex].namespace;
+    }
+
+    function getResults(bytes32 processId)
+        public
+        view
+        returns (string memory results)
+    {
+        uint256 processIndex = getProcessIndex(processId);
+        require(processIndex > 0, "Process not found");
+
+        results = processes[processIndex].results;
     }
 
     // ENTITY METHODS
@@ -416,53 +477,6 @@ contract VotingProcess {
         entityProcessCount[entityAddress]++;
 
         emit ProcessCreated(entityAddress, processId, merkleTree);
-    }
-
-    function get(bytes32 processId)
-        public
-        view
-        returns (
-            uint8 mode,
-            uint8 envelopeType,
-            address entityAddress,
-            uint64 startBlock,
-            uint32 blockCount,
-            string memory metadata,
-            string memory censusMerkleRoot,
-            string memory censusMerkleTree,
-            uint8 status,
-            uint8 questionIndex,
-            uint8 questionCount,
-            uint8 maxValue,
-            bool uniqueValues,
-            uint16 maxTotalCost,
-            uint16 costExponent,
-            uint8 maxVoteOverwrites,
-            bytes32 paramsSignature,
-            uint16 namespace
-        )
-    {
-        uint256 processIndex = getProcessIndex(processId);
-        require(processIndex > 0, "Process not found");
-
-        mode = processes[processIndex].mode;
-        envelopeType = processes[processIndex].envelopeType;
-        entityAddress = processes[processIndex].entityAddress;
-        startBlock = processes[processIndex].startBlock;
-        blockCount = processes[processIndex].blockCount;
-        metadata = processes[processIndex].metadata;
-        censusMerkleRoot = processes[processIndex].censusMerkleRoot;
-        censusMerkleTree = processes[processIndex].censusMerkleTree;
-        status = uint8(processes[processIndex].status);
-        questionIndex = processes[processIndex].questionIndex;
-        questionCount = processes[processIndex].questionCount;
-        maxValue = processes[processIndex].maxValue;
-        uniqueValues = processes[processIndex].uniqueValues;
-        maxTotalCost = processes[processIndex].maxTotalCost;
-        costExponent = processes[processIndex].costExponent;
-        maxVoteOverwrites = processes[processIndex].maxVoteOverwrites;
-        paramsSignature = processes[processIndex].paramsSignature;
-        namespace = processes[processIndex].namespace;
     }
 
     function setStatus(bytes32 processId, uint8 newStatus)
@@ -538,7 +552,7 @@ contract VotingProcess {
         if (nextIdx < processes[processIndex].questionCount) {
             processes[processIndex].questionIndex = nextIdx;
 
-            emit QuestionIndexIncremented(msg.sender, processId, nextIdx);
+            emit QuestionIndexUpdated(msg.sender, processId, nextIdx);
         } else {
             require(
                 processes[processIndex].mode & MODE_INTERRUPTIBLE != 0,
@@ -610,16 +624,5 @@ contract VotingProcess {
         processes[processIndex].results = results;
 
         emit ResultsUpdated(processId, results);
-    }
-
-    function getResults(bytes32 processId)
-        public
-        view
-        returns (string memory results)
-    {
-        uint256 processIndex = getProcessIndex(processId);
-        require(processIndex > 0, "Process not found");
-
-        results = processes[processIndex].results;
     }
 }
