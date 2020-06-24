@@ -138,7 +138,7 @@ export class ProcessMode {
 export class ProcessEnvelopeType {
     private _type: number
     constructor(envelopeType: number) {
-        const allFlags = ProcessEnvelopeType.SERIAL | ProcessEnvelopeType.ANONYMOUS | ProcessEnvelopeType.ENCRYPTED_VOTE
+        const allFlags = ProcessEnvelopeType.SERIAL | ProcessEnvelopeType.ANONYMOUS | ProcessEnvelopeType.ENCRYPTED_VOTES
         if (envelopeType > allFlags) throw new Error("Invalid envelope type")
         this._type = envelopeType
     }
@@ -148,14 +148,14 @@ export class ProcessEnvelopeType {
     /** By default, the franchise proof relies on an ECDSA signature (this could reveal the voter's identity). When set, the franchise proof will use ZK-Snarks. */
     public static ANONYMOUS: number = 1 << 1
     /** By default, votes are sent unencrypted. When the flag is set, votes are sent encrypted and become public when the process ends. */
-    public static ENCRYPTED_VOTE: number = 1 << 2
+    public static ENCRYPTED_VOTES: number = 1 << 2
 
     /** Returns the value that represents the given envelope type */
-    public static make(flags: { serial?: boolean, anonymousVoters?: boolean, encryptedVote?: boolean } = {}): number {
+    public static make(flags: { serial?: boolean, anonymousVoters?: boolean, encryptedVotes?: boolean } = {}): number {
         let result = 0
         result |= flags.serial ? ProcessEnvelopeType.SERIAL : 0
         result |= flags.anonymousVoters ? ProcessEnvelopeType.ANONYMOUS : 0
-        result |= flags.encryptedVote ? ProcessEnvelopeType.ENCRYPTED_VOTE : 0
+        result |= flags.encryptedVotes ? ProcessEnvelopeType.ENCRYPTED_VOTES : 0
         return result
     }
 
@@ -164,7 +164,7 @@ export class ProcessEnvelopeType {
     /** Returns true if franchise proofs use ZK-Snarks. */
     get hasAnonymousVoters(): boolean { return (this._type & ProcessEnvelopeType.ANONYMOUS) != 0 }
     /** Returns true if envelopes are to be sent encrypted. */
-    get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTE) != 0 }
+    get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
 }
 
 export type IProcessStatus = 0 | 1 | 2 | 3

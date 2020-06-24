@@ -43,7 +43,7 @@ contract VotingProcess {
     // Envelope Type flags
     uint8 constant ENV_TYPE_SERIAL = 1 << 0;
     uint8 constant ENV_TYPE_ANONYMOUS = 1 << 1;
-    uint8 constant ENV_TYPE_ENCRYPTED_VOTE = 1 << 2;
+    uint8 constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2;
 
     // Process status
     enum Status {OPEN, ENDED, CANCELED, PAUSED}
