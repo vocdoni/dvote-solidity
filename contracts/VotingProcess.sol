@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 
 import "./math/SafeAdd.sol";
 
-
 /*
 Process Mode flags
 
@@ -78,6 +77,7 @@ contract VotingProcess {
         uint8 questionCount;
         // Determines the acceptable value range.
         // N => valid votes will range from 1 to N (inclusive)
+        uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last counts)
         uint8 maxValue;
         // Choices for a question cannot appear twice or more
         bool uniqueValues;
@@ -91,7 +91,6 @@ contract VotingProcess {
         // - 0 => 0.0000
         // - 65535 => 6.5535
         uint16 costExponent;
-        uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last counts)
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
         // Self-assign to a certain namespace.
         // This will determine the oracles that listen and react to it.
@@ -102,9 +101,9 @@ contract VotingProcess {
 
     // PER-PROCESS DATA
 
-    Process[] public processes; // Array of processes. Index [0] is reserved (see setResults)
+    Process[] processes; // Array of processes. Index [0] is reserved (see setResults)
     mapping(bytes32 => uint256) processesIndex; // Mapping between processId's and their index in `processes[]`
-    mapping(address => uint256) public entityProcessCount; // Index of the last process for each entity address
+    mapping(address => uint256) entityProcessCount; // Index of the last process for each entity address
 
     // EVENTS
 
@@ -118,7 +117,7 @@ contract VotingProcess {
     event StatusUpdated(
         address indexed entityAddress,
         bytes32 processId,
-        uint8 status
+        Status status
     );
     event CensusUpdated(address indexed entityAddress, bytes32 processId);
     event ValidatorAdded(string validatorPublicKey);
@@ -130,7 +129,7 @@ contract VotingProcess {
         bytes32 processId,
         uint8 newIndex
     );
-    event ResultsUpdated(bytes32 indexed processId, string results);
+    event ResultsAvailable(bytes32 indexed processId, string results);
 
     // MODIFIERS
 
@@ -232,11 +231,11 @@ contract VotingProcess {
             status: Status.CANCELED,
             questionIndex: 0,
             questionCount: 0,
+            maxVoteOverwrites: 0,
             maxValue: 0,
             uniqueValues: false,
             maxTotalCost: 0,
             costExponent: 0,
-            maxVoteOverwrites: 0,
             paramsSignature: 0,
             namespace: 0,
             results: ""
@@ -366,14 +365,14 @@ contract VotingProcess {
             string memory metadata,
             string memory censusMerkleRoot,
             string memory censusMerkleTree,
-            uint8 status,
+            Status status,
             uint8 questionIndex,
             uint8 questionCount,
+            uint8 maxVoteOverwrites,
             uint8 maxValue,
             bool uniqueValues,
             uint16 maxTotalCost,
             uint16 costExponent,
-            uint8 maxVoteOverwrites,
             bytes32 paramsSignature,
             uint16 namespace
         )
@@ -389,14 +388,14 @@ contract VotingProcess {
         metadata = processes[processIndex].metadata;
         censusMerkleRoot = processes[processIndex].censusMerkleRoot;
         censusMerkleTree = processes[processIndex].censusMerkleTree;
-        status = uint8(processes[processIndex].status);
+        status = processes[processIndex].status;
         questionIndex = processes[processIndex].questionIndex;
         questionCount = processes[processIndex].questionCount;
+        maxVoteOverwrites = processes[processIndex].maxVoteOverwrites;
         maxValue = processes[processIndex].maxValue;
         uniqueValues = processes[processIndex].uniqueValues;
         maxTotalCost = processes[processIndex].maxTotalCost;
         costExponent = processes[processIndex].costExponent;
-        maxVoteOverwrites = processes[processIndex].maxVoteOverwrites;
         paramsSignature = processes[processIndex].paramsSignature;
         namespace = processes[processIndex].namespace;
     }
@@ -423,11 +422,11 @@ contract VotingProcess {
         uint64 startBlock,
         uint32 blockCount,
         uint8 questionCount,
+        uint8 maxVoteOverwrites,
         uint8 maxValue,
         bool uniqueValues,
         uint16 maxTotalCost,
         uint16 costExponent,
-        uint8 maxVoteOverwrites,
         bytes32 paramsSignature,
         uint16 namespace
     ) public {
@@ -453,10 +452,10 @@ contract VotingProcess {
         bytes32 processId = getNextProcessId(entityAddress);
 
         // by default status is OPEN
-        uint8 status = uint8(Status.OPEN);
+        Status status = Status.OPEN;
         if (mode & MODE_AUTO_START != 0) {
             // by default on-demand processes status is PAUSED
-            status = uint8(Status.PAUSED);
+            status = Status.PAUSED;
         }
 
         Process memory process = Process({
@@ -471,11 +470,11 @@ contract VotingProcess {
             status: Status(status),
             questionIndex: 0,
             questionCount: questionCount,
+            maxVoteOverwrites: maxVoteOverwrites,
             maxValue: maxValue,
             uniqueValues: uniqueValues,
             maxTotalCost: maxTotalCost,
             costExponent: costExponent,
-            maxVoteOverwrites: maxVoteOverwrites,
             paramsSignature: paramsSignature,
             namespace: namespace,
             results: ""
@@ -488,13 +487,12 @@ contract VotingProcess {
         emit ProcessCreated(entityAddress, processId, merkleTree);
     }
 
-    function setStatus(bytes32 processId, uint8 newStatus)
+    function setStatus(bytes32 processId, Status newStatus)
         public
         onlyEntity(processId)
     {
         require(
-            newStatus >= uint8(Status.OPEN) &&
-                newStatus <= uint8(Status.PAUSED),
+            uint8(newStatus) <= uint8(Status.PAUSED),
             "Invalid status code"
         );
 
@@ -509,21 +507,18 @@ contract VotingProcess {
         );
 
         // check status code and conditions for changing it
-        if (newStatus == uint8(Status.OPEN)) {
+        if (newStatus == Status.OPEN) {
             require(
                 processes[processIndex].status == Status.PAUSED,
                 "Process not paused"
             );
-        } else if (
-            newStatus == uint8(Status.ENDED) ||
-            newStatus == uint8(Status.CANCELED)
-        ) {
+        } else if (newStatus == Status.ENDED || newStatus == Status.CANCELED) {
             require(
                 processes[processIndex].status == Status.OPEN ||
                     processes[processIndex].status == Status.PAUSED,
                 "Already ended or canceled"
             );
-        } else if (newStatus == uint8(Status.PAUSED)) {
+        } else if (newStatus == Status.PAUSED) {
             require(
                 processes[processIndex].status == Status.OPEN,
                 "Process not open"
@@ -572,7 +567,7 @@ contract VotingProcess {
             // the process is interruptible
             processes[processIndex].status = Status.ENDED;
 
-            emit StatusUpdated(msg.sender, processId, uint8(Status.ENDED));
+            emit StatusUpdated(msg.sender, processId, Status.ENDED);
         }
     }
 
@@ -631,6 +626,6 @@ contract VotingProcess {
 
         processes[processIndex].results = results;
 
-        emit ResultsUpdated(processId, results);
+        emit ResultsAvailable(processId, results);
     }
 }
