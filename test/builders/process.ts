@@ -6,19 +6,19 @@ const { abi: votingProcessAbi, bytecode: votingProcessByteCode } = require("../.
 
 // DEFAULT VALUES
 export const DEFAULT_CHAIN_ID = 0
+export const DEFAULT_PROCESS_MODE = ProcessMode.make()
+export const DEFAULT_ENVELOPE_TYPE = ProcessEnvelopeType.make()
 export const DEFAULT_METADATA_CONTENT_HASHED_URI = "ipfs://1234,https://server/uri!0987654321"
 export const DEFAULT_MERKLE_ROOT = "0x123456789"
 export const DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI = "ipfs://1234,https://server/uri!1234567812345678"
 export const DEFAULT_START_BLOCK = 12341234
 export const DEFAULT_BLOCK_COUNT = 500000
 export const DEFAULT_QUESTION_COUNT = 5
-export const DEFAULT_PROCESS_MODE = ProcessMode.make()
-export const DEFAULT_ENVELOPE_TYPE = ProcessEnvelopeType.make()
 export const DEFAULT_MAX_VOTE_OVERWRITES = 0
-export const DEFAULT_MAX_VALUE = 0
+export const DEFAULT_MAX_VALUE = 5
 export const DEFAULT_UNIQUE_VALUES = false
 export const DEFAULT_MAX_TOTAL_COST = 0
-export const DEFAULT_COST_EXPONENT = 0
+export const DEFAULT_COST_EXPONENT = 10000
 export const DEFAULT_NAMESPACE = 0
 export const DEFAULT_PARAMS_SIGNATURE = "0x1111111111111111111111111111111111111111111111111111111111111111"
 
@@ -140,5 +140,21 @@ export default class ProcessBuilder {
     withParamsSignature(paramsSignature: string) {
         this.paramsSignature = paramsSignature
         return this
+    }
+
+    // STATIC
+
+    static createDefaultProcess(contractInstance: Contract & ProcessContractMethods) {
+        return contractInstance.create(
+            [DEFAULT_PROCESS_MODE, DEFAULT_ENVELOPE_TYPE],
+            [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+            DEFAULT_START_BLOCK,
+            DEFAULT_BLOCK_COUNT,
+            [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+            DEFAULT_UNIQUE_VALUES,
+            [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+            DEFAULT_NAMESPACE,
+            DEFAULT_PARAMS_SIGNATURE
+        ).then(tx => tx.wait())
     }
 }

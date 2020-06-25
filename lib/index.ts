@@ -329,10 +329,10 @@ type JsonProcessCreateParams = {
     mode: number,
     envelopeType: number,
     metadata: string,
-    startBlock: number | BigNumber,
-    blockCount: number,
     censusMerkleRoot: string,
     censusMerkleTree: string,
+    startBlock: number | BigNumber,
+    blockCount: number,
     questionCount: number,
     maxVoteOverwrites: number,
     maxValue: number,
@@ -346,11 +346,11 @@ type JsonProcessState = {
     mode: number,
     envelopeType: number,
     entityAddress: string,
-    startBlock: BigNumber,
-    blockCount: number,
     metadata: string,
     censusMerkleRoot: string,
     censusMerkleTree: string,
+    startBlock: BigNumber,
+    blockCount: number,
     status: IProcessStatus,
     questionIndex: number,
     questionCount: number,
@@ -363,7 +363,7 @@ type JsonProcessState = {
     paramsSignature: string
 }
 
-/** Arrange the output data from `get()` into a JSON object */
+/** Arrange the JSON object into the parameters for `create()` */
 export function wrapProcessCreateParams(input: JsonProcessCreateParams): WrappedProcessCreateParams {
     return [
         [input.mode, input.envelopeType], // mode_envelopeType: number

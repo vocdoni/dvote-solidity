@@ -212,9 +212,9 @@ contract VotingProcess {
 
     // GLOBAL METHODS
 
-    constructor(uint256 chainIdValue) public {
+    constructor(uint256 initialChainId) public {
         contractOwner = msg.sender;
-        chainId = chainIdValue;
+        chainId = initialChainId;
 
         // Fill an empty process at index 0.
         // NOTE: This way, real processes will always have a positive index on processesIndex.
@@ -427,10 +427,11 @@ contract VotingProcess {
         uint16 namespace,
         bytes32 paramsSignature
     ) public {
-        if (mode_envelopeType[0] & MODE_AUTO_START != 0) {
+        uint8 mode = mode_envelopeType[0];
+        if (mode & MODE_AUTO_START != 0) {
             require(startBlock > 0, "Auto start requires a start block");
         }
-        if (mode_envelopeType[0] & MODE_INTERRUPTIBLE == 0) {
+        if (mode & MODE_INTERRUPTIBLE == 0) {
             require(blockCount > 0, "Uninterruptible needs blockCount");
         }
         require(
@@ -449,7 +450,7 @@ contract VotingProcess {
             questionCount_maxVoteOverwrites_maxValue[0] > 0,
             "Empty questionCount"
         );
-        if (mode_envelopeType[0] & MODE_ALLOW_VOTE_OVERWRITE != 0) {
+        if (mode & MODE_ALLOW_VOTE_OVERWRITE != 0) {
             require(
                 questionCount_maxVoteOverwrites_maxValue[1] > 0,
                 "Allow overwrite needs maxVoteOverwrites > 0"
@@ -465,13 +466,13 @@ contract VotingProcess {
 
         // by default status is READY
         Status status = Status.READY;
-        if (mode_envelopeType[0] & MODE_AUTO_START != 0) {
-            // by default on-demand processes status is PAUSED
+        if (mode & MODE_AUTO_START == 0) {
+            // by default, processes start PAUSED (auto start disabled)
             status = Status.PAUSED;
         }
 
         Process memory process = Process({
-            mode: mode_envelopeType[0],
+            mode: mode,
             envelopeType: mode_envelopeType[1],
             entityAddress: entityAddress,
             startBlock: startBlock,
@@ -518,21 +519,31 @@ contract VotingProcess {
         // such process has been created by msg.sender
 
         Status currentStatus = processes[processIndex].status;
+        if (currentStatus != Status.READY && currentStatus != Status.PAUSED) {
+            // When currentStatus is [ENDED, CANCELED, RESULTS], no update is allowed
+            revert("Process terminated");
+        } else if (currentStatus == Status.PAUSED) {
+            // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see require above)
+
+            if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
+                // We can only set it to READY
+                require(newStatus == Status.READY, "Not interruptible");
+            } else {
+                // We can set it to [READY, ENDED, CANCELED]
+                require(newStatus != currentStatus, "Status must change");
+            }
+        } else {
+            // currentStatus is READY
+
         if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
             // No status update is allowed
-            revert("Process not interruptible");
-        } else if (
-            currentStatus != Status.READY && currentStatus != Status.PAUSED
-        ) {
-            // When status is [ENDED, CANCELED, RESULTS], no further update is allowed
-            revert("Process terminated");
-        } else {
-            // At this point, currentStatus can only be [READY, PAUSED].
-            // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see above).
+                revert("Not interruptible");
+            }
+
+            // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see require above).
 
             require(newStatus != currentStatus, "Status must change");
             // if currentStatus is READY => Can go to [ENDED, CANCELED, PAUSED].
-            // if currentStatus is PAUSED => Can go to [READY, ENDED, CANCELED].
         }
 
         // Note: the process can also be ended from incrementQuestionIndex

@@ -67,8 +67,8 @@ describe("Process Status wrapper", () => {
         expect(pm.isReady).to.eq(false)
         expect(pm.isEnded).to.eq(false)
         expect(pm.isCanceled).to.eq(false)
-        expect(pm.isPaused).to.eq(true)
-        expect(pm.hasResults).to.eq(false)
+        expect(pm.isPaused).to.eq(false)
+        expect(pm.hasResults).to.eq(true)
 
         pm = new ProcessStatus(ProcessStatus.RESULTS)
         expect(pm.isReady).to.eq(false)
