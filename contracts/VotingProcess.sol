@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.9;
 pragma experimental ABIEncoderV2;
 
 import "./math/SafeAdd.sol";
@@ -45,7 +45,7 @@ contract VotingProcess {
     uint8 constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2;
 
     // Process status
-    enum Status {OPEN, ENDED, CANCELED, PAUSED}
+    enum Status {READY, ENDED, CANCELED, PAUSED, RESULTS}
 
     // LIBRARIES
 
@@ -70,7 +70,7 @@ contract VotingProcess {
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
         string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
-        Status status; // One of 0 [open], 1 [ended], 2 [canceled], 3 [paused]
+        Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
         uint8 questionIndex; // The index of the currently active question (only assembly processes)
         // How many choices should be on every question.
         // questionCount >= 1
@@ -91,11 +91,11 @@ contract VotingProcess {
         // - 0 => 0.0000
         // - 65535 => 6.5535
         uint16 costExponent;
+        uint16 namespace;
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
         // Self-assign to a certain namespace.
         // This will determine the oracles that listen and react to it.
         // Indirectly, it will also determine the Vochain that hosts this process.
-        uint16 namespace;
         string results; // string containing the results
     }
 
@@ -201,7 +201,7 @@ contract VotingProcess {
     }
 
     function equalStrings(string memory str1, string memory str2)
-        public
+        private
         pure
         returns (bool)
     {
@@ -236,8 +236,8 @@ contract VotingProcess {
             uniqueValues: false,
             maxTotalCost: 0,
             costExponent: 0,
-            paramsSignature: 0,
             namespace: 0,
+            paramsSignature: 0,
             results: ""
         });
         processes.push(process); // Fill the [0] index
@@ -357,47 +357,50 @@ contract VotingProcess {
         public
         view
         returns (
-            uint8 mode,
-            uint8 envelopeType,
-            address entityAddress,
-            uint64 startBlock,
-            uint32 blockCount,
-            string memory metadata,
-            string memory censusMerkleRoot,
-            string memory censusMerkleTree,
-            Status status,
-            uint8 questionIndex,
-            uint8 questionCount,
-            uint8 maxVoteOverwrites,
-            uint8 maxValue,
-            bool uniqueValues,
-            uint16 maxTotalCost,
-            uint16 costExponent,
-            bytes32 paramsSignature,
-            uint16 namespace
+            uint8[2] memory, // mode, envelopeType
+            address, // entityAddress
+            uint64, // startBlock
+            uint32, // blockCount
+            string[3] memory, // metadata, censusMerkleRoot, censusMerkleTree
+            Status, // status
+            uint8[4] memory, // questionIndex, questionCount, maxVoteOverwrites, maxValue
+            bool, // uniqueValues
+            uint16[2] memory, // maxTotalCost, costExponent
+            uint16, // namespace
+            bytes32 // paramsSignature
         )
     {
         uint256 processIndex = getProcessIndex(processId);
         require(processIndex > 0, "Process not found");
 
-        mode = processes[processIndex].mode;
-        envelopeType = processes[processIndex].envelopeType;
-        entityAddress = processes[processIndex].entityAddress;
-        startBlock = processes[processIndex].startBlock;
-        blockCount = processes[processIndex].blockCount;
-        metadata = processes[processIndex].metadata;
-        censusMerkleRoot = processes[processIndex].censusMerkleRoot;
-        censusMerkleTree = processes[processIndex].censusMerkleTree;
-        status = processes[processIndex].status;
-        questionIndex = processes[processIndex].questionIndex;
-        questionCount = processes[processIndex].questionCount;
-        maxVoteOverwrites = processes[processIndex].maxVoteOverwrites;
-        maxValue = processes[processIndex].maxValue;
-        uniqueValues = processes[processIndex].uniqueValues;
-        maxTotalCost = processes[processIndex].maxTotalCost;
-        costExponent = processes[processIndex].costExponent;
-        paramsSignature = processes[processIndex].paramsSignature;
-        namespace = processes[processIndex].namespace;
+        return (
+            [
+                processes[processIndex].mode,
+                processes[processIndex].envelopeType
+            ],
+            processes[processIndex].entityAddress,
+            processes[processIndex].startBlock,
+            processes[processIndex].blockCount,
+            [
+                processes[processIndex].metadata,
+                processes[processIndex].censusMerkleRoot,
+                processes[processIndex].censusMerkleTree
+            ],
+            processes[processIndex].status,
+            [
+                processes[processIndex].questionIndex,
+                processes[processIndex].questionCount,
+                processes[processIndex].maxVoteOverwrites,
+                processes[processIndex].maxValue
+            ],
+            processes[processIndex].uniqueValues,
+            [
+                processes[processIndex].maxTotalCost,
+                processes[processIndex].costExponent
+            ],
+            processes[processIndex].namespace,
+            processes[processIndex].paramsSignature
+        );
     }
 
     function getResults(bytes32 processId)
@@ -414,69 +417,78 @@ contract VotingProcess {
     // ENTITY METHODS
 
     function create(
-        uint8 mode,
-        uint8 envelopeType,
-        string memory metadata,
-        string memory merkleRoot,
-        string memory merkleTree,
+        uint8[2] memory mode_envelopeType, // mode, envelopeType
+        string[3] memory metadata_merkleRoot_merkleTree, //  metadata, merkleRoot, merkleTree
         uint64 startBlock,
         uint32 blockCount,
-        uint8 questionCount,
-        uint8 maxVoteOverwrites,
-        uint8 maxValue,
+        uint8[3] memory questionCount_maxVoteOverwrites_maxValue, // questionCount, maxVoteOverwrites, maxValue
         bool uniqueValues,
-        uint16 maxTotalCost,
-        uint16 costExponent,
-        bytes32 paramsSignature,
-        uint16 namespace
+        uint16[2] memory maxTotalCost_costExponent, // maxTotalCost, costExponent
+        uint16 namespace,
+        bytes32 paramsSignature
     ) public {
-        require(bytes(metadata).length > 0, "Empty metadata");
-        require(bytes(merkleRoot).length > 0, "Empty merkleRoot");
-        require(bytes(merkleTree).length > 0, "Empty merkleTree");
-        require(questionCount > 0, "Empty questionCount");
-        require(maxValue > 0, "Empty maxValue");
-        if (mode & MODE_AUTO_START != 0) {
+        if (mode_envelopeType[0] & MODE_AUTO_START != 0) {
             require(startBlock > 0, "Auto start requires a start block");
         }
-        if (mode & MODE_INTERRUPTIBLE == 0) {
+        if (mode_envelopeType[0] & MODE_INTERRUPTIBLE == 0) {
             require(blockCount > 0, "Uninterruptible needs blockCount");
         }
-        if (mode & MODE_ALLOW_VOTE_OVERWRITE != 0) {
+        require(
+            bytes(metadata_merkleRoot_merkleTree[0]).length > 0,
+            "Empty metadata"
+        );
+        require(
+            bytes(metadata_merkleRoot_merkleTree[1]).length > 0,
+            "Empty merkleRoot"
+        );
+        require(
+            bytes(metadata_merkleRoot_merkleTree[2]).length > 0,
+            "Empty merkleTree"
+        );
+        require(
+            questionCount_maxVoteOverwrites_maxValue[0] > 0,
+            "Empty questionCount"
+        );
+        if (mode_envelopeType[0] & MODE_ALLOW_VOTE_OVERWRITE != 0) {
             require(
-                maxVoteOverwrites > 0,
+                questionCount_maxVoteOverwrites_maxValue[1] > 0,
                 "Allow overwrite needs maxVoteOverwrites > 0"
             );
         }
+        require(
+            questionCount_maxVoteOverwrites_maxValue[2] > 0,
+            "Empty maxValue"
+        );
 
         address entityAddress = msg.sender;
         bytes32 processId = getNextProcessId(entityAddress);
 
-        // by default status is OPEN
-        Status status = Status.OPEN;
-        if (mode & MODE_AUTO_START != 0) {
+        // by default status is READY
+        Status status = Status.READY;
+        if (mode_envelopeType[0] & MODE_AUTO_START != 0) {
             // by default on-demand processes status is PAUSED
             status = Status.PAUSED;
         }
 
         Process memory process = Process({
-            mode: mode,
-            envelopeType: envelopeType,
+            mode: mode_envelopeType[0],
+            envelopeType: mode_envelopeType[1],
             entityAddress: entityAddress,
             startBlock: startBlock,
             blockCount: blockCount,
-            metadata: metadata,
-            censusMerkleRoot: merkleRoot,
-            censusMerkleTree: merkleTree,
-            status: Status(status),
+            metadata: metadata_merkleRoot_merkleTree[0],
+            censusMerkleRoot: metadata_merkleRoot_merkleTree[1],
+            censusMerkleTree: metadata_merkleRoot_merkleTree[2],
+            status: status,
             questionIndex: 0,
-            questionCount: questionCount,
-            maxVoteOverwrites: maxVoteOverwrites,
-            maxValue: maxValue,
+            questionCount: questionCount_maxVoteOverwrites_maxValue[0],
+            maxVoteOverwrites: questionCount_maxVoteOverwrites_maxValue[1],
+            maxValue: questionCount_maxVoteOverwrites_maxValue[2],
             uniqueValues: uniqueValues,
-            maxTotalCost: maxTotalCost,
-            costExponent: costExponent,
-            paramsSignature: paramsSignature,
+            maxTotalCost: maxTotalCost_costExponent[0],
+            costExponent: maxTotalCost_costExponent[1],
             namespace: namespace,
+            paramsSignature: paramsSignature,
             results: ""
         });
 
@@ -484,7 +496,11 @@ contract VotingProcess {
         processes.push(process);
         entityProcessCount[entityAddress]++;
 
-        emit ProcessCreated(entityAddress, processId, merkleTree);
+        emit ProcessCreated(
+            entityAddress,
+            processId,
+            metadata_merkleRoot_merkleTree[2]
+        );
     }
 
     function setStatus(bytes32 processId, Status newStatus)
@@ -492,7 +508,7 @@ contract VotingProcess {
         onlyEntity(processId)
     {
         require(
-            uint8(newStatus) <= uint8(Status.PAUSED),
+            uint8(newStatus) <= uint8(Status.PAUSED), // [READY 0..3 PAUSED] => RESULTS is not allowed
             "Invalid status code"
         );
 
@@ -501,33 +517,27 @@ contract VotingProcess {
         // processId is guaranteed to exist since onlyEntity(processId) enforces that
         // such process has been created by msg.sender
 
-        require(
-            processes[processIndex].mode & MODE_INTERRUPTIBLE != 0,
-            "Process not interruptible"
-        );
+        Status currentStatus = processes[processIndex].status;
+        if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
+            // No status update is allowed
+            revert("Process not interruptible");
+        } else if (
+            currentStatus != Status.READY && currentStatus != Status.PAUSED
+        ) {
+            // When status is [ENDED, CANCELED, RESULTS], no further update is allowed
+            revert("Process terminated");
+        } else {
+            // At this point, currentStatus can only be [READY, PAUSED].
+            // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see above).
 
-        // check status code and conditions for changing it
-        if (newStatus == Status.OPEN) {
-            require(
-                processes[processIndex].status == Status.PAUSED,
-                "Process not paused"
-            );
-        } else if (newStatus == Status.ENDED || newStatus == Status.CANCELED) {
-            require(
-                processes[processIndex].status == Status.OPEN ||
-                    processes[processIndex].status == Status.PAUSED,
-                "Already ended or canceled"
-            );
-        } else if (newStatus == Status.PAUSED) {
-            require(
-                processes[processIndex].status == Status.OPEN,
-                "Process not open"
-            );
+            require(newStatus != currentStatus, "Status must change");
+            // if currentStatus is READY => Can go to [ENDED, CANCELED, PAUSED].
+            // if currentStatus is PAUSED => Can go to [READY, ENDED, CANCELED].
         }
 
         // Note: the process can also be ended from incrementQuestionIndex
         // if questionIndex is already at the last one
-        processes[processIndex].status = Status(newStatus);
+        processes[processIndex].status = newStatus;
 
         emit StatusUpdated(msg.sender, processId, newStatus);
     }
@@ -542,9 +552,9 @@ contract VotingProcess {
         // such process has been created by msg.sender
 
         require(
-            processes[processIndex].status == Status.OPEN ||
+            processes[processIndex].status == Status.READY ||
                 processes[processIndex].status == Status.PAUSED,
-            "Process not active"
+            "Process terminated"
         );
         require(
             processes[processIndex].envelopeType & ENV_TYPE_SERIAL != 0,
@@ -585,9 +595,9 @@ contract VotingProcess {
         // such process has been created by msg.sender
 
         require(
-            processes[processIndex].status == Status.OPEN ||
+            processes[processIndex].status == Status.READY ||
                 processes[processIndex].status == Status.PAUSED,
-            "Process not active"
+            "Process terminated"
         );
         require(
             processes[processIndex].mode & MODE_DYNAMIC_CENSUS != 0,
@@ -620,11 +630,12 @@ contract VotingProcess {
         );
         // results can only be published once
         require(
-            bytes(processes[processIndex].results).length == 0,
+            processes[processIndex].status != Status.RESULTS,
             "Results already set"
         );
 
         processes[processIndex].results = results;
+        processes[processIndex].status = Status.RESULTS;
 
         emit ResultsAvailable(processId, results);
     }

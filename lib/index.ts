@@ -100,11 +100,11 @@ export class ProcessMode {
         this._mode = processMode
     }
 
-    /** By default, the process is started on demand (PAUSED). If set, the process will sIf set, the process will work like `status=PAUSED` before `startBlock` and like `status=ENDED` after `startBlock + blockCount`. The process works on demand, by default.tart as OPEN and the Vochain will allow incoming votes after `startBlock` */
+    /** By default, the process is started on demand (PAUSED). If set, the process will sIf set, the process will work like `status=PAUSED` before `startBlock` and like `status=ENDED` after `startBlock + blockCount`. The process works on demand, by default.tart as READY and the Vochain will allow incoming votes after `startBlock` */
     public static AUTO_START: number = 1 << 0
     /** By default, the process can't be paused, ended or canceled. If set, the process can be paused, ended or canceled by the creator. */
     public static INTERRUPTIBLE: number = 1 << 1
-    /** By default, the census is immutable. When set, the creator can update the census while the process remains `OPEN` or `PAUSED`. */
+    /** By default, the census is immutable. When set, the creator can update the census while the process remains `READY` or `PAUSED`. */
     public static DYNAMIC_CENSUS: number = 1 << 2
     /** By default, the first valid vote is final. If set, users will be allowed to vote up to `maxVoteOverwrites` times and the last valid vote will be counted. */
     public static ALLOW_VOTE_OVERWRITE: number = 1 << 3
@@ -122,7 +122,7 @@ export class ProcessMode {
         return result
     }
 
-    /** Returns true if the Vochain will open the process at `startBlock`. */
+    /** Returns true if the Vochain will not allow votes until `startBlock`. */
     get isAutoStart(): boolean { return (this._mode & ProcessMode.AUTO_START) != 0 }
     /** Returns true if the process can be paused, ended and canceled by the creator. */
     get isInterruptible(): boolean { return (this._mode & ProcessMode.INTERRUPTIBLE) != 0 }
@@ -167,34 +167,45 @@ export class ProcessEnvelopeType {
     get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
 }
 
-export type IProcessStatus = 0 | 1 | 2 | 3
-export const processStatusValues = [0, 1, 2, 3]
-
 /** Wrapper class to enumerate and handle valid values of a process status */
 export class ProcessStatus {
     private _status: IProcessStatus
     constructor(processStatus: IProcessStatus) {
-        if (!processStatusValues.includes(processStatus)) throw new Error("Invalid process mode")
+        if (!processStatusValues.includes(processStatus)) throw new Error("Invalid status")
         this._status = processStatus
     }
 
-    /** The process is accepting votes normally. */
-    public static OPEN: IProcessStatus = 0
-    /** The process has already ended. Results will be available soon. */
+    /** The process is ready to accept votes, according to `AUTO_START`, `startBlock` and `blockCount`. */
+    public static READY: IProcessStatus = 0
+    /** The creator has ended the process and the results will be available soon. */
     public static ENDED: IProcessStatus = 1
     /** The process has been canceled. Results will not be available anytime. */
     public static CANCELED: IProcessStatus = 2
     /** The process is temporarily paused and votes are not accepted at the time. It might be resumed in the future. */
     public static PAUSED: IProcessStatus = 3
+    /** The process is ended and its results are available. */
+    public static RESULTS: IProcessStatus = 4
 
-    get isOpen(): boolean { return this._status == ProcessStatus.OPEN }
+    get isReady(): boolean { return this._status == ProcessStatus.READY }
     get isEnded(): boolean { return this._status == ProcessStatus.ENDED }
     get isCanceled(): boolean { return this._status == ProcessStatus.CANCELED }
     get isPaused(): boolean { return this._status == ProcessStatus.PAUSED }
+    get hasResults(): boolean { return this._status == ProcessStatus.RESULTS }
 }
+
+export type IProcessStatus = 0 | 1 | 2 | 3 | 4
+export const processStatusValues = [
+    ProcessStatus.READY,
+    ProcessStatus.ENDED,
+    ProcessStatus.CANCELED,
+    ProcessStatus.PAUSED,
+    ProcessStatus.RESULTS
+]
 
 /** Smart Contract operations for a Voting Process contract */
 export interface VotingProcessContractMethods {
+    // HELPERS
+
     /** Retrieves the amount of voting processes that the entity has created */
     getEntityProcessCount(entityAddress: string): Promise<BigNumber>,
     /** Get the process ID that would be assigned to the next voting process */
@@ -204,83 +215,103 @@ export interface VotingProcessContractMethods {
     /** Get the windex within the global array where the given process is stored */
     getProcessIndex(processId: string): Promise<BigNumber>,
 
-    /** Update the genesis link and hash */
-    setGenesis(genesisData: string): Promise<ContractTransaction>,
+    // GETTERS
+
     /** Retrieve the current genesis block content link */
     getGenesis(): Promise<string>,
-
-    /** Update the Chain ID */
-    setChainId(newChainId: number): Promise<ContractTransaction>,
     /** Retrieve the current Chain ID */
     getChainId(): Promise<BigNumber>,
-
-    /** Publish a new voting process using the given metadata link */
-    create(
-        mode: number,
-        envelopeType: number,
-        metadata: string,
-        censusMerkleRoot: string,
-        censusMerkleTree: string,
-        startBlock: number | BigNumber,
-        blockCount: number | BigNumber,
-        questionCount: number,
-        maxValue: number,
-        uniqueValues: boolean,
-        maxTotalCost: number,
-        costExponent: number,
-        maxVoteOverwrites: number,
-        paramsSignature: string,
-        namespace: number
-    ): Promise<ContractTransaction>,
-    /** Retrieve the current data for the given process */
-    get(processId: string): Promise<{
-        mode: number,
-        envelopeType: number,
-        entityAddress: string,
-        startBlock: BigNumber,
-        blockCount: BigNumber,
-        metadata: string,
-        censusMerkleRoot: string,
-        censusMerkleTree: string,
-        status: IProcessStatus,
-        questionIndex: number,
-        questionCount: number,
-        maxValue: number,
-        uniqueValues: boolean,
-        maxTotalCost: number,
-        costExponent: number,
-        maxVoteOverwrites: number,
-        paramsSignature: string,
-        namespace: number
-    }>,
-    /** Update the process status that corresponds to the given ID */
-    setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
-    /** Updates the census of the given process (only if the mode allows dynamic census) */
-    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
-
-    /** Registers the public key of a new validator */
-    addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
-    /** Removes the public key at the given index for a validator */
-    removeValidator(idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
     /** Retrieves the current list of validators on the Vochain */
     getValidators(): Promise<string[]>,
     /** Checks whether the given public key is registered as a validator */
     isValidator(validatorPublicKey: string): Promise<boolean>,
-
-    /** Registers the address of a new oracle */
-    addOracle(oracleAddr: string): Promise<ContractTransaction>,
-    /** Removes the address at the given index for an oracle */
-    removeOracle(idx: number, oracleAddr: string): Promise<ContractTransaction>,
     /** Retrieves the current list of oracles on the Vochain */
     getOracles(): Promise<string[]>,
     /** Checks whether the given address is registered as an oracle */
     isOracle(oracleAddress: string): Promise<boolean>,
-
-    /** Increments the index of the current question (only when INCREMENTAL mode is set) */
-    incrementQuestionIndex(processId: string): Promise<ContractTransaction>
-
-    /** Sets the given results for the given process */
-    setResults(processId: string, results: string): Promise<ContractTransaction>,
+    /**
+     * Retrieve the on-chain parameters for the given process:
+     * 
+     * ```{
+     *      uint8[2] mode_envelopeType,
+     *      address entityAddress,
+     *      uint64 startBlock,
+     *      uint32 blockCount,
+     *      string[3] metadata_censusMerkleRoot_censusMerkleTree,
+     *      Status status,
+     *      uint8[4] questionIndex_questionCount_maxVoteOverwrites_maxValue,
+     *      bool uniqueValues,
+     *      uint16[2] maxTotalCost_costExponent,
+     *      uint16 namespace,
+     *      bytes32 paramsSignature
+     * }```
+     */
+    get(processId: string): Promise<[
+        number[], // mode_envelopeType
+        string, // entityAddress
+        BigNumber, // startBlock
+        number, // blockCount
+        string[], // metadata_censusMerkleRoot_censusMerkleTree
+        IProcessStatus, // status
+        number[], // questionIndex_questionCount_maxVoteOverwrites_maxValue
+        boolean, // uniqueValues
+        number[], // maxTotalCost_costExponent
+        number, // namespace
+        string // paramsSignature
+    ]>,
     /** Retrieve the available results for the given process */
     getResults(processId: string): Promise<{ results: string }>
+
+    // GLOBAL METHODS
+
+    /** Update the genesis link and hash */
+    setGenesis(genesisData: string): Promise<ContractTransaction>,
+    /** Update the Chain ID */
+    setChainId(newChainId: number): Promise<ContractTransaction>,
+    /** Registers the public key of a new validator */
+    addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
+    /** Removes the public key at the given index for a validator */
+    removeValidator(idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    /** Registers the address of a new oracle */
+    addOracle(oracleAddr: string): Promise<ContractTransaction>,
+    /** Removes the address at the given index for an oracle */
+    removeOracle(idx: number, oracleAddr: string): Promise<ContractTransaction>,
+
+    // ENTITY METHODS
+
+    /**
+     * Publish a new voting process using the given parameters
+     * 
+     * ```{
+        uint8[2] memory mode_envelopeType,
+        string[3] memory metadata_merkleRoot_merkleTree,
+        uint64 startBlock,
+        uint32 blockCount,
+        uint8[3] memory questionCount_maxVoteOverwrites_maxValue,
+        bool uniqueValues,
+        uint16[2] memory maxTotalCost_costExponent,
+        uint16 namespace,
+        bytes32 paramsSignature
+     * }```
+     * */
+    create(
+        mode_envelopeType: number[],
+        metadata_censusMerkleRoot_censusMerkleTree: string[],
+        startBlock: number | BigNumber,
+        blockCount: number,
+        questionCount_maxVoteOverwrites_maxValue: number[],
+        uniqueValues: boolean,
+        maxTotalCost_costExponent: number[],
+        namespace: number,
+        paramsSignature: string
+    ): Promise<ContractTransaction>,
+
+    /** Update the process status that corresponds to the given ID */
+    setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
+    /** Increments the index of the current question (only when INCREMENTAL mode is set) */
+    incrementQuestionIndex(processId: string): Promise<ContractTransaction>
+    /** Updates the census of the given process (only if the mode allows dynamic census) */
+    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
+    /** Sets the given results for the given process */
+    setResults(processId: string, results: string): Promise<ContractTransaction>,
 }
