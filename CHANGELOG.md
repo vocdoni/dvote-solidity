@@ -2,7 +2,7 @@
 
 ## 0.7.0
 
-- Substantial Voting contract upgrade to support a wide range of participatory processes
+- Substantial Voting contract refactor to support a wide range of participatory processes
     - Adding `mode`, `envelopeType` and `status`
         - Auto start
         - Interruptible processes
@@ -13,6 +13,7 @@
     - Adding `questionIndex` and `questionCount`
     - Adding `maxValue`, `uniqueValues`, `maxTotalCost`, `costExponent`, `maxVotesOverwrite`, `paramsSignature` and `namespace`
     - Unify the naming conventions of the getters/setters
+    - Using 5 status: `READY, ENDED, CANCELED, PAUSED, RESULTS`
 - Providing TypeScript wrappers for the process flags (mode, envelopetype and status)
 - Condensed parameters into tuples
 - Using Solidity 0.6.9

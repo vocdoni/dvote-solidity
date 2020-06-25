@@ -1,4 +1,4 @@
-import { VotingProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode } from "../../lib/index"
+import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode } from "../../lib/index"
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 
@@ -10,12 +10,17 @@ export const DEFAULT_METADATA_CONTENT_HASHED_URI = "ipfs://1234,https://server/u
 export const DEFAULT_MERKLE_ROOT = "0x123456789"
 export const DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI = "ipfs://1234,https://server/uri!1234567812345678"
 export const DEFAULT_START_BLOCK = 12341234
-export const DEFAULT_NUMBER_OF_BLOCKS = 500000
-export const DEFAULT_ENABLED_PROCESS_MODES = [ProcessMode.make({}), ProcessMode.make({ scheduled: true })]
-export const DEFAULT_ENABLED_ENVELOPE_TYPES = [ProcessEnvelopeType.make({}), ProcessEnvelopeType.make({ encryptedVotes: true })]
-export const DEFAULT_QUESTION_COUNT = 10
-export const DEFAULT_PROCESS_MODE = DEFAULT_ENABLED_PROCESS_MODES[0]
-export const DEFAULT_ENVELOPE_TYPE = DEFAULT_ENABLED_ENVELOPE_TYPES[0]
+export const DEFAULT_BLOCK_COUNT = 500000
+export const DEFAULT_QUESTION_COUNT = 5
+export const DEFAULT_PROCESS_MODE = ProcessMode.make()
+export const DEFAULT_ENVELOPE_TYPE = ProcessEnvelopeType.make()
+export const DEFAULT_MAX_VOTE_OVERWRITES = 0
+export const DEFAULT_MAX_VALUE = 0
+export const DEFAULT_UNIQUE_VALUES = false
+export const DEFAULT_MAX_TOTAL_COST = 0
+export const DEFAULT_COST_EXPONENT = 0
+export const DEFAULT_NAMESPACE = 0
+export const DEFAULT_PARAMS_SIGNATURE = "0x1111111111111111111111111111111111111111111111111111111111111111"
 
 // BUILDER
 export default class ProcessBuilder {
@@ -26,34 +31,49 @@ export default class ProcessBuilder {
     merkleRoot: string = DEFAULT_MERKLE_ROOT
     merkleTree: string = DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI
     startBlock: number = DEFAULT_START_BLOCK
-    blockCount: number = DEFAULT_NUMBER_OF_BLOCKS
+    blockCount: number = DEFAULT_BLOCK_COUNT
     chainId: number = DEFAULT_CHAIN_ID
-    enabledModes: IProcessMode[] = DEFAULT_ENABLED_PROCESS_MODES
-    enabledEnvelopeTypes: IProcessEnvelopeType[] = DEFAULT_ENABLED_ENVELOPE_TYPES
     mode: IProcessMode = DEFAULT_PROCESS_MODE
     envelopeType: IProcessEnvelopeType = DEFAULT_ENVELOPE_TYPE
     questionCount: number = DEFAULT_QUESTION_COUNT
+    maxVoteOverwrites: number = DEFAULT_MAX_VOTE_OVERWRITES
+    maxValue: number = DEFAULT_MAX_VALUE
+    uniqueValues: boolean = DEFAULT_UNIQUE_VALUES
+    maxTotalCost: number = DEFAULT_MAX_TOTAL_COST
+    costExponent: number = DEFAULT_COST_EXPONENT
+    namespace: number = DEFAULT_NAMESPACE
+    paramsSignature: string = DEFAULT_PARAMS_SIGNATURE
+
 
     constructor() {
         this.accounts = getAccounts()
         this.entityAccount = this.accounts[1]
     }
 
-    async build(processCount: number = 1): Promise<Contract & VotingProcessContractMethods> {
+    async build(processCount: number = 1): Promise<Contract & ProcessContractMethods> {
         const deployAccount = this.accounts[0]
         const contractFactory = new ContractFactory(votingProcessAbi, votingProcessByteCode, deployAccount.wallet)
-        let contractInstance = await contractFactory.deploy(this.chainId, this.enabledModes, this.enabledEnvelopeTypes) as Contract & VotingProcessContractMethods
+        let contractInstance = await contractFactory.deploy(this.chainId) as Contract & ProcessContractMethods
 
-        contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & VotingProcessContractMethods
+        contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
 
         for (let i = 0; i < processCount; i++) {
             // let processId = await contractInstance.getProcessId(this.entityAccount.address, i)
 
-            await contractInstance.create(this.mode, this.envelopeType, this.metadata, this.merkleRoot, this.merkleTree,
-                this.startBlock, this.blockCount, this.questionCount)
+            await contractInstance.create(
+                [this.mode, this.envelopeType],
+                [this.metadata, this.merkleRoot, this.merkleTree],
+                this.startBlock,
+                this.blockCount,
+                [this.questionCount, this.maxVoteOverwrites, this.maxValue],
+                this.uniqueValues,
+                [this.maxTotalCost, this.costExponent],
+                this.namespace,
+                this.paramsSignature
+            )
         }
 
-        return contractInstance as Contract & VotingProcessContractMethods
+        return contractInstance as Contract & ProcessContractMethods
     }
 
     // custom modifiers
@@ -73,14 +93,6 @@ export default class ProcessBuilder {
         this.chainId = chainId
         return this
     }
-    withModes(enabledModes: IProcessMode[]) {
-        this.enabledModes = enabledModes
-        return this
-    }
-    withEnvelopeTypes(supportedEnvelopeTypes: IProcessEnvelopeType[]) {
-        this.enabledEnvelopeTypes = supportedEnvelopeTypes
-        return this
-    }
     withMode(mode: IProcessMode) {
         this.mode = mode
         return this
@@ -89,8 +101,44 @@ export default class ProcessBuilder {
         this.envelopeType = envelopeType
         return this
     }
+    withStartBlock(startBlock: number) {
+        this.startBlock = startBlock
+        return this
+    }
+    withBlockCount(blockCount: number) {
+        this.blockCount = blockCount
+        return this
+    }
     withQuestionCount(questionCount: number) {
         this.questionCount = questionCount
+        return this
+    }
+    withMaxVoteOverwrites(maxVoteOverwrites: number) {
+        this.maxVoteOverwrites = maxVoteOverwrites
+        return this
+    }
+    withMaxValue(maxValue: number) {
+        this.maxValue = maxValue
+        return this
+    }
+    withUniqueValues(uniqueValues: boolean) {
+        this.uniqueValues = uniqueValues
+        return this
+    }
+    withMaxTotalCost(maxTotalCost: number) {
+        this.maxTotalCost = maxTotalCost
+        return this
+    }
+    withCostExponent(costExponent: number) {
+        this.costExponent = costExponent
+        return this
+    }
+    withNamespace(namespace: number) {
+        this.namespace = namespace
+        return this
+    }
+    withParamsSignature(paramsSignature: string) {
+        this.paramsSignature = paramsSignature
         return this
     }
 }

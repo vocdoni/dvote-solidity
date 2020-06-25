@@ -359,9 +359,9 @@ contract VotingProcess {
         returns (
             uint8[2] memory, // mode, envelopeType
             address, // entityAddress
+            string[3] memory, // metadata, censusMerkleRoot, censusMerkleTree
             uint64, // startBlock
             uint32, // blockCount
-            string[3] memory, // metadata, censusMerkleRoot, censusMerkleTree
             Status, // status
             uint8[4] memory, // questionIndex, questionCount, maxVoteOverwrites, maxValue
             bool, // uniqueValues
@@ -379,13 +379,13 @@ contract VotingProcess {
                 processes[processIndex].envelopeType
             ],
             processes[processIndex].entityAddress,
-            processes[processIndex].startBlock,
-            processes[processIndex].blockCount,
             [
                 processes[processIndex].metadata,
                 processes[processIndex].censusMerkleRoot,
                 processes[processIndex].censusMerkleTree
             ],
+            processes[processIndex].startBlock,
+            processes[processIndex].blockCount,
             processes[processIndex].status,
             [
                 processes[processIndex].questionIndex,

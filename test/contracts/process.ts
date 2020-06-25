@@ -4,9 +4,9 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
-import { VotingProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode } from "../../lib"
+import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, unwrapProcessState, wrapProcessCreateParams } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID } from "../builders/process"
+import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE, DEFAULT_UNIQUE_VALUES, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE } from "../builders/process"
 import { BigNumber } from "ethers/utils"
 
 const { abi: votingProcessAbi, bytecode: votingProcessByteCode } = require("../../build/voting-process.json")
@@ -19,7 +19,7 @@ let randomAccount2: TestAccount
 let authorizedOracleAccount1: TestAccount
 let authorizedOracleAccount2: TestAccount
 let processId: string
-let contractInstance: VotingProcessContractMethods & Contract
+let contractInstance: ProcessContractMethods & Contract
 let chainId: number
 let questionCount: number
 let tx: ContractTransaction
@@ -45,14 +45,19 @@ describe("Voting Process", () => {
     })
 
     it("should deploy the contract", async () => {
-        let validModes = [0, 1, 3]
-        let validEnvelopeTypes = [0, 1, 4, 6, 8, 10, 12, 14]
-
         const contractFactory = new ContractFactory(votingProcessAbi, votingProcessByteCode, entityAccount.wallet)
-        const localInstance = await contractFactory.deploy(chainId, validModes, validEnvelopeTypes)
+        const localInstance1: Contract & ProcessContractMethods = await contractFactory.deploy(chainId) as Contract & ProcessContractMethods
 
-        expect(localInstance).to.be.ok
-        expect(localInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+        expect(localInstance1).to.be.ok
+        expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+        expect(await localInstance1.getChainId()).to.eq(chainId)
+
+        const localInstance2: Contract & ProcessContractMethods = await contractFactory.deploy(234) as Contract & ProcessContractMethods
+
+        expect(localInstance2).to.be.ok
+        expect(localInstance2.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+        expect(localInstance2.address).to.not.eq(localInstance1.address)
+        expect(await localInstance1.getChainId()).to.eq(234)
     })
 
     it("should compute a processId based on the entity address and the process index", async () => {
@@ -97,14 +102,15 @@ describe("Voting Process", () => {
         expect(processId1Actual).to.eq(processId1Expected)
 
         tx = await contractInstance.create(
-            ProcessMode.make({ scheduled: true }),
-            ProcessEnvelopeType.make({}),
-            DEFAULT_METADATA_CONTENT_HASHED_URI,
-            DEFAULT_MERKLE_ROOT,
-            DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI,
+            [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+            [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
             DEFAULT_START_BLOCK,
-            DEFAULT_NUMBER_OF_BLOCKS,
-            DEFAULT_QUESTION_COUNT
+            DEFAULT_BLOCK_COUNT,
+            [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+            DEFAULT_UNIQUE_VALUES,
+            [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+            DEFAULT_NAMESPACE,
+            DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
 
@@ -224,192 +230,6 @@ describe("Voting Process", () => {
         }).timeout(7000)
     })
 
-    describe("supported process modes", () => {
-        it("should add and remove modes", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            for (let i = 32; i < 40; i++) {
-                // add envelope type
-                tx = await contractInstance.enableMode(i)
-                await tx.wait()
-
-                expect(await contractInstance.isModeEnabled(i)).to.be.true
-
-                // cannot add twice
-                try {
-                    tx = await contractInstance.enableMode(i)
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-
-                // check still added
-                expect(await contractInstance.isModeEnabled(i)).to.be.true
-
-                // now disable
-                tx = await contractInstance.disableMode(i)
-                await tx.wait()
-
-                expect(await contractInstance.isModeEnabled(i)).to.be.false
-            }
-        }).timeout(4000)
-
-        it("should only be modified by contract owner", async () => {
-            for (let i = 32; i < 48; i++) {
-                // account 2
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                expect(await contractInstance.isModeEnabled(i)).to.be.false
-
-                // cannot add
-                try {
-                    tx = await contractInstance.enableMode(i)
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-                // account 2
-                contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-                expect(await contractInstance.isModeEnabled(i)).to.be.false
-
-                // cannot add
-                try {
-                    tx = await contractInstance.enableMode(i)
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-                expect(await contractInstance.isModeEnabled(i)).to.be.false
-            }
-        })
-
-        it("should emit an event when added", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            const result: { type: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ModeEnabled", (type: string) => {
-                    resolve({ type })
-                })
-                contractInstance.enableMode(64).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.type).to.equal(64)
-        }).timeout(7000)
-
-        it("should emit an event when removed", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            tx = await contractInstance.enableMode(64)
-            await tx.wait()
-
-            const result: { type: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ModeDisabled", (type: string) => {
-                    resolve({ type })
-                })
-                contractInstance.disableMode(64).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.type).to.equal(64)
-        }).timeout(7000)
-    })
-
-    describe("supported envelope types", () => {
-        it("should add and remove envelope types", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            for (let i = 32; i < 40; i++) {
-                // add envelope type
-                tx = await contractInstance.enableEnvelopeType(i)
-                await tx.wait()
-
-                expect(await contractInstance.isEnvelopeTypeEnabled(i)).to.be.true
-
-                // cannot add twice
-                try {
-                    tx = await contractInstance.enableEnvelopeType(i)
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-
-                // check still added
-                expect(await contractInstance.isEnvelopeTypeEnabled(i)).to.be.true
-
-                // now disable
-                tx = await contractInstance.disableEnvelopeType(i)
-                await tx.wait()
-
-                expect(await contractInstance.isEnvelopeTypeEnabled(i)).to.be.false
-            }
-        }).timeout(4000)
-
-        it("should only be modified by contract owner", async () => {
-            for (let i = 32; i < 48; i++) {
-                // account 2
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                expect(await contractInstance.isEnvelopeTypeEnabled(i)).to.be.false
-
-                // cannot add
-                try {
-                    tx = await contractInstance.enableEnvelopeType(i)
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-                // account 2
-                contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-                expect(await contractInstance.isEnvelopeTypeEnabled(i)).to.be.false
-
-                // cannot add
-                try {
-                    tx = await contractInstance.enableEnvelopeType(i)
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                    expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-                expect(await contractInstance.isEnvelopeTypeEnabled(i)).to.be.false
-            }
-        })
-
-        it("should emit an event when added", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            const result: { type: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("EnvelopeTypeEnabled", (type: string) => {
-                    resolve({ type })
-                })
-                contractInstance.enableEnvelopeType(64).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.type).to.equal(64)
-        }).timeout(7000)
-
-        it("should emit an event when removed", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            tx = await contractInstance.enableEnvelopeType(64)
-            await tx.wait()
-
-            const result: { type: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("EnvelopeTypeDisabled", (type: string) => {
-                    resolve({ type })
-                })
-                contractInstance.disableEnvelopeType(64).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.type).to.equal(64)
-        }).timeout(7000)
-    })
-
     describe("should create processes", () => {
         it("should allow anyone to create a process", async () => {
             expect(contractInstance.create).to.be.ok
@@ -422,7 +242,17 @@ describe("Voting Process", () => {
 
             // 2
             contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-            tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make({}), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+            tx = await contractInstance.create(
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                DEFAULT_START_BLOCK,
+                DEFAULT_BLOCK_COUNT,
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                DEFAULT_UNIQUE_VALUES,
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                DEFAULT_NAMESPACE,
+                DEFAULT_PARAMS_SIGNATURE
+            )
             await tx.wait()
 
             processIdExpected = await contractInstance.getProcessId(randomAccount1.address, 1)
@@ -430,13 +260,376 @@ describe("Voting Process", () => {
             expect(processIdExpected).to.eq(processIdActual)
 
             contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-            tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make({}), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+            tx = await contractInstance.create(
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                DEFAULT_START_BLOCK,
+                DEFAULT_BLOCK_COUNT,
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                DEFAULT_UNIQUE_VALUES,
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                DEFAULT_NAMESPACE,
+                DEFAULT_PARAMS_SIGNATURE
+            )
             await tx.wait()
 
             processIdExpected = await contractInstance.getProcessId(randomAccount2.address, 1)
             processIdActual = await contractInstance.getNextProcessId(randomAccount2.address)
             expect(processIdExpected).to.eq(processIdActual)
         })
+
+        it("retrieved metadata should match the one submitted", async () => {
+            // 1
+            tx = await contractInstance.create(
+                [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                DEFAULT_START_BLOCK,
+                DEFAULT_BLOCK_COUNT,
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                DEFAULT_UNIQUE_VALUES,
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                DEFAULT_NAMESPACE,
+                DEFAULT_PARAMS_SIGNATURE
+            )
+            await tx.wait()
+
+            let count = Number(await contractInstance.entityProcessCount(entityAccount.address))
+            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+
+            let processData = await contractInstance.get(processId)
+
+            // { uint8[2] mode_envelopeType, address entityAddress, uint64 startBlock, uint32 blockCount, string[3] metadata_censusMerkleRoot_censusMerkleTree, Status status, uint8[4] questionIndex_questionCount_maxVoteOverwrites_maxValue, bool uniqueValues, uint16[2] maxTotalCost_costExponent, uint16 namespace, bytes32 paramsSignature }
+
+            let [mode1, envelopeType1] = processData[0]
+            expect(mode1).to.eq(ProcessMode.make({}))
+            expect(envelopeType1).to.eq(ProcessEnvelopeType.make({}))
+            let entityAddress1 = processData[1]
+            expect(entityAddress1).to.eq(entityAccount.address)
+            let [metadata1, censusMerkleRoot1, censusMerkleTree1] = processData[2]
+            expect(metadata1).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
+            expect(censusMerkleRoot1).to.eq(DEFAULT_MERKLE_ROOT)
+            expect(censusMerkleTree1).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            let startBlock1 = processData[3]
+            expect(startBlock1.toNumber()).to.eq(DEFAULT_START_BLOCK)
+            let blockCount1 = processData[4]
+            expect(blockCount1).to.eq(DEFAULT_BLOCK_COUNT)
+            let status1 = processData[5]
+            expect(status1).to.eq(ProcessStatus.READY, "The process should start ready")
+            let [questionIndex1, questionCount1, maxVoteOverwrites1, maxValue1] = processData[6]
+            expect(questionIndex1).to.eq(0)
+            expect(questionCount1).to.eq(DEFAULT_QUESTION_COUNT)
+            expect(maxVoteOverwrites1).to.eq(DEFAULT_MAX_VOTE_OVERWRITES)
+            expect(maxValue1).to.eq(DEFAULT_MAX_VALUE)
+            let uniqueValues1 = processData[7]
+            expect(uniqueValues1).to.eq(DEFAULT_UNIQUE_VALUES)
+            let [maxTotalCost1, costExponent1] = processData[8]
+            expect(maxTotalCost1).to.eq(DEFAULT_MAX_TOTAL_COST)
+            expect(costExponent1).to.eq(DEFAULT_COST_EXPONENT)
+            let namespace1 = processData[9]
+            expect(namespace1).to.eq(DEFAULT_NAMESPACE)
+            let paramsSignature1 = processData[10]
+            expect(paramsSignature1).to.eq(DEFAULT_PARAMS_SIGNATURE)
+
+            // 2
+            let newMode = ProcessMode.make({ autoStart: true })
+            let newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
+            let newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
+            let newCensusMerkleRoot = "0x00000001111122222333334444"
+            let newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
+            let newStartBlock = new BigNumber(1111111)
+            let newBlockCount = 22222
+            let newQuestionCount = 10
+            let newMaxVoteOverwrites = 11
+            let newMaxValue = 12
+            let newUniqueValues = true
+            let newMaxTotalCost = 13
+            let newCostExponent = 14
+            let newNamespace = 15
+            let newParamsSignature = "0x91ba691fb296ba519623fb59163919baf19b26ba91fea9be61b92fab19dbf9df"
+
+            tx = await contractInstance.create(
+                [newMode, newEnvelopeType],
+                [newMetadata, newCensusMerkleRoot, newCensusMerkleTree],
+                newStartBlock,
+                newBlockCount,
+                [newQuestionCount, newMaxVoteOverwrites, newMaxValue],
+                newUniqueValues,
+                [newMaxTotalCost, newCostExponent],
+                newNamespace,
+                newParamsSignature
+            )
+            await tx.wait()
+
+            count = Number(await contractInstance.entityProcessCount(entityAccount.address))
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+
+            processData = await contractInstance.get(processId)
+
+            let [mode2, envelopeType2] = processData[0]
+            expect(mode2).to.eq(newMode)
+            expect(envelopeType2).to.eq(newEnvelopeType)
+            let entityAddress2 = processData[1]
+            expect(entityAddress2).to.eq(entityAccount.address)
+            let [metadata2, censusMerkleRoot2, censusMerkleTree2] = processData[2]
+            expect(metadata2).to.eq(newMetadata)
+            expect(censusMerkleRoot2).to.eq(newCensusMerkleRoot)
+            expect(censusMerkleTree2).to.eq(newCensusMerkleTree)
+            let startBlock2 = processData[3]
+            expect(startBlock2.toNumber()).to.eq(newStartBlock)
+            let blockCount2 = processData[4]
+            expect(blockCount2).to.eq(newBlockCount)
+            let status2 = processData[5]
+            expect(status2).to.eq(ProcessStatus.PAUSED, "The process should start paused")
+            let [questionIndex2, questionCount2, maxVoteOverwrites2, maxValue2] = processData[6]
+            expect(questionIndex2).to.eq(0)
+            expect(questionCount2).to.eq(newQuestionCount)
+            expect(maxVoteOverwrites2).to.eq(newMaxVoteOverwrites)
+            expect(maxValue2).to.eq(newMaxValue)
+            let uniqueValues2 = processData[7]
+            expect(uniqueValues2).to.eq(newUniqueValues)
+            let [maxTotalCost2, costExponent2] = processData[8]
+            expect(maxTotalCost2).to.eq(newMaxTotalCost)
+            expect(costExponent2).to.eq(newCostExponent)
+            let namespace2 = processData[9]
+            expect(namespace2).to.eq(newNamespace)
+            let paramsSignature2 = processData[10]
+            expect(paramsSignature2).to.eq(newParamsSignature)
+
+            // 3
+            newMode = ProcessMode.make({ autoStart: false, interruptible: true, encryptedMetadata: true })
+            newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: false, anonymousVoters: true })
+            newMetadata = "ipfs://ipfs/hello-world-1234!sha3-hash"
+            newCensusMerkleRoot = "0x00000001111122222333334444555666777888999"
+            newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere-and-there!sha3-hash-there"
+            newStartBlock = new BigNumber(2222222)
+            newBlockCount = 33333
+            newQuestionCount = 20
+            newMaxVoteOverwrites = 21
+            newMaxValue = 22
+            newUniqueValues = false
+            newMaxTotalCost = 23
+            newCostExponent = 24
+            newNamespace = 25
+            newParamsSignature = "0x11ba691fb296ba519623fb59163919baf19b26ba91fea9be61b92fab19dbf9df"
+
+            tx = await contractInstance.create(
+                [newMode, newEnvelopeType],
+                [newMetadata, newCensusMerkleRoot, newCensusMerkleTree],
+                newStartBlock,
+                newBlockCount,
+                [newQuestionCount, newMaxVoteOverwrites, newMaxValue],
+                newUniqueValues,
+                [newMaxTotalCost, newCostExponent],
+                newNamespace,
+                newParamsSignature
+            )
+            await tx.wait()
+
+            count = Number(await contractInstance.entityProcessCount(entityAccount.address))
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+
+            processData = await contractInstance.get(processId)
+
+            let [mode3, envelopeType3] = processData[0]
+            expect(mode3).to.eq(newMode)
+            expect(envelopeType3).to.eq(newEnvelopeType)
+            let entityAddress3 = processData[1]
+            expect(entityAddress3).to.eq(entityAccount.address)
+            let [metadata3, censusMerkleRoot3, censusMerkleTree3] = processData[2]
+            expect(metadata3).to.eq(newMetadata)
+            expect(censusMerkleRoot3).to.eq(newCensusMerkleRoot)
+            expect(censusMerkleTree3).to.eq(newCensusMerkleTree)
+            let startBlock3 = processData[3]
+            expect(startBlock3.toNumber()).to.eq(newStartBlock)
+            let blockCount3 = processData[4]
+            expect(blockCount3).to.eq(newBlockCount)
+            let status3 = processData[5]
+            expect(status3).to.eq(ProcessStatus.PAUSED, "The process should start paused")
+            let [questionIndex3, questionCount3, maxVoteOverwrites3, maxValue3] = processData[6]
+            expect(questionIndex3).to.eq(0)
+            expect(questionCount3).to.eq(newQuestionCount)
+            expect(maxVoteOverwrites3).to.eq(newMaxVoteOverwrites)
+            expect(maxValue3).to.eq(newMaxValue)
+            let uniqueValues3 = processData[7]
+            expect(uniqueValues3).to.eq(newUniqueValues)
+            let [maxTotalCost3, costExponent3] = processData[8]
+            expect(maxTotalCost3).to.eq(newMaxTotalCost)
+            expect(costExponent3).to.eq(newCostExponent)
+            let namespace3 = processData[9]
+            expect(namespace3).to.eq(newNamespace)
+            let paramsSignature3 = processData[10]
+            expect(paramsSignature3).to.eq(newParamsSignature)
+        })
+
+        it("unwrapped metadata should match the unwrapped response", async () => {
+            // 1
+            const params1 = wrapProcessCreateParams({
+                mode: ProcessMode.make({}),
+                envelopeType: ProcessEnvelopeType.make({}),
+                metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
+                censusMerkleRoot: DEFAULT_MERKLE_ROOT,
+                censusMerkleTree: DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI,
+                startBlock: DEFAULT_START_BLOCK,
+                blockCount: DEFAULT_BLOCK_COUNT,
+                questionCount: DEFAULT_QUESTION_COUNT,
+                maxVoteOverwrites: DEFAULT_MAX_VOTE_OVERWRITES,
+                maxValue: DEFAULT_MAX_VALUE,
+                uniqueValues: DEFAULT_UNIQUE_VALUES,
+                maxTotalCost: DEFAULT_MAX_TOTAL_COST,
+                costExponent: DEFAULT_COST_EXPONENT,
+                namespace: DEFAULT_NAMESPACE,
+                paramsSignature: DEFAULT_PARAMS_SIGNATURE
+            })
+            tx = await contractInstance.create(...params1)
+            await tx.wait()
+
+            let count = Number(await contractInstance.entityProcessCount(entityAccount.address))
+            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+
+            expect(processData1.mode).to.eq(ProcessMode.make({}))
+            expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make({}))
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
+            expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
+            expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            expect(processData1.startBlock.toNumber()).to.eq(DEFAULT_START_BLOCK)
+            expect(processData1.blockCount).to.eq(DEFAULT_BLOCK_COUNT)
+            expect(processData1.status).to.eq(ProcessStatus.PAUSED, "The process should start paused")
+            expect(processData1.questionIndex).to.eq(0)
+            expect(processData1.questionCount).to.eq(DEFAULT_QUESTION_COUNT)
+            expect(processData1.maxVoteOverwrites).to.eq(DEFAULT_MAX_VOTE_OVERWRITES)
+            expect(processData1.maxValue).to.eq(DEFAULT_MAX_VALUE)
+            expect(processData1.uniqueValues).to.eq(DEFAULT_UNIQUE_VALUES)
+            expect(processData1.maxTotalCost).to.eq(DEFAULT_MAX_TOTAL_COST)
+            expect(processData1.costExponent).to.eq(DEFAULT_COST_EXPONENT)
+            expect(processData1.namespace).to.eq(DEFAULT_NAMESPACE)
+            expect(processData1.paramsSignature).to.eq(DEFAULT_PARAMS_SIGNATURE)
+
+            // 2
+            let newMode = ProcessMode.make({ autoStart: true })
+            let newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
+            let newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
+            let newCensusMerkleRoot = "0x00000001111122222333334444"
+            let newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
+            let newStartBlock = new BigNumber(1111111)
+            let newBlockCount = 22222
+            let newQuestionCount = 10
+            let newMaxVoteOverwrites = 11
+            let newMaxValue = 12
+            let newUniqueValues = true
+            let newMaxTotalCost = 13
+            let newCostExponent = 14
+            let newNamespace = 15
+            let newParamsSignature = "0x91ba691fb296ba519623fb59163919baf19b26ba91fea9be61b92fab19dbf9df"
+
+            const params2 = wrapProcessCreateParams({
+                mode: newMode,
+                envelopeType: newEnvelopeType,
+                metadata: newMetadata,
+                censusMerkleRoot: newCensusMerkleRoot,
+                censusMerkleTree: newCensusMerkleTree,
+                startBlock: newStartBlock,
+                blockCount: newBlockCount,
+                questionCount: newQuestionCount,
+                maxVoteOverwrites: newMaxVoteOverwrites,
+                maxValue: newMaxValue,
+                uniqueValues: newUniqueValues,
+                maxTotalCost: newMaxTotalCost,
+                costExponent: newCostExponent,
+                namespace: newNamespace,
+                paramsSignature: newParamsSignature
+            })
+            tx = await contractInstance.create(...params2)
+            await tx.wait()
+
+            count = Number(await contractInstance.entityProcessCount(entityAccount.address))
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+
+            expect(processData2.mode).to.eq(newMode)
+            expect(processData2.envelopeType).to.eq(newEnvelopeType)
+            expect(processData2.entityAddress).to.eq(entityAccount.address)
+            expect(processData2.metadata).to.eq(newMetadata)
+            expect(processData2.censusMerkleRoot).to.eq(newCensusMerkleRoot)
+            expect(processData2.censusMerkleTree).to.eq(newCensusMerkleTree)
+            expect(processData2.startBlock.toNumber()).to.eq(newStartBlock)
+            expect(processData2.blockCount).to.eq(newBlockCount)
+            expect(processData2.status).to.eq(ProcessStatus.PAUSED, "The process should start paused")
+            expect(processData2.questionIndex).to.eq(0)
+            expect(processData2.questionCount).to.eq(newQuestionCount)
+            expect(processData2.maxVoteOverwrites).to.eq(newMaxVoteOverwrites)
+            expect(processData2.maxValue).to.eq(newMaxValue)
+            expect(processData2.uniqueValues).to.eq(newUniqueValues)
+            expect(processData2.maxTotalCost).to.eq(newMaxTotalCost)
+            expect(processData2.costExponent).to.eq(newCostExponent)
+            expect(processData2.namespace).to.eq(newNamespace)
+            expect(processData2.paramsSignature).to.eq(newParamsSignature)
+
+            // 2
+            newMode = ProcessMode.make({ autoStart: true })
+            newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
+            newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
+            newCensusMerkleRoot = "0x00000001111122222333334444"
+            newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
+            newStartBlock = new BigNumber(1111111)
+            newBlockCount = 22222
+            newQuestionCount = 10
+            newMaxVoteOverwrites = 11
+            newMaxValue = 12
+            newUniqueValues = true
+            newMaxTotalCost = 13
+            newCostExponent = 14
+            newNamespace = 15
+            newParamsSignature = "0x91ba691fb296ba519623fb59163919baf19b26ba91fea9be61b92fab19dbf9df"
+
+            const params3 = wrapProcessCreateParams({
+                mode: newMode,
+                envelopeType: newEnvelopeType,
+                metadata: newMetadata,
+                censusMerkleRoot: newCensusMerkleRoot,
+                censusMerkleTree: newCensusMerkleTree,
+                startBlock: newStartBlock,
+                blockCount: newBlockCount,
+                questionCount: newQuestionCount,
+                maxVoteOverwrites: newMaxVoteOverwrites,
+                maxValue: newMaxValue,
+                uniqueValues: newUniqueValues,
+                maxTotalCost: newMaxTotalCost,
+                costExponent: newCostExponent,
+                namespace: newNamespace,
+                paramsSignature: newParamsSignature
+            })
+            tx = await contractInstance.create(...params2)
+            await tx.wait()
+
+            count = Number(await contractInstance.entityProcessCount(entityAccount.address))
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+
+            const processData3 = unwrapProcessState(await contractInstance.get(processId))
+
+            expect(processData3.mode).to.eq(newMode)
+            expect(processData3.envelopeType).to.eq(newEnvelopeType)
+            expect(processData3.entityAddress).to.eq(entityAccount.address)
+            expect(processData3.metadata).to.eq(newMetadata)
+            expect(processData3.censusMerkleRoot).to.eq(newCensusMerkleRoot)
+            expect(processData3.censusMerkleTree).to.eq(newCensusMerkleTree)
+            expect(processData3.startBlock.toNumber()).to.eq(newStartBlock)
+            expect(processData3.blockCount).to.eq(newBlockCount)
+            expect(processData3.status).to.eq(ProcessStatus.PAUSED, "The process should start paused")
+            expect(processData3.questionIndex).to.eq(0)
+            expect(processData3.questionCount).to.eq(newQuestionCount)
+            expect(processData3.maxVoteOverwrites).to.eq(newMaxVoteOverwrites)
+            expect(processData3.maxValue).to.eq(newMaxValue)
+            expect(processData3.uniqueValues).to.eq(newUniqueValues)
+            expect(processData3.maxTotalCost).to.eq(newMaxTotalCost)
+            expect(processData3.costExponent).to.eq(newCostExponent)
+            expect(processData3.namespace).to.eq(newNamespace)
+            expect(processData3.paramsSignature).to.eq(newParamsSignature)
+        })
+
         it("should emit an event", async () => {
             const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0)
 
@@ -446,7 +639,17 @@ describe("Voting Process", () => {
                 contractInstance.on("ProcessCreated", (entityAddress: string, processId: string) => {
                     resolve({ entityAddress, processId })
                 })
-                // contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make({}), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT).then(tx => tx.wait()).catch(reject)
+                // contractInstance.create(
+                //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                //     DEFAULT_START_BLOCK,
+                //     DEFAULT_BLOCK_COUNT,
+                //     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                //     DEFAULT_UNIQUE_VALUES,
+                //     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                //     DEFAULT_NAMESPACE,
+                //     DEFAULT_PARAMS_SIGNATURE
+                // ).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
@@ -458,7 +661,17 @@ describe("Voting Process", () => {
             const prev = Number(await contractInstance.entityProcessCount(entityAccount.address))
             expect(prev).to.eq(1)
 
-            tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make({}), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+            tx = await contractInstance.create(
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                DEFAULT_START_BLOCK,
+                DEFAULT_BLOCK_COUNT,
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                DEFAULT_UNIQUE_VALUES,
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                DEFAULT_NAMESPACE,
+                DEFAULT_PARAMS_SIGNATURE
+            )
             await tx.wait()
 
             const current = Number(await contractInstance.entityProcessCount(entityAccount.address))
@@ -466,14 +679,146 @@ describe("Voting Process", () => {
             expect(current).to.eq(prev + 1, "processCount should have increased by 1")
         })
 
-        it("should fail if blockCount is zero")
+        it("should fail if auto start and startBlock is zero", () => {
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    0,
+                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+        })
+
+        it("should fail if not interruptible and blockCount is zero", () => {
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({ interruptible: false }), ProcessEnvelopeType.make({})],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    DEFAULT_START_BLOCK,
+                    0,
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+        })
+
+        it("should fail if the metadata or census references are empty", () => {
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    ["", DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    DEFAULT_START_BLOCK,
+                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, "", DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    DEFAULT_START_BLOCK,
+                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, ""],
+                    DEFAULT_START_BLOCK,
+                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+        })
+
+        it("should fail if questionCount is zero", () => {
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    DEFAULT_START_BLOCK,
+                    DEFAULT_BLOCK_COUNT,
+                    [0, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+        })
+
+        it("should fail if allowVoteOverwrite is set but maxVoteOverwrites is zero", () => {
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({ allowVoteOverwrite: true }), ProcessEnvelopeType.make({})],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    DEFAULT_START_BLOCK,
+                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_QUESTION_COUNT, 0, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+        })
+
+        it("should fail if maxValue is zero", () => {
+            expect(() => {
+                return contractInstance.create(
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    DEFAULT_START_BLOCK,
+                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+            }).to.throw
+        })
 
         it("should not increase the processCount of the entity on error", async () => {
             const prev = Number(await contractInstance.entityProcessCount(entityAccount.address))
             expect(prev).to.eq(1)
 
             try {
-                tx = await contractInstance.create(ProcessMode.make({}), ProcessEnvelopeType.make({}), "", "", "", 0, 0, 10)
+                tx = await contractInstance.create(
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    ["", "", ""],
+                    0,
+                    0,
+                    [0, 0, 0],
+                    DEFAULT_UNIQUE_VALUES,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    DEFAULT_NAMESPACE,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
                 await tx.wait()
 
                 throw new Error("The transaction should have thrown an error but didn't")
@@ -485,52 +830,6 @@ describe("Voting Process", () => {
             const current = Number(await contractInstance.entityProcessCount(entityAccount.address))
 
             expect(current).to.eq(prev, "processCount should not have changed")
-        })
-        it("retrieved metadata should match the one submitted", async () => {
-            // 1
-            tx = await contractInstance.create(ProcessMode.make({}), ProcessEnvelopeType.make({}), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
-            await tx.wait()
-
-            let count = Number(await contractInstance.entityProcessCount(entityAccount.address))
-            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
-
-            let processData = await contractInstance.get(processId)
-
-            expect(processData.mode).to.eq(ProcessMode.make({}))
-            expect(processData.envelopeType).to.eq(ProcessEnvelopeType.make({}))
-            expect(processData.entityAddress).to.eq(entityAccount.address)
-            expect(processData.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
-            expect(processData.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-            expect(processData.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
-            expect(processData.status).to.eq(ProcessStatus.PAUSED, "The process should start paused")
-            expect(processData.startBlock.toNumber()).to.eq(DEFAULT_START_BLOCK)
-            expect(processData.blockCount.toNumber()).to.eq(DEFAULT_NUMBER_OF_BLOCKS)
-
-            // 2
-            let newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
-            let censusMerkleRoot = "0x00000001111122222333334444"
-            let censusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            let startBlock = 23456789
-            let blockCount = 1000
-            let questionCount = 10
-
-            tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make({ encryptedVotes: true }), newMetadata, censusMerkleRoot, censusMerkleTree, startBlock, blockCount, questionCount)
-            await tx.wait()
-
-            count = Number(await contractInstance.entityProcessCount(entityAccount.address))
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
-
-            processData = await contractInstance.get(processId)
-
-            expect(processData.mode).to.eq(ProcessMode.make({ scheduled: true }))
-            expect(processData.envelopeType).to.eq(ProcessEnvelopeType.make({ encryptedVotes: true }))
-            expect(processData.entityAddress).to.eq(entityAccount.address)
-            expect(processData.metadata).to.eq(newMetadata)
-            expect(processData.censusMerkleRoot).to.eq(censusMerkleRoot)
-            expect(processData.censusMerkleTree).to.eq(censusMerkleTree)
-            expect(processData.status).to.eq(ProcessStatus.OPEN, "The process should start as open")
-            expect(processData.startBlock.toNumber()).to.eq(startBlock)
-            expect(processData.blockCount.toNumber()).to.eq(blockCount)
         })
     })
 
@@ -1004,7 +1303,7 @@ describe("Voting Process", () => {
 
     describe("Process Status", () => {
         beforeEach(async () => {
-            contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ scheduled: true })).build()
+            contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: true })).build()
         })
 
         it("should create paused processes by default", async () => {
@@ -1013,17 +1312,17 @@ describe("Voting Process", () => {
 
             // one is already created by the builder
 
-            const processData0 = await contractInstance.get(processId1)
+            const processData0 = unwrapProcessState(await contractInstance.get(processId1))
             expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
         })
 
         it("should create open processes when scheduled", async () => {
             const processId1 = await contractInstance.getNextProcessId(entityAccount.address)
 
-            tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+            tx = await contractInstance.create(ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
 
             const processData0 = await contractInstance.get(processId1)
-            expect(processData0.status).to.eq(ProcessStatus.OPEN, "The process should be open")
+            expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be open")
         })
 
         describe("processes should end", () => {
@@ -1033,7 +1332,7 @@ describe("Voting Process", () => {
                 // one is already created by the builder
 
                 const processData0 = await contractInstance.get(processId1)
-                expect(processData0.status).to.eq(ProcessStatus.OPEN, "The process should now be ended")
+                expect(processData0.status).to.eq(ProcessStatus.READY, "The process should now be ended")
 
                 // End it
                 contractInstance = contractInstance.connect(entityAccount.wallet) as any
@@ -1041,7 +1340,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1049,7 +1348,7 @@ describe("Voting Process", () => {
 
                 // Create second one
                 const processId2 = await contractInstance.getProcessId(entityAccount.address, 1)
-                tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+                tx = await contractInstance.create(ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
                 await tx.wait()
 
                 // Try to end it from another account
@@ -1064,11 +1363,11 @@ describe("Voting Process", () => {
                 }
 
                 const processData2 = await contractInstance.get(processId2)
-                expect(processData2.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData2.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData2.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData2.entityAddress).to.eq(entityAccount.address)
                 expect(processData2.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
-                expect(processData2.status).to.eq(ProcessStatus.OPEN, "The process should remain open")
+                expect(processData2.status).to.eq(ProcessStatus.READY, "The process should remain open")
             })
 
             it("if not yet ended", async () => {
@@ -1077,7 +1376,7 @@ describe("Voting Process", () => {
                 // one is already created by the builder
 
                 const processData0 = await contractInstance.get(processId1)
-                expect(processData0.status).to.eq(ProcessStatus.OPEN, "The process should be open")
+                expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be open")
 
                 // Ended by the creator
                 contractInstance = contractInstance.connect(entityAccount.wallet) as any
@@ -1085,7 +1384,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1115,7 +1414,7 @@ describe("Voting Process", () => {
                 // one is already created by the builder
 
                 const processData0 = await contractInstance.get(processId1)
-                expect(processData0.status).to.eq(ProcessStatus.OPEN, "The process should be open")
+                expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be open")
 
                 // Canceled by the creator
                 contractInstance = contractInstance.connect(entityAccount.wallet) as any
@@ -1123,7 +1422,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1173,7 +1472,7 @@ describe("Voting Process", () => {
                 // one is already created by the builder
 
                 const processData0 = await contractInstance.get(processId1)
-                expect(processData0.status).to.eq(ProcessStatus.OPEN)
+                expect(processData0.status).to.eq(ProcessStatus.READY)
 
                 // Canceled by the creator
                 contractInstance = contractInstance.connect(entityAccount.wallet) as any
@@ -1181,7 +1480,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1189,7 +1488,7 @@ describe("Voting Process", () => {
 
                 // Create another one
                 const processId2 = await contractInstance.getProcessId(entityAccount.address, 1)
-                tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+                tx = await contractInstance.create(ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
                 await tx.wait()
 
                 // Try to cancel from another account
@@ -1204,11 +1503,11 @@ describe("Voting Process", () => {
                 }
 
                 const processData2 = await contractInstance.get(processId2)
-                expect(processData2.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData2.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData2.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData2.entityAddress).to.eq(entityAccount.address)
                 expect(processData2.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
-                expect(processData2.status).to.eq(ProcessStatus.OPEN, "The process should remain open")
+                expect(processData2.status).to.eq(ProcessStatus.READY, "The process should remain open")
 
             })
             it("if not yet canceled", async () => {
@@ -1222,7 +1521,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1257,7 +1556,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1313,7 +1612,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1322,7 +1621,7 @@ describe("Voting Process", () => {
                 // Create another one
                 const processId2 = await contractInstance.getProcessId(entityAccount.address, 1)
 
-                tx = await contractInstance.create(ProcessMode.make({ scheduled: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+                tx = await contractInstance.create(ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
                 await tx.wait()
 
                 // Try to pause from another account
@@ -1337,11 +1636,11 @@ describe("Voting Process", () => {
                 }
 
                 const processData2 = await contractInstance.get(processId2)
-                expect(processData2.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData2.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData2.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData2.entityAddress).to.eq(entityAccount.address)
                 expect(processData2.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
-                expect(processData2.status).to.eq(ProcessStatus.OPEN, "The process should remain open")
+                expect(processData2.status).to.eq(ProcessStatus.READY, "The process should remain open")
             })
 
             it("if not canceled", async () => {
@@ -1355,7 +1654,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1390,7 +1689,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1425,7 +1724,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1460,7 +1759,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1498,7 +1797,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1534,7 +1833,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1578,7 +1877,7 @@ describe("Voting Process", () => {
                 const processData2 = await contractInstance.get(processId1)
                 expect(processData2.entityAddress).to.eq(entityAccount.address)
                 expect(processData2.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
-                expect(processData2.status).to.eq(ProcessStatus.OPEN, "The process should be open")
+                expect(processData2.status).to.eq(ProcessStatus.READY, "The process should be open")
             })
 
             it("if paused", async () => {
@@ -1592,7 +1891,7 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData1 = await contractInstance.get(processId1)
-                expect(processData1.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData1.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData1.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
                 expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
@@ -1604,11 +1903,11 @@ describe("Voting Process", () => {
                 await tx.wait()
 
                 const processData2 = await contractInstance.get(processId1)
-                expect(processData2.mode).to.eq(ProcessMode.make({ scheduled: true }))
+                expect(processData2.mode).to.eq(ProcessMode.make({ autoStart: true }))
                 expect(processData2.envelopeType).to.eq(ProcessEnvelopeType.make())
                 expect(processData2.entityAddress).to.eq(entityAccount.address)
                 expect(processData2.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
-                expect(processData2.status).to.eq(ProcessStatus.OPEN, "The process should now be open")
+                expect(processData2.status).to.eq(ProcessStatus.READY, "The process should now be open")
             })
         })
     })
@@ -1833,7 +2132,7 @@ describe("Voting Process", () => {
     //         const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
     //         const questionCount = 100
     //         // Create
-    //         const result1 = await contractInstance.create(ProcessMode.ASSEMBLY, ProcessEnvelopeType.REALTIME_POLL, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+    //         const result1 = await contractInstance.create(ProcessMode.ASSEMBLY, ProcessEnvelopeType.REALTIME_POLL, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
     //         await tx.wait()
     //         assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
 
@@ -1846,7 +2145,7 @@ describe("Voting Process", () => {
     //         const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
     //         const questionCount = 100
     //         // Create
-    //         const result1 = await contractInstance.create(ProcessMode.ASSEMBLY, ProcessEnvelopeType.REALTIME_POLL, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_NUMBER_OF_BLOCKS, DEFAULT_QUESTION_COUNT)
+    //         const result1 = await contractInstance.create(ProcessMode.ASSEMBLY, ProcessEnvelopeType.REALTIME_POLL, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
     //         await tx.wait()
     //         assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
 
