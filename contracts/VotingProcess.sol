@@ -143,7 +143,7 @@ contract VotingProcess {
     }
 
     modifier onlyContractOwner {
-        require(msg.sender == contractOwner, "Only contract owner");
+        require(msg.sender == contractOwner, "onlyContractOwner");
         _;
     }
 
@@ -155,7 +155,7 @@ contract VotingProcess {
                 break;
             }
         }
-        require(authorized == true, "unauthorized");
+        require(authorized == true, "onlyOracle");
         _;
     }
 

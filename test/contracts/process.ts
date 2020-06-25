@@ -173,7 +173,6 @@ describe("Voting Process", () => {
     })
 
     describe("should set chainId", () => {
-
         it("only contract creator", async () => {
             try {
                 contractInstance = contractInstance.connect(randomAccount1.wallet) as any
@@ -1324,97 +1323,6 @@ describe("Voting Process", () => {
             expect(processData1.status).to.eq(ProcessStatus.READY, "The process should be ready")
         })
 
-        it("should reject updates from anyone other than the creator", async () => {
-                // interruptible
-                let mode = ProcessMode.make({ autoStart: true, interruptible: true })
-                contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-                // one is already created by the builder
-
-                const processData0 = unwrapProcessState(await contractInstance.get(processId1))
-                expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
-
-            // Try to set it to ready (it already is)
-                try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as ProcessContractMethods & Contract
-                tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
-                    await tx.wait()
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-
-            const processData2 = unwrapProcessState(await contractInstance.get(processId1))
-                expect(processData2.mode).to.eq(mode)
-                expect(processData2.entityAddress).to.eq(entityAccount.address)
-                expect(processData2.status).to.eq(ProcessStatus.READY, "The process should remain ready")
-
-            // Try to set it to paused
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as ProcessContractMethods & Contract
-                tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            const processData3 = unwrapProcessState(await contractInstance.get(processId1))
-            expect(processData3.mode).to.eq(mode)
-            expect(processData3.entityAddress).to.eq(entityAccount.address)
-            expect(processData3.status).to.eq(ProcessStatus.READY, "The process should remain ready")
-
-            // Try to set it to ended
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as ProcessContractMethods & Contract
-                tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            const processData4 = unwrapProcessState(await contractInstance.get(processId1))
-            expect(processData4.mode).to.eq(mode)
-            expect(processData4.entityAddress).to.eq(entityAccount.address)
-            expect(processData4.status).to.eq(ProcessStatus.READY, "The process should remain ready")
-
-            // Try to set it to canceled
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as ProcessContractMethods & Contract
-                tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            const processData5 = unwrapProcessState(await contractInstance.get(processId1))
-            expect(processData5.mode).to.eq(mode)
-            expect(processData5.entityAddress).to.eq(entityAccount.address)
-            expect(processData5.status).to.eq(ProcessStatus.READY, "The process should remain ready")
-
-            // Try to set it to results
-                try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as ProcessContractMethods & Contract
-                tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
-                    await tx.wait()
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
-                expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
-                }
-
-            const processData6 = unwrapProcessState(await contractInstance.get(processId1))
-            expect(processData6.mode).to.eq(mode)
-            expect(processData6.entityAddress).to.eq(entityAccount.address)
-            expect(processData6.status).to.eq(ProcessStatus.READY, "The process should remain ready")
-        })
-
         it("should reject invalid status codes", async () => {
             // interruptible
             let mode = ProcessMode.make({ autoStart: true, interruptible: true })
@@ -1608,21 +1516,21 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-                // one is already created by the builder
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
 
                     // Try to set it to Ready (it already is)
-                try {
+                    try {
                         tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
-                    await tx.wait()
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
                         expect(err.message).to.match(/revert Status must change/, "The transaction threw an unexpected error:\n" + err.message)
-                }
+                    }
 
                     const processData2 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData2.mode).to.eq(mode)
@@ -1634,8 +1542,8 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-                // one is already created by the builder
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
@@ -1644,18 +1552,18 @@ describe("Voting Process", () => {
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
                     await tx.wait()
 
-                const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                    const processData1 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData1.mode).to.eq(mode)
-                expect(processData1.entityAddress).to.eq(entityAccount.address)
+                    expect(processData1.entityAddress).to.eq(entityAccount.address)
                     expect(processData1.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
 
                     // Set back to ready
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
                     await tx.wait()
 
-                const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                    const processData2 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData2.mode).to.eq(mode)
-                expect(processData2.entityAddress).to.eq(entityAccount.address)
+                    expect(processData2.entityAddress).to.eq(entityAccount.address)
                     expect(processData2.status).to.eq(ProcessStatus.READY, "The process should be ready")
                 })
 
@@ -1663,34 +1571,34 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-                // one is already created by the builder
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
 
                     // Set it to ended
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
-                await tx.wait()
+                    await tx.wait()
 
-                const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                    const processData1 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData1.mode).to.eq(mode)
-                expect(processData1.entityAddress).to.eq(entityAccount.address)
+                    expect(processData1.entityAddress).to.eq(entityAccount.address)
                     expect(processData1.status).to.eq(ProcessStatus.ENDED, "The process should be ended")
 
                     // Try to set it back to ready
-                try {
+                    try {
                         tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
-                    await tx.wait()
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
                         expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
-                }
+                    }
 
-                const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                    const processData2 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData2.mode).to.eq(mode)
-                expect(processData2.entityAddress).to.eq(entityAccount.address)
+                    expect(processData2.entityAddress).to.eq(entityAccount.address)
                     expect(processData2.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
                 })
 
@@ -1698,34 +1606,34 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-                // one is already created by the builder
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
 
                     // Set it to canceled
-                tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
-                await tx.wait()
+                    tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                    await tx.wait()
 
-                const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                    const processData1 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData1.mode).to.eq(mode)
-                expect(processData1.entityAddress).to.eq(entityAccount.address)
+                    expect(processData1.entityAddress).to.eq(entityAccount.address)
                     expect(processData1.status).to.eq(ProcessStatus.CANCELED, "The process should be canceled")
 
                     // Try to set it back to ready
-                try {
+                    try {
                         tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
-                    await tx.wait()
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
                         expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
-                }
+                    }
 
-                const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                    const processData2 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData2.mode).to.eq(mode)
-                expect(processData2.entityAddress).to.eq(entityAccount.address)
+                    expect(processData2.entityAddress).to.eq(entityAccount.address)
                     expect(processData2.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
                 })
 
@@ -1733,27 +1641,125 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-                // one is already created by the builder
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
 
                     // Try to set it back to results
-                try {
+                    try {
                         tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
-                    await tx.wait()
-                    throw new Error("The transaction should have thrown an error but didn't")
-                }
-                catch (err) {
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
                         expect(err.message).to.match(/revert Invalid status code/, "The transaction threw an unexpected error:\n" + err.message)
-                }
+                    }
 
-                const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                    const processData2 = unwrapProcessState(await contractInstance.get(processId1))
                     expect(processData2.mode).to.eq(mode)
-                expect(processData2.entityAddress).to.eq(entityAccount.address)
+                    expect(processData2.entityAddress).to.eq(entityAccount.address)
                     expect(processData2.status).to.eq(ProcessStatus.READY, "The process should remain ready")
                 })
+
+                it("should fail if someone else tries to update the status", async () => {
+                    for (let account of [randomAccount1, randomAccount2, authorizedOracleAccount1]) {
+                        // interruptible
+                        let mode = ProcessMode.make({ autoStart: true, interruptible: true })
+                        contractInstance = await new ProcessBuilder().withMode(mode).build()
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        // one is already created by the builder
+
+                        const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+                        // even if the account is an oracle
+                        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                        tx = await contractInstance.addOracle(account.address)
+                        await tx.wait()
+
+                        // Try to set it to ready (it already is)
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData2.mode).to.eq(mode)
+                        expect(processData2.entityAddress).to.eq(entityAccount.address)
+                        expect(processData2.status).to.eq(ProcessStatus.READY, "The process should remain ready")
+
+                        // Try to set it to paused
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData3.mode).to.eq(mode)
+                        expect(processData3.entityAddress).to.eq(entityAccount.address)
+                        expect(processData3.status).to.eq(ProcessStatus.READY, "The process should remain ready")
+
+                        // Try to set it to ended
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData4.mode).to.eq(mode)
+                        expect(processData4.entityAddress).to.eq(entityAccount.address)
+                        expect(processData4.status).to.eq(ProcessStatus.READY, "The process should remain ready")
+
+                        // Try to set it to canceled
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData5.mode).to.eq(mode)
+                        expect(processData5.entityAddress).to.eq(entityAccount.address)
+                        expect(processData5.status).to.eq(ProcessStatus.READY, "The process should remain ready")
+
+                        // Try to set it to results
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData6 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData6.mode).to.eq(mode)
+                        expect(processData6.entityAddress).to.eq(entityAccount.address)
+                        expect(processData6.status).to.eq(ProcessStatus.READY, "The process should remain ready")
+                    }
+                }).timeout(4000)
             })
 
             describe("from paused", () => {
@@ -1907,39 +1913,649 @@ describe("Voting Process", () => {
                     expect(processData2.entityAddress).to.eq(entityAccount.address)
                     expect(processData2.status).to.eq(ProcessStatus.PAUSED, "The process should remain paused")
                 })
+
+                it("should fail if someone else tries to update the status", async () => {
+                    for (let account of [randomAccount1, randomAccount2, authorizedOracleAccount1]) {
+                        // interruptible
+                        let mode = ProcessMode.make({ autoStart: false, interruptible: true })
+                        contractInstance = await new ProcessBuilder().withMode(mode).build()
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        // one is already created by the builder
+
+                        const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+                        // even if the account is an oracle
+                        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                        tx = await contractInstance.addOracle(account.address)
+                        await tx.wait()
+
+                        // Try to set it to ready (it already is)
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData2.mode).to.eq(mode)
+                        expect(processData2.entityAddress).to.eq(entityAccount.address)
+                        expect(processData2.status).to.eq(ProcessStatus.PAUSED, "The process should remain paused")
+
+                        // Try to set it to paused
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData3.mode).to.eq(mode)
+                        expect(processData3.entityAddress).to.eq(entityAccount.address)
+                        expect(processData3.status).to.eq(ProcessStatus.PAUSED, "The process should remain paused")
+
+                        // Try to set it to ended
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData4.mode).to.eq(mode)
+                        expect(processData4.entityAddress).to.eq(entityAccount.address)
+                        expect(processData4.status).to.eq(ProcessStatus.PAUSED, "The process should remain paused")
+
+                        // Try to set it to canceled
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData5.mode).to.eq(mode)
+                        expect(processData5.entityAddress).to.eq(entityAccount.address)
+                        expect(processData5.status).to.eq(ProcessStatus.PAUSED, "The process should remain paused")
+
+                        // Try to set it to results
+                        try {
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData6 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData6.mode).to.eq(mode)
+                        expect(processData6.entityAddress).to.eq(entityAccount.address)
+                        expect(processData6.status).to.eq(ProcessStatus.PAUSED, "The process should remain paused")
+                    }
+                }).timeout(4000)
             })
+
             describe("from ended", () => {
-                it("should never allow the status to be updated", async () => {
-                    // Entity
-                    // Oracle
-                    // Random
+                it("should never allow the status to be updated [creator]", async () => {
+                    // interruptible
+                    let mode = ProcessMode.make({ autoStart: false, interruptible: true })
+                    contractInstance = await new ProcessBuilder().withMode(mode).build()
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
+
+                    const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+                    // Set it to ended
+                    tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                    await tx.wait()
+
+                    const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData1.mode).to.eq(mode)
+                    expect(processData1.entityAddress).to.eq(entityAccount.address)
+                    expect(processData1.status).to.eq(ProcessStatus.ENDED, "The process should be ended")
+
+                    // Try to set it to ready
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData2.entityAddress).to.eq(entityAccount.address)
+                    expect(processData2.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
+
+                    // Try to set it to paused
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData3.entityAddress).to.eq(entityAccount.address)
+                    expect(processData3.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
+
+                    // Try to set it to canceled
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData4.entityAddress).to.eq(entityAccount.address)
+                    expect(processData4.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
+
+                    // Try to set it to results
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Invalid status code/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData5.entityAddress).to.eq(entityAccount.address)
+                    expect(processData5.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
                 })
-            })
-            describe("from canceled", () => {
-                it("should never allow the status to be updated", async () => {
-                    // Entity
-                    // Oracle
-                    // Random
-                })
-            })
-            describe("from results", () => {
-                it("should never allow the status to be updated", async () => {
-                    // Entity
-                    // Oracle
-                    // Random
+
+                it("should never allow the status to be updated [other account]", async () => {
+                    for (let account of [authorizedOracleAccount1, randomAccount1]) {
+                        // interruptible
+                        let mode = ProcessMode.make({ autoStart: false, interruptible: true })
+                        contractInstance = await new ProcessBuilder().withMode(mode).build()
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        // one is already created by the builder
+
+                        const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+                        // Set it to ended
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                        await tx.wait()
+
+                        const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData1.mode).to.eq(mode)
+                        expect(processData1.entityAddress).to.eq(entityAccount.address)
+                        expect(processData1.status).to.eq(ProcessStatus.ENDED, "The process should be ended")
+
+                        // even if the account is an oracle
+                        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                        tx = await contractInstance.addOracle(account.address)
+                        await tx.wait()
+
+                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
+
+                        // Try to set it to ready
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData2.entityAddress).to.eq(entityAccount.address)
+                        expect(processData2.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
+
+                        // Try to set it to paused
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData3.entityAddress).to.eq(entityAccount.address)
+                        expect(processData3.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
+
+                        // Try to set it to canceled
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData4.entityAddress).to.eq(entityAccount.address)
+                        expect(processData4.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
+
+                        // Try to set it to results
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData5.entityAddress).to.eq(entityAccount.address)
+                        expect(processData5.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
+                    }
                 })
             })
 
-            describe("only the creator", () => {
-                it("can set to ready")
-                it("can pause")
-                it("can end")
-                it("can cancel")
+            describe("from canceled", () => {
+                it("should never allow the status to be updated [creator]", async () => {
+                    // interruptible
+                    let mode = ProcessMode.make({ autoStart: false, interruptible: true })
+                    contractInstance = await new ProcessBuilder().withMode(mode).build()
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
+
+                    const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+                    // Set it to canceled
+                    tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                    await tx.wait()
+
+                    const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData1.mode).to.eq(mode)
+                    expect(processData1.entityAddress).to.eq(entityAccount.address)
+                    expect(processData1.status).to.eq(ProcessStatus.CANCELED, "The process should be canceled")
+
+                    // Try to set it to ready
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData2.entityAddress).to.eq(entityAccount.address)
+                    expect(processData2.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+
+                    // Try to set it to paused
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData3.entityAddress).to.eq(entityAccount.address)
+                    expect(processData3.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+
+                    // Try to set it to ended
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData4.entityAddress).to.eq(entityAccount.address)
+                    expect(processData4.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+
+                    // Try to set it to results
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Invalid status code/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData5.entityAddress).to.eq(entityAccount.address)
+                    expect(processData5.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+                })
+
+                it("should never allow the status to be updated [other account]", async () => {
+                    for (let account of [authorizedOracleAccount1, randomAccount1]) {
+                        // interruptible
+                        let mode = ProcessMode.make({ autoStart: false, interruptible: true })
+                        contractInstance = await new ProcessBuilder().withMode(mode).build()
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        // one is already created by the builder
+
+                        const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+                        // Set it to canceled
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                        await tx.wait()
+
+                        const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData1.mode).to.eq(mode)
+                        expect(processData1.entityAddress).to.eq(entityAccount.address)
+                        expect(processData1.status).to.eq(ProcessStatus.CANCELED, "The process should be canceled")
+
+                        // even if the account is an oracle
+                        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                        tx = await contractInstance.addOracle(account.address)
+                        await tx.wait()
+
+                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
+
+                        // Try to set it to ready
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData2.entityAddress).to.eq(entityAccount.address)
+                        expect(processData2.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+
+                        // Try to set it to paused
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData3.entityAddress).to.eq(entityAccount.address)
+                        expect(processData3.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+
+                        // Try to set it to ended
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData4.entityAddress).to.eq(entityAccount.address)
+                        expect(processData4.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+
+                        // Try to set it to results
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData5.entityAddress).to.eq(entityAccount.address)
+                        expect(processData5.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
+                    }
+                })
             })
+
+            describe("from results", () => {
+                it("should never allow the status to be updated [creator]", async () => {
+                    // interruptible
+                    let mode = ProcessMode.make({ autoStart: false, interruptible: true })
+                    contractInstance = await new ProcessBuilder().withMode(mode).build()
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    // one is already created by the builder
+
+                    const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+                    // Set it to RESULTS (oracle)
+                    contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                    tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+                    await tx.wait()
+                    contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
+                    tx = await contractInstance.setResults(processId1, "1234")
+                    await tx.wait()
+
+                    const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData1.mode).to.eq(mode)
+                    expect(processData1.entityAddress).to.eq(entityAccount.address)
+                    expect(processData1.status).to.eq(ProcessStatus.RESULTS, "The process should be in results")
+
+                    // (entity)
+                    contractInstance = contractInstance.connect(entityAccount.wallet) as any
+
+                    // Try to set it to ready
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData2.entityAddress).to.eq(entityAccount.address)
+                    expect(processData2.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+
+                    // Try to set it to paused
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData3.entityAddress).to.eq(entityAccount.address)
+                    expect(processData3.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+
+                    // Try to set it to ended
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData4.entityAddress).to.eq(entityAccount.address)
+                    expect(processData4.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+
+                    // Try to set it to canceled
+                    try {
+                        tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                        await tx.wait()
+                        throw new Error("The transaction should have thrown an error but didn't")
+                    }
+                    catch (err) {
+                        expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+                    }
+
+                    const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                    expect(processData5.entityAddress).to.eq(entityAccount.address)
+                    expect(processData5.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+                })
+
+                it("should never allow the status to be updated [other account]", async () => {
+                    for (let account of [randomAccount1, randomAccount2]) {
+                        let mode = ProcessMode.make({ autoStart: false, interruptible: true })
+                        contractInstance = await new ProcessBuilder().withMode(mode).build()
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        // one is already created by the builder
+
+                        const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+                        // Set it to RESULTS (oracle)
+                        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                        tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+                        await tx.wait()
+                        contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
+                        tx = await contractInstance.setResults(processId1, "1234")
+                        await tx.wait()
+
+                        const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData1.mode).to.eq(mode)
+                        expect(processData1.entityAddress).to.eq(entityAccount.address)
+                        expect(processData1.status).to.eq(ProcessStatus.RESULTS, "The process should be in results")
+
+                        // even if the account is an oracle
+                        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                        tx = await contractInstance.addOracle(account.address)
+                        await tx.wait()
+
+                        // random account
+                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
+
+                        // Try to set it to ready
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData2 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData2.entityAddress).to.eq(entityAccount.address)
+                        expect(processData2.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+
+                        // Try to set it to paused
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData3 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData3.entityAddress).to.eq(entityAccount.address)
+                        expect(processData3.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+
+                        // Try to set it to ended
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData4 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData4.entityAddress).to.eq(entityAccount.address)
+                        expect(processData4.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+
+                        // Try to set it to canceled
+                        try {
+                            tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData5.entityAddress).to.eq(entityAccount.address)
+                        expect(processData5.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
+                    }
+                })
+            })
+
             describe("only the oracle", () => {
-                it("can set to results (when publishing)")
+                it("can set the results", async () => {
+                    for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
+                        let mode = ProcessMode.make({ autoStart: true, interruptible: true })
+                        contractInstance = await new ProcessBuilder().withMode(mode).build()
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        // one is already created by the builder
+
+                        const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+                        // Try to set the results (fail)
+                        try {
+                            tx = await contractInstance.setResults(processId1, "1234")
+                            await tx.wait()
+                            throw new Error("The transaction should have thrown an error but didn't")
+                        }
+                        catch (err) {
+                            expect(err.message).to.match(/revert onlyOracle/, "The transaction threw an unexpected error:\n" + err.message)
+                        }
+
+                        const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData5.entityAddress).to.eq(entityAccount.address)
+                        expect(processData5.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+                        // Set the RESULTS (now oracle)
+                        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                        tx = await contractInstance.addOracle(account.address)
+                        await tx.wait()
+                        contractInstance = contractInstance.connect(account.wallet) as any
+                        tx = await contractInstance.setResults(processId1, "1234")
+                        await tx.wait()
+
+                        const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                        expect(processData1.mode).to.eq(mode)
+                        expect(processData1.entityAddress).to.eq(entityAccount.address)
+                        expect(processData1.status).to.eq(ProcessStatus.RESULTS, "The process should be in results")
+                    }
+                })
             })
         })
+
+        it("should emit events")
     })
 
     describe("Process Results", () => {
@@ -2010,7 +2626,8 @@ describe("Voting Process", () => {
             }
         })
 
-        it("should be accepted when the process is not canceled", async () => {
+        it("should not be accepted when the process is canceled", async () => {
+            contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ interruptible: true })).build()
             const processId = await contractInstance.getProcessId(entityAccount.address, 0)
 
             // One is already created by the builder
@@ -2059,6 +2676,45 @@ describe("Voting Process", () => {
 
         }).timeout(5000)
 
+        it("allow oracles to set the results", async () => {
+            for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
+                let mode = ProcessMode.make({ autoStart: true, interruptible: true })
+                contractInstance = await new ProcessBuilder().withMode(mode).build()
+                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                // one is already created by the builder
+
+                const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+                expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+                // Try to set the results (fail)
+                try {
+                    tx = await contractInstance.setResults(processId1, "1234")
+                    await tx.wait()
+                    throw new Error("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    expect(err.message).to.match(/revert onlyOracle/, "The transaction threw an unexpected error:\n" + err.message)
+                }
+
+                const processData5 = unwrapProcessState(await contractInstance.get(processId1))
+                expect(processData5.entityAddress).to.eq(entityAccount.address)
+                expect(processData5.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+                // Set the RESULTS (now oracle)
+                contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                tx = await contractInstance.addOracle(account.address)
+                await tx.wait()
+                contractInstance = contractInstance.connect(account.wallet) as any
+                tx = await contractInstance.setResults(processId1, "1234")
+                await tx.wait()
+
+                const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                expect(processData1.mode).to.eq(mode)
+                expect(processData1.entityAddress).to.eq(entityAccount.address)
+                expect(processData1.status).to.eq(ProcessStatus.RESULTS, "The process should be in results")
+            }
+        })
+
         it("should prevent publishing twice", async () => {
             const originalResults = "SOMETHING_DIFFERENT_HERE"
             const processId = await contractInstance.getProcessId(entityAccount.address, 0)
@@ -2076,7 +2732,11 @@ describe("Voting Process", () => {
 
             // Get results
             const result3 = await contractInstance.getResults(processId)
-            expect(result3).to.eq(originalResults, "The results should match the invalid one")
+            expect(result3).to.eq(originalResults, "The results should match")
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.status).to.eq(ProcessStatus.RESULTS, "The process should be in results")
 
             // Try update the results
             try {
@@ -2091,6 +2751,10 @@ describe("Voting Process", () => {
             // Get results
             const result4 = await contractInstance.getResults(processId)
             expect(result4).to.eq(originalResults, "The results should stay the same")
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.entityAddress).to.eq(entityAccount.address)
+            expect(processData2.status).to.eq(ProcessStatus.RESULTS, "The process should be in results")
         }).timeout(5000)
 
         it("should emit an event", async () => {
@@ -2125,7 +2789,7 @@ describe("Voting Process", () => {
         it("Should emit an event")
     })
 
-    describe("Multi Envelope", () => {
+    describe("Serial envelope", () => {
         it("The question index should be read-only by default")
 
         it("The question index can be incremented in multi-envelope mode")
@@ -2138,75 +2802,4 @@ describe("Voting Process", () => {
 
         it("Should emit an event when question increment ends the process")
     })
-
-    // describe("should handle multi envelope processes", () => {
-    //     it("should create multi envelope processes", async () => {
-    //         const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-    //         // Create
-    //         const result1 = await contractInstance.create(ProcessMode.ASSEMBLY, ProcessEnvelopeType.REALTIME_POLL, metadata, censusMerkleRoot, censusMerkleTree, 0, 1000, questionCount)
-    //         await tx.wait()
-    //         assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
-    //     })
-
-    //     it("should have a default questionIndex", async () => {
-    //         const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-    //         const questionCount = 100
-    //         // Create
-    //         const result1 = await contractInstance.create(ProcessMode.ASSEMBLY, ProcessEnvelopeType.REALTIME_POLL, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
-    //         await tx.wait()
-    //         assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
-
-    //         const indexResult = await contractInstance.getQuestionStatus(processId1)
-    //         assert.equal(indexResult.questionIndex, 0, "The question index should be 0 by default")
-    //         assert.equal(indexResult.questionCount, questionCount, "The question count should match")
-    //     })
-
-    //     it("should increment questionIndex", async () => {
-    //         const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
-    //         const questionCount = 100
-    //         // Create
-    //         const result1 = await contractInstance.create(ProcessMode.ASSEMBLY, ProcessEnvelopeType.REALTIME_POLL, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT)
-    //         await tx.wait()
-    //         assert.equal(result1.events.ProcessCreated.returnValues.processId, processId1)
-
-    //         const result2 = await contractInstance.incrementQuestionIndex(processId1)
-    //         await tx.wait()
-    //         expect(result2).to.be.ok
-    //         expect(result2.events).to.be.ok
-    //         expect(result2.events.QuestionIndexIncremented).to.be.ok
-    //         expect(result2.events.QuestionIndexIncremented.returnValues).to.be.ok
-    //         assert.equal(result2.events.QuestionIndexIncremented.event, "QuestionIndexIncremented")
-    //         assert.equal(result2.events.QuestionIndexIncremented.returnValues.processId, processId1)
-    //         assert.equal(result2.events.QuestionIndexIncremented.returnValues.newIndex, 1)
-
-    //         const indexResult1 = await contractInstance.getQuestionStatus(processId1)
-    //         assert.equal(indexResult1.questionIndex, 1, "The question index should be 1")
-    //         assert.equal(indexResult1.questionCount, questionCount, "The question count should match")
-
-    //         const result3 = await contractInstance.incrementQuestionIndex(processId1)
-    //         await tx.wait()
-    //         expect(result3).to.be.ok
-    //         expect(result3.events).to.be.ok
-    //         expect(result3.events.QuestionIndexIncremented).to.be.ok
-    //         expect(result3.events.QuestionIndexIncremented.returnValues).to.be.ok
-    //         assert.equal(result3.events.QuestionIndexIncremented.event, "QuestionIndexIncremented")
-    //         assert.equal(result3.events.QuestionIndexIncremented.returnValues.processId, processId1)
-    //         assert.equal(result3.events.QuestionIndexIncremented.returnValues.newIndex, 2)
-
-    //         const indexResult2 = await contractInstance.getQuestionStatus(processId1)
-    //         assert.equal(indexResult2.questionIndex, 2, "The question index should be 2")
-    //         assert.equal(indexResult2.questionCount, questionCount, "The question count should match")
-
-    //         // Fast forward 10 times
-    //         for (let i = 0; i < 10; i++) {
-    //           tx =  await contractInstance.incrementQuestionIndex(processId1)
-    //             await tx.wait()
-    //         }
-
-    //         const indexResult3 = await contractInstance.getQuestionStatus(processId1)
-    //         assert.equal(indexResult3.questionIndex, 12, "The question index should be 12")
-    //         assert.equal(indexResult3.questionCount, questionCount, "The question count should match")
-    //     })
-    // })
-
 })
