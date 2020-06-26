@@ -15,7 +15,12 @@
     - Unify the naming conventions of the getters/setters
     - Using 5 status: `READY, ENDED, CANCELED, PAUSED, RESULTS`
 - Providing TypeScript wrappers for the process flags (mode, envelopetype and status)
+- Introducing namespaces
 - Condensed parameters into tuples
+- `getProcessId` is now pure
+  - The processId is computed using the namespace instead of the genesis data and the chainId
+- Global getters condensed into `getNamespace()`
+  - Chain ID, Genesis, validators and oracles
 - Using Solidity 0.6.9
 
 ## 0.6.0

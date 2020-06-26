@@ -54,10 +54,14 @@ contract VotingProcess {
     // GLOBAL DATA
 
     address contractOwner; // See `onlyContractOwner`
-    string[] validators; // Public key array
-    address[] oracles; // Address array. See `onlyContractOwner`
-    string genesis; // Content Hashed URI
-    uint256 chainId;
+
+    struct Namespace {
+        string chainId;
+        string genesis; // Content Hashed URI
+        string[] validators; // Public key array
+        address[] oracles; // Oracles allowed to create Vochain processes and publish results on this contract/namespace
+    }
+    mapping(uint16 => Namespace) namespaces;
 
     // DATA STRUCTS
 
@@ -91,7 +95,7 @@ contract VotingProcess {
         // - 0 => 0.0000
         // - 65535 => 6.5535
         uint16 costExponent;
-        uint16 namespace;
+        uint16 namespace; // See namespaces above
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
         // Self-assign to a certain namespace.
         // This will determine the oracles that listen and react to it.
@@ -107,8 +111,14 @@ contract VotingProcess {
 
     // EVENTS
 
-    event GenesisUpdated(string genesis);
-    event ChainIdUpdated(uint256 chainId);
+    event NamespaceUpdated(uint16 namespace);
+    event ChainIdUpdated(string chainId, uint16 namespace);
+    event GenesisUpdated(string genesis, uint16 namespace);
+    event ValidatorAdded(string validatorPublicKey, uint16 namespace);
+    event ValidatorRemoved(string validatorPublicKey, uint16 namespace);
+    event OracleAdded(address oracleAddress, uint16 namespace);
+    event OracleRemoved(address oracleAddress, uint16 namespace);
+
     event ProcessCreated(
         address indexed entityAddress,
         bytes32 processId,
@@ -120,10 +130,6 @@ contract VotingProcess {
         Status status
     );
     event CensusUpdated(address indexed entityAddress, bytes32 processId);
-    event ValidatorAdded(string validatorPublicKey);
-    event ValidatorRemoved(string validatorPublicKey);
-    event OracleAdded(address oracleAddress);
-    event OracleRemoved(address oracleAddress);
     event QuestionIndexUpdated(
         address indexed entityAddress,
         bytes32 processId,
@@ -147,18 +153,6 @@ contract VotingProcess {
         _;
     }
 
-    modifier onlyOracle {
-        bool authorized = false;
-        for (uint256 i = 0; i < oracles.length; i++) {
-            if (msg.sender == oracles[i]) {
-                authorized = true;
-                break;
-            }
-        }
-        require(authorized == true, "onlyOracle");
-        _;
-    }
-
     // HELPERS
 
     function getEntityProcessCount(address entityAddress)
@@ -170,29 +164,24 @@ contract VotingProcess {
     }
 
     // Get the next process ID to use for an entity
-    function getNextProcessId(address entityAddress)
+    function getNextProcessId(address entityAddress, uint16 namespace)
         public
         view
         returns (bytes32)
     {
         uint256 idx = getEntityProcessCount(entityAddress);
-        return getProcessId(entityAddress, idx);
+        return getProcessId(entityAddress, idx, namespace);
     }
 
     // Compute a process ID
-    function getProcessId(address entityAddress, uint256 processCountIndex)
-        public
-        view
-        returns (bytes32)
-    {
+    function getProcessId(
+        address entityAddress,
+        uint256 processCountIndex,
+        uint16 namespace
+    ) public pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
-                    entityAddress,
-                    processCountIndex,
-                    genesis,
-                    chainId
-                )
+                abi.encodePacked(entityAddress, processCountIndex, namespace)
             );
     }
 
@@ -212,9 +201,8 @@ contract VotingProcess {
 
     // GLOBAL METHODS
 
-    constructor(uint256 initialChainId) public {
+    constructor() public {
         contractOwner = msg.sender;
-        chainId = initialChainId;
 
         // Fill an empty process at index 0.
         // NOTE: This way, real processes will always have a positive index on processesIndex.
@@ -243,110 +231,158 @@ contract VotingProcess {
         processes.push(process); // Fill the [0] index
     }
 
-    function setGenesis(string memory newValue) public onlyContractOwner {
+    function setNamespace(
+        uint16 namespace,
+        string memory chainId,
+        string memory genesis,
+        string[] memory validators,
+        address[] memory oracles
+    ) public onlyContractOwner {
+        namespaces[namespace] = Namespace({
+            chainId: chainId,
+            genesis: genesis,
+            validators: validators,
+            oracles: oracles
+        });
+        emit NamespaceUpdated(namespace);
+    }
+
+    function setChainId(uint16 namespace, string memory newChainId)
+        public
+        onlyContractOwner
+    {
         require(
-            equalStrings(genesis, newValue) == false,
+            !equalStrings(namespaces[namespace].chainId, newChainId),
+            "chainId must differ"
+        );
+        namespaces[namespace].chainId = newChainId;
+        emit ChainIdUpdated(newChainId, namespace);
+    }
+
+    function setGenesis(uint16 namespace, string memory newGenesis)
+        public
+        onlyContractOwner
+    {
+        require(
+            equalStrings(namespaces[namespace].genesis, newGenesis) == false,
             "Genesis must differ"
         );
 
-        genesis = newValue;
+        namespaces[namespace].genesis = newGenesis;
 
-        emit GenesisUpdated(genesis);
+        emit GenesisUpdated(newGenesis, namespace);
     }
 
-    function setChainId(uint256 newValue) public onlyContractOwner {
-        require(chainId != newValue, "chainId must differ");
-        chainId = newValue;
-
-        emit ChainIdUpdated(chainId);
-    }
-
-    function addValidator(string memory validatorPublicKey)
+    function addValidator(uint16 namespace, string memory validatorPublicKey)
         public
         onlyContractOwner
     {
         require(
-            isValidator(validatorPublicKey) == false,
-            "Validator already exists"
+            isValidator(validatorPublicKey, namespace) == false,
+            "Already present"
         );
-        validators.push(validatorPublicKey);
+        namespaces[namespace].validators.push(validatorPublicKey);
 
-        emit ValidatorAdded(validatorPublicKey);
+        emit ValidatorAdded(validatorPublicKey, namespace);
     }
 
-    function removeValidator(uint256 idx, string memory validatorPublicKey)
-        public
-        onlyContractOwner
-    {
+    function removeValidator(
+        uint16 namespace,
+        uint256 idx,
+        string memory validatorPublicKey
+    ) public onlyContractOwner {
+        uint256 currentLength = namespaces[namespace].validators.length;
+        require(idx < currentLength, "Invalid index");
         require(
-            equalStrings(validators[idx], validatorPublicKey),
-            "Validator to remove does not match index"
+            equalStrings(
+                namespaces[namespace].validators[idx],
+                validatorPublicKey
+            ),
+            "Index-key mismatch"
         );
         // swap with the last element from the list
-        validators[idx] = validators[validators.length - 1];
-        validators.pop();
+        namespaces[namespace].validators[idx] = namespaces[namespace]
+            .validators[currentLength - 1];
+        namespaces[namespace].validators.pop();
 
-        emit ValidatorRemoved(validatorPublicKey);
+        emit ValidatorRemoved(validatorPublicKey, namespace);
     }
 
-    function addOracle(address oracleAddress) public onlyContractOwner {
-        require(isOracle(oracleAddress) == false, "Oracle already exists");
-        oracles.push(oracleAddress);
-
-        emit OracleAdded(oracleAddress);
-    }
-
-    function removeOracle(uint256 idx, address oracleAddress)
+    function addOracle(uint16 namespace, address oracleAddress)
         public
         onlyContractOwner
     {
-        require(idx < oracles.length, "Invalid index");
+        require(isOracle(oracleAddress, namespace) == false, "Already present");
+        namespaces[namespace].oracles.push(oracleAddress);
+
+        emit OracleAdded(oracleAddress, namespace);
+    }
+
+    function removeOracle(
+        uint16 namespace,
+        uint256 idx,
+        address oracleAddress
+    ) public onlyContractOwner {
+        uint256 currentLength = namespaces[namespace].oracles.length;
+        require(idx < currentLength, "Invalid index");
         require(
-            oracles[idx] == oracleAddress,
-            "Oracle to remove does not match index"
+            namespaces[namespace].oracles[idx] == oracleAddress,
+            "Index-key mismatch"
         );
 
         // swap with the last element from the list
-        oracles[idx] = oracles[oracles.length - 1];
-        oracles.pop();
+        namespaces[namespace].oracles[idx] = namespaces[namespace]
+            .oracles[currentLength - 1];
+        namespaces[namespace].oracles.pop();
 
-        emit OracleRemoved(oracleAddress);
+        emit OracleRemoved(oracleAddress, namespace);
     }
 
     // GETTERS
 
-    function getGenesis() public view returns (string memory) {
-        return genesis;
+    function getNamespace(uint16 namespace)
+        public
+        view
+        returns (
+            string memory chainId,
+            string memory genesis,
+            string[] memory validators,
+            address[] memory oracles
+        )
+    {
+        return (
+            namespaces[namespace].chainId,
+            namespaces[namespace].genesis,
+            namespaces[namespace].validators,
+            namespaces[namespace].oracles
+        );
     }
 
-    function getChainId() public view returns (uint256) {
-        return chainId;
-    }
-
-    function getValidators() public view returns (string[] memory) {
-        return validators;
-    }
-
-    function getOracles() public view returns (address[] memory) {
-        return oracles;
-    }
-
-    function isValidator(string memory validatorPublicKey)
+    function isValidator(string memory validatorPublicKey, uint16 namespace)
         public
         view
         returns (bool)
     {
-        for (uint256 i = 0; i < validators.length; i++) {
-            if (equalStrings(validators[i], validatorPublicKey)) {
+        for (uint256 i = 0; i < namespaces[namespace].validators.length; i++) {
+            if (
+                equalStrings(
+                    namespaces[namespace].validators[i],
+                    validatorPublicKey
+                )
+            ) {
                 return true;
             }
         }
         return false;
     }
 
-    function isOracle(address oracleAddress) public view returns (bool) {
-        for (uint256 i = 0; i < oracles.length; i++) {
-            if (oracles[i] == oracleAddress) {
+    function isOracle(address oracleAddress, uint16 namespace)
+        public
+        view
+        returns (bool)
+    {
+        for (uint256 i = 0; i < namespaces[namespace].oracles.length; i++) {
+            if (namespaces[namespace].oracles[i] == oracleAddress) {
                 return true;
             }
         }
@@ -371,7 +407,7 @@ contract VotingProcess {
         )
     {
         uint256 processIndex = getProcessIndex(processId);
-        require(processIndex > 0, "Process not found");
+        require(processIndex > 0, "Not found");
 
         return (
             [
@@ -409,7 +445,7 @@ contract VotingProcess {
         returns (string memory results)
     {
         uint256 processIndex = getProcessIndex(processId);
-        require(processIndex > 0, "Process not found");
+        require(processIndex > 0, "Not found");
 
         results = processes[processIndex].results;
     }
@@ -436,19 +472,19 @@ contract VotingProcess {
         }
         require(
             bytes(metadata_merkleRoot_merkleTree[0]).length > 0,
-            "Empty metadata"
+            "No metadata"
         );
         require(
             bytes(metadata_merkleRoot_merkleTree[1]).length > 0,
-            "Empty merkleRoot"
+            "No merkleRoot"
         );
         require(
             bytes(metadata_merkleRoot_merkleTree[2]).length > 0,
-            "Empty merkleTree"
+            "No merkleTree"
         );
         require(
             questionCount_maxVoteOverwrites_maxValue[0] > 0,
-            "Empty questionCount"
+            "No questionCount"
         );
         if (mode & MODE_ALLOW_VOTE_OVERWRITE != 0) {
             require(
@@ -456,19 +492,17 @@ contract VotingProcess {
                 "Allow overwrite needs maxVoteOverwrites > 0"
             );
         }
-        require(
-            questionCount_maxVoteOverwrites_maxValue[2] > 0,
-            "Empty maxValue"
-        );
+        require(questionCount_maxVoteOverwrites_maxValue[2] > 0, "No maxValue");
 
         address entityAddress = msg.sender;
-        bytes32 processId = getNextProcessId(entityAddress);
+        bytes32 processId = getNextProcessId(entityAddress, namespace);
 
-        // by default status is READY
-        Status status = Status.READY;
-        if (mode & MODE_AUTO_START == 0) {
-            // by default, processes start PAUSED (auto start disabled)
-            status = Status.PAUSED;
+        // By default, processes start PAUSED (auto start disabled)
+        Status status = Status.PAUSED;
+
+        if (mode & MODE_AUTO_START != 0) {
+            // Auto-start processes start in READY state
+            status = Status.READY;
         }
 
         Process memory process = Process({
@@ -535,8 +569,8 @@ contract VotingProcess {
         } else {
             // currentStatus is READY
 
-        if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
-            // No status update is allowed
+            if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
+                // No status update is allowed
                 revert("Not interruptible");
             }
 
@@ -597,8 +631,8 @@ contract VotingProcess {
         string memory censusMerkleRoot,
         string memory censusMerkleTree
     ) public onlyEntity(processId) {
-        require(bytes(censusMerkleRoot).length > 0, "Empty Merkle Root");
-        require(bytes(censusMerkleTree).length > 0, "Empty Merkle Tree");
+        require(bytes(censusMerkleRoot).length > 0, "No Merkle Root");
+        require(bytes(censusMerkleTree).length > 0, "No Merkle Tree");
 
         uint256 processIndex = getProcessIndex(processId);
 
@@ -621,18 +655,21 @@ contract VotingProcess {
         emit CensusUpdated(msg.sender, processId);
     }
 
-    function setResults(bytes32 processId, string memory results)
-        public
-        onlyOracle
-    {
-        require(bytes(results).length > 0, "Empty results");
+    function setResults(bytes32 processId, string memory results) public {
+        require(bytes(results).length > 0, "No results");
 
         uint256 processIndex = getProcessIndex(processId);
-        require(processIndex > 0, "Process not found");
         // The process must be created
+        require(processIndex > 0, "Not found");
+
+        // The sender must be an oracle within the process' namespace
+        require(
+            isOracle(msg.sender, processes[processIndex].namespace),
+            "Not oracle"
+        );
         require(
             processes[processIndex].entityAddress != address(0x0),
-            "Empty process"
+            "No process"
         );
         // cannot publish results on a canceled process
         require(
