@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 
 import "./math/SafeAdd.sol";
 
-
 /*
 Process Mode flags
 
@@ -122,10 +121,10 @@ contract VotingProcess {
 
     event ProcessCreated(
         bytes32 processId,
-        string merkleTree,
-        uint16 namespace
+        uint16 namespace,
+        string merkleTree
     );
-    event StatusUpdated(bytes32 processId, Status status, uint16 namespace);
+    event StatusUpdated(bytes32 processId, uint16 namespace, Status status);
     event QuestionIndexUpdated(
         bytes32 processId,
         uint16 namespace,
@@ -166,8 +165,8 @@ contract VotingProcess {
         view
         returns (bytes32)
     {
-        uint256 idx = getEntityProcessCount(entityAddress);
-        return getProcessId(entityAddress, idx, namespace);
+        uint256 processCountIndex = getEntityProcessCount(entityAddress);
+        return getProcessId(entityAddress, processCountIndex, namespace);
     }
 
     // Compute a process ID
@@ -290,7 +289,7 @@ contract VotingProcess {
     ) public onlyContractOwner {
         uint256 currentLength = namespaces[namespace].validators.length;
         require(idx < currentLength, "Invalid index");
-        require(
+        require( // using `idx` to avoid searching/looping and using `validatorPublicKey` to enforce that the correct value is removed
             equalStrings(
                 namespaces[namespace].validators[idx],
                 validatorPublicKey
@@ -318,13 +317,14 @@ contract VotingProcess {
         emit OracleAdded(oracleAddress, namespace);
     }
 
-    function removeOracle(uint16 namespace, uint256 idx, address oracleAddress)
-        public
-        onlyContractOwner
-    {
+    function removeOracle(
+        uint16 namespace,
+        uint256 idx,
+        address oracleAddress
+    ) public onlyContractOwner {
         uint256 currentLength = namespaces[namespace].oracles.length;
         require(idx < currentLength, "Invalid index");
-        require(
+        require( // using `idx` to avoid searching/looping and using `oracleAddress` to enforce that the correct value is removed
             namespaces[namespace].oracles[idx] == oracleAddress,
             "Index-key mismatch"
         );
@@ -392,15 +392,15 @@ contract VotingProcess {
         public
         view
         returns (
-            uint8[2] memory, // mode, envelopeType
+            uint8[2] memory, // [mode, envelopeType]
             address, // entityAddress
-            string[3] memory, // metadata, censusMerkleRoot, censusMerkleTree
+            string[3] memory, // [metadata, censusMerkleRoot, censusMerkleTree]
             uint64, // startBlock
             uint32, // blockCount
             Status, // status
-            uint8[4] memory, // questionIndex, questionCount, maxVoteOverwrites, maxValue
+            uint8[4] memory, // [questionIndex, questionCount, maxVoteOverwrites, maxValue]
             bool, // uniqueValues
-            uint16[2] memory, // maxTotalCost, costExponent
+            uint16[2] memory, // [maxTotalCost, costExponent]
             uint16, // namespace
             bytes32 // paramsSignature
         )
@@ -452,13 +452,13 @@ contract VotingProcess {
     // ENTITY METHODS
 
     function create(
-        uint8[2] memory mode_envelopeType, // mode, envelopeType
-        string[3] memory metadata_merkleRoot_merkleTree, //  metadata, merkleRoot, merkleTree
+        uint8[2] memory mode_envelopeType, // [mode, envelopeType]
+        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         uint64 startBlock,
         uint32 blockCount,
-        uint8[3] memory questionCount_maxVoteOverwrites_maxValue, // questionCount, maxVoteOverwrites, maxValue
+        uint8[3] memory questionCount_maxVoteOverwrites_maxValue, // [questionCount, maxVoteOverwrites, maxValue]
         bool uniqueValues,
-        uint16[2] memory maxTotalCost_costExponent, // maxTotalCost, costExponent
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         uint16 namespace,
         bytes32 paramsSignature
     ) public {
@@ -499,7 +499,7 @@ contract VotingProcess {
         Status status = Status.PAUSED;
 
         if (mode & MODE_AUTO_START != 0) {
-            // Auto-start processes start in READY state
+            // Auto-start enabled processes start in READY state
             status = Status.READY;
         }
 
@@ -531,8 +531,8 @@ contract VotingProcess {
 
         emit ProcessCreated(
             processId,
-            metadata_merkleRoot_merkleTree[2],
-            namespace
+            namespace,
+            metadata_merkleRoot_merkleTree[2]
         );
     }
 
@@ -541,13 +541,13 @@ contract VotingProcess {
         onlyEntity(processId)
     {
         require(
-            uint8(newStatus) <= uint8(Status.PAUSED), // [READY 0..3 PAUSED] => RESULTS is not allowed
+            uint8(newStatus) <= uint8(Status.PAUSED), // [READY 0..3 PAUSED] => RESULTS (4) is not allowed
             "Invalid status code"
         );
 
         uint256 processIndex = getProcessIndex(processId);
 
-        // processId is guaranteed to exist since onlyEntity(processId) enforces that
+        // processId is guaranteed to exist (> 0) since onlyEntity(processId) enforces that
         // such process has been created by msg.sender
 
         Status currentStatus = processes[processIndex].status;
@@ -555,34 +555,35 @@ contract VotingProcess {
             // When currentStatus is [ENDED, CANCELED, RESULTS], no update is allowed
             revert("Process terminated");
         } else if (currentStatus == Status.PAUSED) {
-            // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see require above)
+            // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see the require above)
 
             if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
-                // We can only set it to READY
+                // Is not interruptible, we can only go from PAUSED to READY, the first time
                 require(newStatus == Status.READY, "Not interruptible");
             }
         } else {
             // currentStatus is READY
 
             if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
-                // No status update is allowed
+                // If not interruptible, no status update is allowed
                 revert("Not interruptible");
             }
 
             // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see require above).
         }
-        require(newStatus != currentStatus, "Status must change");
-        // if currentStatus is READY => Can go to [ENDED, CANCELED, PAUSED].
-        // if currentStatus is PAUSED => Can go to [READY, ENDED, CANCELED].
+
+        // If currentStatus is READY => Can go to [ENDED, CANCELED, PAUSED].
+        // If currentStatus is PAUSED => Can go to [READY, ENDED, CANCELED].
+        require(newStatus != currentStatus, "Must change");
 
         // Note: the process can also be ended from incrementQuestionIndex
-        // if questionIndex is already at the last one
+        // If questionIndex is already at the last one
         processes[processIndex].status = newStatus;
 
         emit StatusUpdated(
             processId,
-            newStatus,
-            processes[processIndex].namespace
+            processes[processIndex].namespace,
+            newStatus
         );
     }
 
@@ -592,7 +593,7 @@ contract VotingProcess {
     {
         uint256 processIndex = getProcessIndex(processId);
 
-        // processId is guaranteed to exist since onlyEntity(processId) enforces that
+        // processId is guaranteed to exist (> 0) since onlyEntity(processId) enforces that
         // such process has been created by msg.sender
 
         require(
@@ -600,7 +601,7 @@ contract VotingProcess {
                 processes[processIndex].status == Status.PAUSED,
             "Process terminated"
         );
-        require(
+        require( // If all votes should be sent within a single envelope, abort
             processes[processIndex].envelopeType & ENV_TYPE_SERIAL != 0,
             "Process not serial"
         );
@@ -610,20 +611,20 @@ contract VotingProcess {
         if (nextIdx < processes[processIndex].questionCount) {
             processes[processIndex].questionIndex = nextIdx;
 
+            // Not at the last question yet
             emit QuestionIndexUpdated(
                 processId,
                 processes[processIndex].namespace,
                 nextIdx
             );
         } else {
-            // End the process if the last question is already active and
-            // the process is interruptible
+            // The last question was currently active => End the process
             processes[processIndex].status = Status.ENDED;
 
             emit StatusUpdated(
                 processId,
-                Status.ENDED,
-                processes[processIndex].namespace
+                processes[processIndex].namespace,
+                Status.ENDED
             );
         }
     }
@@ -638,7 +639,7 @@ contract VotingProcess {
 
         uint256 processIndex = getProcessIndex(processId);
 
-        // processId is guaranteed to exist since onlyEntity(processId) enforces that
+        // processId is guaranteed to exist (> 0) since onlyEntity(processId) enforces that
         // such process has been created by msg.sender
 
         require(
@@ -664,7 +665,7 @@ contract VotingProcess {
         // The process must be created
         require(processIndex > 0, "Not found");
 
-        // The sender must be an oracle within the process' namespace
+        // Only an Oracle within the process' namespace can set any results
         require(
             isOracle(processes[processIndex].namespace, msg.sender),
             "Not oracle"
