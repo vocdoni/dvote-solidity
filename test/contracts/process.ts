@@ -20,7 +20,7 @@ let authorizedOracleAccount1: TestAccount
 let authorizedOracleAccount2: TestAccount
 let processId: string
 let contractInstance: ProcessContractMethods & Contract
-let chainId: number
+let chainId: string
 let questionCount: number
 let tx: ContractTransaction
 
@@ -41,40 +41,41 @@ describe("Voting Process", () => {
         tx = null
 
         contractInstance = await new ProcessBuilder().build()
-        processId = await contractInstance.getProcessId(entityAccount.address, 0)
+        processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
     })
 
     it("should deploy the contract", async () => {
         const contractFactory = new ContractFactory(votingProcessAbi, votingProcessByteCode, entityAccount.wallet)
-        const localInstance1: Contract & ProcessContractMethods = await contractFactory.deploy(chainId) as Contract & ProcessContractMethods
+        const localInstance1: Contract & ProcessContractMethods = await contractFactory.deploy() as Contract & ProcessContractMethods
 
         expect(localInstance1).to.be.ok
         expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
-        expect((await localInstance1.getChainId()).toNumber()).to.eq(chainId)
 
         const localInstance2: Contract & ProcessContractMethods = await contractFactory.deploy(234) as Contract & ProcessContractMethods
 
         expect(localInstance2).to.be.ok
         expect(localInstance2.address).to.match(/^0x[0-9a-fA-F]{40}$/)
         expect(localInstance2.address).to.not.eq(localInstance1.address)
-        expect((await localInstance2.getChainId()).toNumber()).to.eq(234)
     })
 
-    it("should compute a processId based on the entity address and the process index", async () => {
+    it("should compute a processId based on the entity address the process index and the namespace", async () => {
         expect(contractInstance.getProcessId).to.be.ok
         expect(contractInstance.getProcessId.call).to.be.ok
 
-        const proc1 = await contractInstance.getProcessId(accounts[0].address, 0)
-        const proc2 = await contractInstance.getProcessId(accounts[0].address, 0)
+        const proc1 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE)
+        const proc2 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE)
 
-        const proc3 = await contractInstance.getProcessId(accounts[0].address, 1)
-        const proc4 = await contractInstance.getProcessId(accounts[0].address, 1)
+        const proc3 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE)
+        const proc4 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE)
 
-        const proc5 = await contractInstance.getProcessId(accounts[0].address, 2)
-        const proc6 = await contractInstance.getProcessId(accounts[0].address, 3)
+        const proc5 = await contractInstance.getProcessId(accounts[0].address, 2, DEFAULT_NAMESPACE)
+        const proc6 = await contractInstance.getProcessId(accounts[0].address, 3, DEFAULT_NAMESPACE)
 
-        const proc7 = await contractInstance.getProcessId(accounts[1].address, 0)
-        const proc8 = await contractInstance.getProcessId(accounts[1].address, 1)
+        const proc7 = await contractInstance.getProcessId(accounts[1].address, 0, DEFAULT_NAMESPACE)
+        const proc8 = await contractInstance.getProcessId(accounts[1].address, 1, DEFAULT_NAMESPACE)
+
+        const proc9 = await contractInstance.getProcessId(accounts[1].address, 0, 10)
+        const proc10 = await contractInstance.getProcessId(accounts[1].address, 0, 20)
 
         expect(proc1).to.eq(proc2)
         expect(proc3).to.eq(proc4)
@@ -90,14 +91,17 @@ describe("Voting Process", () => {
 
         expect(proc7).to.not.eq(proc1)
         expect(proc8).to.not.eq(proc3)
+
+        expect(proc9).to.not.eq(proc7)
+        expect(proc10).to.not.eq(proc7)
     })
 
     it("should compute the next processId", async () => {
         // The entity already has 1 process at the moment
         const count1 = await contractInstance.getEntityProcessCount(entityAccount.address)
         expect(count1.toNumber()).to.eq(1)
-        const processId1Expected = await contractInstance.getProcessId(entityAccount.address, count1.toNumber())
-        const processId1Actual = await contractInstance.getNextProcessId(entityAccount.address)
+        const processId1Expected = await contractInstance.getProcessId(entityAccount.address, count1.toNumber(), DEFAULT_NAMESPACE)
+        const processId1Actual = await contractInstance.getNextProcessId(entityAccount.address, DEFAULT_NAMESPACE)
 
         expect(processId1Actual).to.eq(processId1Expected)
 
@@ -116,14 +120,195 @@ describe("Voting Process", () => {
 
         // The entity has 2 processes now
         // So the next process index is 2
-        const processId2Expected = await contractInstance.getProcessId(entityAccount.address, 2)
-        const processId2Actual = await contractInstance.getNextProcessId(entityAccount.address)
+        const processId2Expected = await contractInstance.getProcessId(entityAccount.address, 2, DEFAULT_NAMESPACE)
+        const processId2Actual = await contractInstance.getNextProcessId(entityAccount.address, DEFAULT_NAMESPACE)
 
         expect(processId1Actual).to.not.eq(processId2Actual)
         expect(processId2Actual).to.eq(processId2Expected)
+
+        // 
+        const count3 = await contractInstance.getEntityProcessCount(entityAccount.address)
+        expect(count3.toNumber()).to.eq(2)
+        const processId3Expected = await contractInstance.getProcessId(entityAccount.address, count3.toNumber(), 10)
+        const processId3Actual = await contractInstance.getNextProcessId(entityAccount.address, 10)
+
+        expect(processId3Expected).to.eq(processId3Actual)
     })
 
-    describe("should set genesis", () => {
+    describe("Namespace management", () => {
+        it("should set a whole namespace at once", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            const namespaceData0 = await contractInstance.getNamespace(10)
+            expect(namespaceData0[0]).to.eq("")
+            expect(namespaceData0[1]).to.eq("")
+            expect(namespaceData0[2]).to.deep.eq([])
+            expect(namespaceData0[3]).to.deep.eq([])
+            expect(await contractInstance.isValidator(10, "0x1")).to.be.false
+            expect(await contractInstance.isValidator(10, "0x2")).to.be.false
+            expect(await contractInstance.isValidator(10, "0x3")).to.be.false
+            expect(await contractInstance.isValidator(10, "0x4")).to.be.false
+
+            await contractInstance.setNamespace(10, "cid", "gen", ["0x1", "0x2", "0x3"], [authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            const namespaceData1 = await contractInstance.getNamespace(10)
+            expect(namespaceData1[0]).to.eq("cid")
+            expect(namespaceData1[1]).to.eq("gen")
+            expect(namespaceData1[2]).to.deep.eq(["0x1", "0x2", "0x3"])
+            expect(namespaceData1[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+            expect(await contractInstance.isValidator(10, "0x1")).to.be.true
+            expect(await contractInstance.isValidator(10, "0x2")).to.be.true
+            expect(await contractInstance.isValidator(10, "0x3")).to.be.true
+            expect(await contractInstance.isValidator(10, "0x4")).to.be.false
+            expect(await contractInstance.isOracle(10, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(10, authorizedOracleAccount2.address)).to.be.true
+            expect(await contractInstance.isOracle(10, randomAccount1.address)).to.be.false
+            expect(await contractInstance.isOracle(10, randomAccount2.address)).to.be.false
+
+            // 2
+            await contractInstance.setNamespace(10, "chain-id", "genesis-here", ["0x1000", "0x2000", "0x3000"], [randomAccount1.address, randomAccount2.address])
+
+            const namespaceData2 = await contractInstance.getNamespace(10)
+            expect(namespaceData2[0]).to.eq("chain-id")
+            expect(namespaceData2[1]).to.eq("genesis-here")
+            expect(namespaceData2[2]).to.deep.eq(["0x1000", "0x2000", "0x3000"])
+            expect(namespaceData2[3]).to.deep.eq([randomAccount1.address, randomAccount2.address])
+            expect(await contractInstance.isValidator(10, "0x1000")).to.be.true
+            expect(await contractInstance.isValidator(10, "0x2000")).to.be.true
+            expect(await contractInstance.isValidator(10, "0x3000")).to.be.true
+            expect(await contractInstance.isValidator(10, "0x4000")).to.be.false
+            expect(await contractInstance.isOracle(10, randomAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(10, randomAccount2.address)).to.be.true
+            expect(await contractInstance.isOracle(10, authorizedOracleAccount1.address)).to.be.false
+            expect(await contractInstance.isOracle(10, authorizedOracleAccount2.address)).to.be.false
+
+            // 3
+            await contractInstance.setNamespace(25, "cid", "gen", ["0x1", "0x2", "0x3"], [authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            const namespaceData3 = await contractInstance.getNamespace(25)
+            expect(namespaceData3[0]).to.eq("cid")
+            expect(namespaceData3[1]).to.eq("gen")
+            expect(namespaceData3[2]).to.deep.eq(["0x1", "0x2", "0x3"])
+            expect(namespaceData3[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+            expect(await contractInstance.isValidator(25, "0x1")).to.be.true
+            expect(await contractInstance.isValidator(25, "0x2")).to.be.true
+            expect(await contractInstance.isValidator(25, "0x3")).to.be.true
+            expect(await contractInstance.isValidator(25, "0x4")).to.be.false
+            expect(await contractInstance.isOracle(25, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(25, authorizedOracleAccount2.address)).to.be.true
+            expect(await contractInstance.isOracle(25, randomAccount1.address)).to.be.false
+            expect(await contractInstance.isOracle(25, randomAccount2.address)).to.be.false
+
+            // 4
+            await contractInstance.setNamespace(25, "chain-id", "genesis-here", ["0x1000", "0x2000", "0x3000"], [randomAccount1.address, randomAccount2.address])
+
+            const namespaceData4 = await contractInstance.getNamespace(25)
+            expect(namespaceData4[0]).to.eq("chain-id")
+            expect(namespaceData4[1]).to.eq("genesis-here")
+            expect(namespaceData4[2]).to.deep.eq(["0x1000", "0x2000", "0x3000"])
+            expect(namespaceData4[3]).to.deep.eq([randomAccount1.address, randomAccount2.address])
+            expect(await contractInstance.isValidator(25, "0x1000")).to.be.true
+            expect(await contractInstance.isValidator(25, "0x2000")).to.be.true
+            expect(await contractInstance.isValidator(25, "0x3000")).to.be.true
+            expect(await contractInstance.isValidator(25, "0x4000")).to.be.false
+            expect(await contractInstance.isOracle(25, randomAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(25, randomAccount2.address)).to.be.true
+            expect(await contractInstance.isOracle(25, authorizedOracleAccount1.address)).to.be.false
+            expect(await contractInstance.isOracle(25, authorizedOracleAccount2.address)).to.be.false
+        })
+
+        it("should allow only the contract creator to update a namespace", async () => {
+            contractInstance = contractInstance.connect(randomAccount1.wallet) as any
+
+            try {
+                await contractInstance.setNamespace(10, "cid", "gen", ["0x1", "0x2", "0x3"], [authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const namespaceData0 = await contractInstance.getNamespace(10)
+            expect(namespaceData0[0]).to.eq("")
+            expect(namespaceData0[1]).to.eq("")
+            expect(namespaceData0[2]).to.deep.eq([])
+            expect(namespaceData0[3]).to.deep.eq([])
+        })
+
+        it("should emit an event", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            const result: { namespace: number } = await new Promise((resolve, reject) => {
+                contractInstance.on("NamespaceUpdated", (namespace: number) => resolve({ namespace }))
+
+                contractInstance.setNamespace(DEFAULT_NAMESPACE, "cid", "gen", ["0x1", "0x2", "0x3"], [authorizedOracleAccount1.address, "0x1234567890123456789012345678901234567890"]).then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
+        }).timeout(7000)
+    })
+
+    describe("ChainID updates", () => {
+        it("only contract creator", async () => {
+            try {
+                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
+                tx = await contractInstance.setChainId(DEFAULT_NAMESPACE, chainId)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+        })
+
+        it("should persist", async () => {
+            const newChainId = "new-chain-id-100"
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            tx = await contractInstance.setChainId(DEFAULT_NAMESPACE, newChainId)
+            await tx.wait()
+
+            let currentNamespace = await contractInstance.getNamespace(DEFAULT_NAMESPACE)
+            expect(currentNamespace[0]).to.eq(newChainId, "ChainId should match")
+        })
+
+        it("should fail if duplicated", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            tx = await contractInstance.setChainId(DEFAULT_NAMESPACE, "a-chain-id")
+            await tx.wait()
+
+            try {
+                // same that it already is
+                tx = await contractInstance.setChainId(DEFAULT_NAMESPACE, "a-chain-id")
+                await tx.wait()
+
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Must differ/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+        })
+
+        it("should emit an event", async () => {
+            const newChainId = "new-chain-id-200"
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            const result: { chainId: string, namespace: number } = await new Promise((resolve, reject) => {
+                contractInstance.on("ChainIdUpdated", (chainId: string, namespace: number) => resolve({ chainId, namespace }))
+
+                contractInstance.setChainId(DEFAULT_NAMESPACE, newChainId).then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.chainId).to.equal(newChainId)
+            expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
+        }).timeout(7000)
+    })
+
+    describe("Genesis updates", () => {
         let genesis
         beforeEach(() => {
             genesis = "0x1234567890123456789012345678901234567890123123123"
@@ -132,111 +317,558 @@ describe("Voting Process", () => {
         it("only contract creator", async () => {
             try {
                 contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.setGenesis(genesis)
+                tx = await contractInstance.setGenesis(DEFAULT_NAMESPACE, genesis)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
+                expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
             }
         })
 
         it("should persist", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.setGenesis(genesis)
+            tx = await contractInstance.setGenesis(DEFAULT_NAMESPACE, genesis)
             await tx.wait()
 
-            let currentGenesis = await contractInstance.getGenesis()
-            expect(currentGenesis).to.eq(genesis, "Gensis should match")
+            let currentNamespace = await contractInstance.getNamespace(DEFAULT_NAMESPACE)
+            expect(currentNamespace[1]).to.eq(genesis, "Gensis should match")
 
             // Another genesis value
-            tx = await contractInstance.setGenesis("1234")
+            tx = await contractInstance.setGenesis(DEFAULT_NAMESPACE, "1234")
             await tx.wait()
 
-            currentGenesis = await contractInstance.getGenesis()
-            expect(currentGenesis).to.eq("1234", "Gensis should match")
-        })
-
-        it("should emit an event", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            const result: { genesis: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("GenesisUpdated", (genesis: string) => {
-                    resolve({ genesis })
-                })
-                contractInstance.setGenesis(genesis).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.genesis).to.equal(genesis)
-        }).timeout(7000)
-    })
-
-    describe("should set chainId", () => {
-        it("only contract creator", async () => {
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.setChainId(chainId)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-        })
-
-        it("should persist", async () => {
-            const chainValue = 200
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            tx = await contractInstance.setChainId(chainValue)
-            await tx.wait()
-
-            await new Promise(resolve => setTimeout(resolve, 1500))
-
-            let currentChainId = await contractInstance.getChainId()
-            expect(currentChainId.toNumber()).to.eq(chainValue, "ChainId should match")
+            currentNamespace = await contractInstance.getNamespace(DEFAULT_NAMESPACE)
+            expect(currentNamespace[1]).to.eq("1234", "Gensis should match")
         })
 
         it("should fail if duplicated", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
+            tx = await contractInstance.setGenesis(DEFAULT_NAMESPACE, "a-genesis")
+            await tx.wait()
+
             try {
                 // same that it already is
-                tx = await contractInstance.setChainId(chainId)
+                tx = await contractInstance.setGenesis(DEFAULT_NAMESPACE, "a-genesis")
                 await tx.wait()
 
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
+                expect(err.message).to.match(/revert Must differ/, "The transaction threw an unexpected error:\n" + err.message)
             }
         })
 
         it("should emit an event", async () => {
-            const newChainId = 200
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
-            const result: { chainId: BigNumber } = await new Promise((resolve, reject) => {
-                contractInstance.on("ChainIdUpdated", (chainId: BigNumber) => {
-                    resolve({ chainId })
-                })
-                contractInstance.setChainId(newChainId).then(tx => tx.wait()).catch(reject)
+            const result: { genesis: string, namespace: number } = await new Promise((resolve, reject) => {
+                contractInstance.on("GenesisUpdated", (genesis: string, namespace: number) => resolve({ genesis, namespace }))
+
+                contractInstance.setGenesis(DEFAULT_NAMESPACE, genesis).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
-            expect(result.chainId.toNumber()).to.equal(newChainId)
+            expect(result.genesis).to.equal(genesis)
+            expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
         }).timeout(7000)
     })
 
-    describe("should create processes", () => {
+    describe("Validator inclusion", () => {
+        const validatorPublicKey = "0x1234"
+        const validatorPublicKey2 = "0x4321"
+
+        it("only when the contract owner requests it", async () => {
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey)).to.be.false
+
+            // Register a validator
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey)
+            await tx.wait()
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey)).to.be.true
+
+            // Attempt to add a validator by someone else
+            try {
+                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
+                tx = await contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey2)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey2)).to.be.false
+        })
+
+        it("should add the validator public key to the validator list", async () => {
+            // Register validator 1
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey)
+            await tx.wait()
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey)).to.be.true
+
+            // Adding validator #2
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey2)
+            await tx.wait()
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey, validatorPublicKey2])
+
+            // Check validator
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey2)).to.be.true
+        })
+
+        it("should add the validator to the right namespace", async () => {
+            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.false
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            // Register on namespace 5
+
+            tx = await contractInstance.addValidator(5, validatorPublicKey)
+            await tx.wait()
+
+            // Check validator
+            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.true
+            expect(await contractInstance.isValidator(10, validatorPublicKey)).to.be.false
+
+            // 2
+            expect(await contractInstance.isValidator(10, validatorPublicKey2)).to.be.false
+
+            tx = await contractInstance.addValidator(10, validatorPublicKey2)
+            await tx.wait()
+
+            // Check validator
+            expect(await contractInstance.isValidator(10, validatorPublicKey2)).to.be.true
+        })
+
+        it("should emit an event", async () => {
+            // Register validator
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            const result: { validatorPublicKey: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("ValidatorAdded", (validatorPublicKey: string) => {
+                    resolve({ validatorPublicKey })
+                })
+                contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey).then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.validatorPublicKey).to.equal(validatorPublicKey)
+        }).timeout(7000)
+    })
+
+    describe("Validator removal", () => {
+
+        const validatorPublicKey = "0x1234"
+
+        it("only when the contract owner account requests it", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey)
+            await tx.wait()
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey])
+
+            // Attempt to disable the validator from someone else
+            try {
+                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
+                tx = await contractInstance.removeValidator(DEFAULT_NAMESPACE, 0, validatorPublicKey)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey)).to.be.true
+
+            // Disable validator from the owner
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.removeValidator(DEFAULT_NAMESPACE, 0, validatorPublicKey)
+            await tx.wait()
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([])
+        })
+
+        it("should fail if the idx does not match validatorPublicKey", async () => {
+            const nonExistingValidatorPublicKey = "0x123123"
+
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            // Register a validator
+            tx = await contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey)
+            await tx.wait()
+
+            // Attempt to disable mismatching validator
+            try {
+                tx = await contractInstance.removeValidator(DEFAULT_NAMESPACE, 0, nonExistingValidatorPublicKey)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Index-key mismatch/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey])
+
+            // Check validators
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey)).to.be.true
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, nonExistingValidatorPublicKey)).to.be.false
+
+            // Attempt to disable non-existing validator
+            try {
+                tx = await contractInstance.removeValidator(DEFAULT_NAMESPACE, 5, validatorPublicKey)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Invalid index/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[2]).to.deep.eq([validatorPublicKey])
+
+            // Check validator
+            expect(await contractInstance.isValidator(DEFAULT_NAMESPACE, validatorPublicKey)).to.be.true
+        })
+
+        it("should remove from the right namespace", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            // Register a validator on namespace 5
+            tx = await contractInstance.addValidator(5, validatorPublicKey)
+            await tx.wait()
+
+            // Attempt to disable from the wrong namespace
+            try {
+                tx = await contractInstance.removeValidator(10, 0, validatorPublicKey)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Invalid index/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(5))[2]).to.deep.eq([validatorPublicKey])
+
+            // Check validators
+            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.true
+
+            // Disable from the right namespace
+            tx = await contractInstance.removeValidator(5, 0, validatorPublicKey)
+            await tx.wait()
+
+            // Get validator list
+            expect((await contractInstance.getNamespace(5))[2]).to.deep.eq([])
+
+            // Check validator
+            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.false
+        })
+
+        it("should emit an event", async () => {
+            // Register validator
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addValidator(DEFAULT_NAMESPACE, validatorPublicKey)
+            await tx.wait()
+
+            const result: { validatorPublicKey: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("ValidatorRemoved", (validatorPublicKey: string) => {
+                    resolve({ validatorPublicKey })
+                })
+                contractInstance.removeValidator(DEFAULT_NAMESPACE, 0, validatorPublicKey).then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.validatorPublicKey).to.equal(validatorPublicKey)
+        }).timeout(7000)
+    })
+
+    describe("Oracle inclusion", () => {
+
+        it("only when the contract owner requests it", async () => {
+            // Check validator
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.false
+
+            // Register a oracle
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+
+            // Attempt to add a oracle by someone else
+            try {
+                contractInstance = contractInstance.connect(randomAccount2.wallet) as any
+                tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount2.address)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount2.address)).to.be.false
+        })
+
+        it("should add the oracle address to the oracle list", async () => {
+            // Register oracle 1
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+
+            // Adding oracle #2
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount2.address)
+            await tx.wait()
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount2.address)).to.be.true
+        })
+
+        it("should add the validator to the right namespace", async () => {
+            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.false
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            // Register on namespace 5
+
+            tx = await contractInstance.addOracle(5, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Check validator
+            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(10, authorizedOracleAccount1.address)).to.be.false
+
+            // 2
+            expect(await contractInstance.isOracle(10, authorizedOracleAccount2.address)).to.be.false
+
+            tx = await contractInstance.addOracle(10, authorizedOracleAccount2.address)
+            await tx.wait()
+
+            // Check validator
+            expect(await contractInstance.isOracle(10, authorizedOracleAccount2.address)).to.be.true
+        })
+
+        it("should emit an event", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            const result: { oracleAddress: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("OracleAdded", (oracleAddress: string) => {
+                    resolve({ oracleAddress })
+                })
+                contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address).then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.oracleAddress).to.equal(authorizedOracleAccount1.address)
+        }).timeout(7000)
+    })
+
+    describe("Oracle removal", () => {
+
+        it("only when the contract owner requests it", async () => {
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.false
+
+            // Register oracle
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+
+            // Attempt to disable the oracle from someone else
+            try {
+                contractInstance = contractInstance.connect(randomAccount2.wallet) as any
+                tx = await contractInstance.removeOracle(DEFAULT_NAMESPACE, 0, authorizedOracleAccount1.address)
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+
+            // Disable oracle from the creator
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            const result3 = await contractInstance.removeOracle(DEFAULT_NAMESPACE, 0, authorizedOracleAccount1.address)
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.false
+        })
+
+        it("should fail if the idx is not valid", async () => {
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.false
+
+            // Register a oracle
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Register a oracle
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount2.address)
+            await tx.wait()
+
+            // Attempt to disable non-existing oracle
+            try {
+                contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                tx = await contractInstance.removeOracle(DEFAULT_NAMESPACE, 5, authorizedOracleAccount2.address)
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+        })
+
+        it("should fail if the idx does not match oracleAddress", async () => {
+            // Register a oracle
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Register a oracle
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount2.address)
+            await tx.wait()
+
+            // Attempt to disable non-existing oracle
+            try {
+                contractInstance = contractInstance.connect(deployAccount.wallet) as any
+                tx = await contractInstance.removeOracle(DEFAULT_NAMESPACE, 1, randomAccount2.address)
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(DEFAULT_NAMESPACE))[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+
+            // Check oracle
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
+        })
+
+        it("should remove from the right namespace", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            // Register an oracle on namespace 5
+            tx = await contractInstance.addOracle(5, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Attempt to disable from the wrong namespace
+            try {
+                tx = await contractInstance.removeOracle(10, 0, authorizedOracleAccount1.address)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Invalid index/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(5))[3]).to.deep.eq([authorizedOracleAccount1.address])
+
+            // Check oracles
+            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.true
+
+            // Disable from the right namespace
+            tx = await contractInstance.removeOracle(5, 0, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            // Get oracle list
+            expect((await contractInstance.getNamespace(5))[3]).to.deep.eq([])
+
+            // Check oracles
+            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.false
+        })
+
+        it("should emit an event", async () => {
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+
+            // Register oracle
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            const result: { oracleAddress: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("OracleRemoved", (oracleAddress: string) => {
+                    resolve({ oracleAddress })
+                })
+                contractInstance.removeOracle(DEFAULT_NAMESPACE, 0, authorizedOracleAccount1.address).then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.oracleAddress).to.equal(authorizedOracleAccount1.address)
+        }).timeout(7000)
+    })
+
+    describe("Process Creation", () => {
         it("should allow anyone to create a process", async () => {
             expect(contractInstance.create).to.be.ok
 
             // one is already created by the builder
 
-            let processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1)
-            let processIdActual = await contractInstance.getNextProcessId(entityAccount.address)
+            let processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1, DEFAULT_NAMESPACE)
+            let processIdActual = await contractInstance.getNextProcessId(entityAccount.address, DEFAULT_NAMESPACE)
             expect(processIdExpected).to.eq(processIdActual)
 
             // 2
@@ -254,8 +886,8 @@ describe("Voting Process", () => {
             )
             await tx.wait()
 
-            processIdExpected = await contractInstance.getProcessId(randomAccount1.address, 1)
-            processIdActual = await contractInstance.getNextProcessId(randomAccount1.address)
+            processIdExpected = await contractInstance.getProcessId(randomAccount1.address, 1, DEFAULT_NAMESPACE)
+            processIdActual = await contractInstance.getNextProcessId(randomAccount1.address, DEFAULT_NAMESPACE)
             expect(processIdExpected).to.eq(processIdActual)
 
             contractInstance = contractInstance.connect(randomAccount2.wallet) as any
@@ -272,8 +904,8 @@ describe("Voting Process", () => {
             )
             await tx.wait()
 
-            processIdExpected = await contractInstance.getProcessId(randomAccount2.address, 1)
-            processIdActual = await contractInstance.getNextProcessId(randomAccount2.address)
+            processIdExpected = await contractInstance.getProcessId(randomAccount2.address, 1, DEFAULT_NAMESPACE)
+            processIdActual = await contractInstance.getNextProcessId(randomAccount2.address, DEFAULT_NAMESPACE)
             expect(processIdExpected).to.eq(processIdActual)
         })
 
@@ -292,8 +924,8 @@ describe("Voting Process", () => {
             )
             await tx.wait()
 
-            let count = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
-            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+            let count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
 
             let processData = await contractInstance.get(processId)
 
@@ -359,8 +991,8 @@ describe("Voting Process", () => {
             )
             await tx.wait()
 
-            count = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+            count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
 
             processData = await contractInstance.get(processId)
 
@@ -424,8 +1056,8 @@ describe("Voting Process", () => {
             )
             await tx.wait()
 
-            count = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+            count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
 
             processData = await contractInstance.get(processId)
 
@@ -483,7 +1115,7 @@ describe("Voting Process", () => {
             await tx.wait()
 
             let count = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
-            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
 
             const processData1 = unwrapProcessState(await contractInstance.get(processId))
 
@@ -544,7 +1176,7 @@ describe("Voting Process", () => {
             await tx.wait()
 
             count = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
 
             const processData2 = unwrapProcessState(await contractInstance.get(processId))
 
@@ -605,7 +1237,7 @@ describe("Voting Process", () => {
             await tx.wait()
 
             count = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1)
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
 
             const processData3 = unwrapProcessState(await contractInstance.get(processId))
 
@@ -628,33 +1260,6 @@ describe("Voting Process", () => {
             expect(processData3.namespace).to.eq(newNamespace)
             expect(processData3.paramsSignature).to.eq(newParamsSignature)
         })
-
-        it("should emit an event", async () => {
-            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0)
-
-            // One has already been created by the builder
-
-            const result: { entityAddress: string, processId: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ProcessCreated", (entityAddress: string, processId: string) => {
-                    resolve({ entityAddress, processId })
-                })
-                // contractInstance.create(
-                //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
-                //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                //     DEFAULT_START_BLOCK,
-                //     DEFAULT_BLOCK_COUNT,
-                //     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
-                //     DEFAULT_UNIQUE_VALUES,
-                //     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                //     DEFAULT_NAMESPACE,
-                //     DEFAULT_PARAMS_SIGNATURE
-                // ).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.entityAddress).to.equal(entityAccount.address)
-            expect(result.processId).to.equal(expectedProcessId)
-        }).timeout(7000)
 
         it("should increase the processCount of the entity on success", async () => {
             const prev = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
@@ -830,473 +1435,32 @@ describe("Voting Process", () => {
 
             expect(current).to.eq(prev, "processCount should not have changed")
         })
-    })
-
-    describe("should add a validator", () => {
-        const validatorPublicKey = "0x1234"
-        const validatorPublicKey2 = "0x4321"
-
-        it("only when the contract owner requests it", async () => {
-            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.false
-
-            // Register a validator
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addValidator(validatorPublicKey)
-            await tx.wait()
-
-            // Get validator list
-            const result2 = await contractInstance.getValidators()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([validatorPublicKey])
-
-            // Check validator
-            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
-
-            // Attempt to add a validator by someone else
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.addValidator(validatorPublicKey2)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get validator list
-            const result3 = await contractInstance.getValidators()
-            expect(result3.length).to.eq(1)
-            expect(result3).to.deep.eq([validatorPublicKey])
-
-            // Check validator
-            expect(await contractInstance.isValidator(validatorPublicKey2)).to.be.false
-        })
-
-        it("should add the validator public key to the validator list", async () => {
-            // Register validator 1
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addValidator(validatorPublicKey)
-            await tx.wait()
-
-            // Get validator list
-            const result2 = await contractInstance.getValidators()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([validatorPublicKey])
-
-            // Check validator
-            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
-
-            // Adding validator #2
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addValidator(validatorPublicKey2)
-            await tx.wait()
-
-            // Get validator list
-            const result4 = await contractInstance.getValidators()
-            expect(result4.length).to.eq(2)
-            expect(result4).to.deep.eq([validatorPublicKey, validatorPublicKey2])
-
-            // Check validator
-            expect(await contractInstance.isValidator(validatorPublicKey2)).to.be.true
-        })
-
-        it("should not add the validator public key to the validator list if exists", async () => {
-            // Register validator 1
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addValidator(validatorPublicKey)
-            await tx.wait()
-
-            // Get validator list
-            const result2 = await contractInstance.getValidators()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([validatorPublicKey])
-
-            // Adding validator #2
-            try {
-                contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                tx = await contractInstance.addValidator(validatorPublicKey)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            } catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get validator list
-            const result3 = await contractInstance.getValidators()
-            expect(result3).to.deep.eq([validatorPublicKey])
-            expect(result3.length).to.eq(1)
-
-            // Still valid
-            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
-        })
 
         it("should emit an event", async () => {
-            // Register validator
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
-            const result: { validatorPublicKey: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ValidatorAdded", (validatorPublicKey: string) => {
-                    resolve({ validatorPublicKey })
+            // One has already been created by the builder
+
+            const result: { entityAddress: string, processId: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("ProcessCreated", (entityAddress: string, processId: string) => {
+                    resolve({ entityAddress, processId })
                 })
-                contractInstance.addValidator(validatorPublicKey).then(tx => tx.wait()).catch(reject)
+                // contractInstance.create(
+                //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                //     DEFAULT_START_BLOCK,
+                //     DEFAULT_BLOCK_COUNT,
+                //     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE],
+                //     DEFAULT_UNIQUE_VALUES,
+                //     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                //     DEFAULT_NAMESPACE,
+                //     DEFAULT_PARAMS_SIGNATURE
+                // ).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
-            expect(result.validatorPublicKey).to.equal(validatorPublicKey)
-        }).timeout(7000)
-    })
-
-    describe("should remove a validator", () => {
-
-        const validatorPublicKey = "0x1234"
-
-        it("only when the contract owner account requests it", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addValidator(validatorPublicKey)
-            await tx.wait()
-
-            // Get validator list
-            const result1 = await contractInstance.getValidators()
-            expect(result1.length).to.eq(1)
-
-            // Attempt to disable the validator from someone else
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.removeValidator(0, validatorPublicKey)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get validator list
-            const result2 = await contractInstance.getValidators()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([validatorPublicKey])
-
-            // Check validator
-            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
-
-            // Disable validator from the owner
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.removeValidator(0, validatorPublicKey)
-            await tx.wait()
-
-            // Get validator list
-            const result4 = await contractInstance.getValidators()
-            expect(result4.length).to.eq(0)
-            expect(result4).to.deep.eq([])
-        })
-
-        it("should fail if the idx does not match validatorPublicKey", async () => {
-            const nonExistingValidatorPublicKey = "0x123123"
-
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            // Register a validator
-            tx = await contractInstance.addValidator(validatorPublicKey)
-            await tx.wait()
-
-            // Attempt to disable mismatching validator
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.removeValidator(0, nonExistingValidatorPublicKey)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get validator list
-            expect(await contractInstance.getValidators()).to.deep.eq([validatorPublicKey])
-
-            // Check validators
-            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
-            expect(await contractInstance.isValidator(nonExistingValidatorPublicKey)).to.be.false
-
-            // Attempt to disable non-existing validator
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.removeValidator(5, validatorPublicKey)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get validator list
-            const result4 = await contractInstance.getValidators()
-            expect(result4.length).to.eq(1)
-            expect(result4).to.deep.eq([validatorPublicKey])
-
-            // Check validator
-            expect(await contractInstance.isValidator(validatorPublicKey)).to.be.true
-        })
-
-        it("should emit an event", async () => {
-            // Register validator
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addValidator(validatorPublicKey)
-            await tx.wait()
-
-            const result: { validatorPublicKey: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ValidatorRemoved", (validatorPublicKey: string) => {
-                    resolve({ validatorPublicKey })
-                })
-                contractInstance.removeValidator(0, validatorPublicKey).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.validatorPublicKey).to.equal(validatorPublicKey)
-        }).timeout(7000)
-    })
-
-    describe("should register an oracle", () => {
-
-        it("only when the contract owner requests it", async () => {
-            // Check validator
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
-
-            // Register a oracle
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-            await tx.wait()
-
-            // Get oracle list
-            const result2 = await contractInstance.getOracles()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([authorizedOracleAccount1.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-
-            // Attempt to add a oracle by someone else
-            try {
-                contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-                tx = await contractInstance.addOracle(authorizedOracleAccount2.address)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get oracle list
-            const result3 = await contractInstance.getOracles()
-            expect(result3.length).to.eq(1)
-            expect(result3).to.deep.eq([authorizedOracleAccount1.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-            expect(await contractInstance.isOracle(authorizedOracleAccount2.address)).to.be.false
-        })
-
-        it("should add the oracle address to the oracle list", async () => {
-            // Register oracle 1
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-            await tx.wait()
-
-            // Get oracle list
-            const result2 = await contractInstance.getOracles()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([authorizedOracleAccount1.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-
-            // Adding oracle #2
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount2.address)
-            await tx.wait()
-
-            // Get oracle list
-            const result4 = await contractInstance.getOracles()
-            expect(result4.length).to.eq(2)
-            expect(result4).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-            expect(await contractInstance.isOracle(authorizedOracleAccount2.address)).to.be.true
-        })
-
-        it("should not add the oracle address to the oracle list if exists", async () => {
-            // Register oracle 1
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-            await tx.wait()
-
-            // Get oracle list
-            const result2 = await contractInstance.getOracles()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([authorizedOracleAccount1.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-
-            // Adding oracle #2
-            try {
-                contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            } catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get oracle list
-            const result3 = await contractInstance.getOracles()
-            expect(result3.length).to.eq(1)
-            expect(result3).to.deep.eq([authorizedOracleAccount1.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-        })
-
-        it("should emit an event", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            const result: { oracleAddress: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("OracleAdded", (oracleAddress: string) => {
-                    resolve({ oracleAddress })
-                })
-                contractInstance.addOracle(authorizedOracleAccount1.address).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.oracleAddress).to.equal(authorizedOracleAccount1.address)
-        }).timeout(7000)
-    })
-
-    describe("should remove an oracle", () => {
-
-        it("only when the contract owner requests it", async () => {
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
-
-            // Register oracle
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-            await tx.wait()
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-
-            // Attempt to disable the oracle from someone else
-            try {
-                contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-                tx = await contractInstance.removeOracle(0, authorizedOracleAccount1.address)
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get oracle list
-            const result2 = await contractInstance.getOracles()
-            expect(result2.length).to.eq(1)
-            expect(result2).to.deep.eq([authorizedOracleAccount1.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-
-            // Disable oracle from the creator
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            const result3 = await contractInstance.removeOracle(0, authorizedOracleAccount1.address)
-
-            // Get oracle list
-            const result4 = await contractInstance.getOracles()
-            expect(result4.length).to.eq(0)
-            expect(result4).to.deep.eq([])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
-        })
-
-        it("should fail if the idx is not valid", async () => {
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.false
-
-            // Register a oracle
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-            await tx.wait()
-
-            // Register a oracle
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount2.address)
-            await tx.wait()
-
-            // Attempt to disable non-existing oracle
-            try {
-                contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                tx = await contractInstance.removeOracle(5, authorizedOracleAccount2.address)
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get oracle list
-            const result3 = await contractInstance.getOracles()
-            expect(result3.length).to.eq(2)
-            expect(result3).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-        })
-
-        it("should fail if the idx does not match oracleAddress", async () => {
-            // Register a oracle
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-            await tx.wait()
-
-            // Register a oracle
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount2.address)
-            await tx.wait()
-
-            // Attempt to disable non-existing oracle
-            try {
-                contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                tx = await contractInstance.removeOracle(1, randomAccount2.address)
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            // Get oracle list
-            const result4 = await contractInstance.getOracles()
-            expect(result4.length).to.eq(2)
-            expect(result4).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
-
-            // Check oracle
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-            expect(await contractInstance.isOracle(authorizedOracleAccount1.address)).to.be.true
-        })
-
-        it("should emit an event", async () => {
-            contractInstance = contractInstance.connect(deployAccount.wallet) as any
-
-            // Register oracle
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
-            await tx.wait()
-
-            const result: { oracleAddress: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("OracleRemoved", (oracleAddress: string) => {
-                    resolve({ oracleAddress })
-                })
-                contractInstance.removeOracle(0, authorizedOracleAccount1.address).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result).to.be.ok
-            expect(result.oracleAddress).to.equal(authorizedOracleAccount1.address)
+            expect(result.entityAddress).to.equal(entityAccount.address)
+            expect(result.processId).to.equal(expectedProcessId)
         }).timeout(7000)
     })
 
@@ -1307,7 +1471,7 @@ describe("Voting Process", () => {
 
         it("should create paused processes by default", async () => {
             contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: false })).build()
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             // one is already created by the builder
 
@@ -1317,7 +1481,7 @@ describe("Voting Process", () => {
 
         it("should create processes in ready status when autoStart is set", async () => {
             contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: true })).build()
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             const processData1 = unwrapProcessState(await contractInstance.get(processId1))
             expect(processData1.status).to.eq(ProcessStatus.READY, "The process should be ready")
@@ -1327,7 +1491,7 @@ describe("Voting Process", () => {
             // interruptible
             let mode = ProcessMode.make({ autoStart: true, interruptible: true })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
             // one is already created by the builder
 
             const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1351,12 +1515,12 @@ describe("Voting Process", () => {
             }
         })
 
-        describe("non-interruptible", () => {
+        describe("Not interruptible", () => {
             it("should allow paused => ready (the first time) if autoStart is not set", async () => {
                 // non-interruptible
                 let mode = ProcessMode.make({ autoStart: false, interruptible: false })
                 contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                 // one is already created by the builder
 
                 const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1423,7 +1587,7 @@ describe("Voting Process", () => {
                 // non-interruptible
                 let mode = ProcessMode.make({ autoStart: true, interruptible: false })
                 contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                 // one is already created by the builder
 
                 const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1510,13 +1674,13 @@ describe("Voting Process", () => {
                 expect(processData6.status).to.eq(ProcessStatus.READY, "The process should remain ready")
             })
         })
-        describe("interruptible", () => {
+        describe("Interruptible", () => {
             describe("from ready", () => {
                 it("should fail if setting to ready", async () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1542,7 +1706,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1571,7 +1735,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1606,7 +1770,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1641,7 +1805,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1668,7 +1832,7 @@ describe("Voting Process", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                         // one is already created by the builder
 
                         const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1676,7 +1840,7 @@ describe("Voting Process", () => {
 
                         // even if the account is an oracle
                         contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                        tx = await contractInstance.addOracle(account.address)
+                        tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, account.address)
                         await tx.wait()
 
                         // Try to set it to ready (it already is)
@@ -1767,7 +1931,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1796,7 +1960,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1822,7 +1986,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1857,7 +2021,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1892,7 +2056,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1919,7 +2083,7 @@ describe("Voting Process", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                         // one is already created by the builder
 
                         const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1927,7 +2091,7 @@ describe("Voting Process", () => {
 
                         // even if the account is an oracle
                         contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                        tx = await contractInstance.addOracle(account.address)
+                        tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, account.address)
                         await tx.wait()
 
                         // Try to set it to ready (it already is)
@@ -2018,7 +2182,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2095,7 +2259,7 @@ describe("Voting Process", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                         // one is already created by the builder
 
                         const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2112,7 +2276,7 @@ describe("Voting Process", () => {
 
                         // even if the account is an oracle
                         contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                        tx = await contractInstance.addOracle(account.address)
+                        tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, account.address)
                         await tx.wait()
 
                         contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
@@ -2181,7 +2345,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2258,7 +2422,7 @@ describe("Voting Process", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                         // one is already created by the builder
 
                         const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2275,7 +2439,7 @@ describe("Voting Process", () => {
 
                         // even if the account is an oracle
                         contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                        tx = await contractInstance.addOracle(account.address)
+                        tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, account.address)
                         await tx.wait()
 
                         contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
@@ -2344,7 +2508,7 @@ describe("Voting Process", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                     // one is already created by the builder
 
                     const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2352,7 +2516,7 @@ describe("Voting Process", () => {
 
                     // Set it to RESULTS (oracle)
                     contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                    tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+                    tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
                     await tx.wait()
                     contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
                     tx = await contractInstance.setResults(processId1, "1234")
@@ -2427,7 +2591,7 @@ describe("Voting Process", () => {
                     for (let account of [randomAccount1, randomAccount2]) {
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                         // one is already created by the builder
 
                         const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2435,7 +2599,7 @@ describe("Voting Process", () => {
 
                         // Set it to RESULTS (oracle)
                         contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                        tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+                        tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
                         await tx.wait()
                         contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
                         tx = await contractInstance.setResults(processId1, "1234")
@@ -2448,7 +2612,7 @@ describe("Voting Process", () => {
 
                         // even if the account is an oracle
                         contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                        tx = await contractInstance.addOracle(account.address)
+                        tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, account.address)
                         await tx.wait()
 
                         // random account
@@ -2518,7 +2682,7 @@ describe("Voting Process", () => {
                     for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
                         let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                         // one is already created by the builder
 
                         const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2531,7 +2695,7 @@ describe("Voting Process", () => {
                             throw new Error("The transaction should have thrown an error but didn't")
                         }
                         catch (err) {
-                            expect(err.message).to.match(/revert onlyOracle/, "The transaction threw an unexpected error:\n" + err.message)
+                            expect(err.message).to.match(/revert Not oracle/, "The transaction threw an unexpected error:\n" + err.message)
                         }
 
                         const processData5 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2540,7 +2704,7 @@ describe("Voting Process", () => {
 
                         // Set the RESULTS (now oracle)
                         contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                        tx = await contractInstance.addOracle(account.address)
+                        tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, account.address)
                         await tx.wait()
                         contractInstance = contractInstance.connect(account.wallet) as any
                         tx = await contractInstance.setResults(processId1, "1234")
@@ -2555,14 +2719,251 @@ describe("Voting Process", () => {
             })
         })
 
-        it("should emit events")
+        it("should emit an event")
+    })
+
+    describe("Serial envelope", () => {
+        it("The question index should be read-only by default")
+
+        it("The question index can be incremented in multi-envelope mode")
+
+        it("Should fail if questionCount is zero")
+
+        it("Should end a process after the last question has been incremented")
+
+        it("Should emit an event when the current question is incremented")
+
+        it("Should emit an event when question increment ends the process")
+    })
+
+    describe("Dynamic Census", () => {
+        it("Should keep the census read-only by default", async () => {
+            let mode = ProcessMode.make({ autoStart: true, dynamicCensus: false })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+            // Try to update it
+            try {
+                tx = await contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree")
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Read-only census/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.mode).to.eq(mode)
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
+            expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+
+            // 2
+
+            mode = ProcessMode.make({ autoStart: false, dynamicCensus: false })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+            // Try to update it
+            try {
+                tx = await contractInstance.setCensus(processId, "123412341234", "345634563456")
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Read-only census/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData3 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData3.mode).to.eq(mode)
+            expect(processData3.entityAddress).to.eq(entityAccount.address)
+            expect(processData3.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
+            expect(processData3.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+        })
+
+        it("Should allow to update the census in dynamic census mode", async () => {
+            let mode = ProcessMode.make({ autoStart: true, dynamicCensus: true })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+            // Update it
+            tx = await contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree")
+            await tx.wait()
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.mode).to.eq(mode)
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.censusMerkleRoot).to.eq("new-merkle-root")
+            expect(processData1.censusMerkleTree).to.eq("new-merkle-tree")
+
+            // 2
+
+            mode = ProcessMode.make({ autoStart: false, dynamicCensus: true })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+            // Update it
+            tx = await contractInstance.setCensus(processId, "123412341234", "345634563456")
+            await tx.wait()
+
+            const processData3 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData3.mode).to.eq(mode)
+            expect(processData3.entityAddress).to.eq(entityAccount.address)
+            expect(processData3.censusMerkleRoot).to.eq("123412341234")
+            expect(processData3.censusMerkleTree).to.eq("345634563456")
+        })
+
+        it("Should only allow the creator to update the census", async () => {
+            let mode = ProcessMode.make({ autoStart: true, dynamicCensus: true })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData0 = unwrapProcessState(await contractInstance.get(processId1))
+            expect(processData0.status).to.eq(ProcessStatus.READY, "The process should be ready")
+
+            for (let account of [randomAccount1, randomAccount2]) {
+                contractInstance = contractInstance.connect(account.wallet) as any
+
+                // Try to set it to invalid values
+                try {
+                    tx = await contractInstance.setCensus(processId, "123412341234", "345634563456")
+                    await tx.wait()
+                    throw new Error("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                }
+
+                const processData1 = unwrapProcessState(await contractInstance.get(processId1))
+                expect(processData1.entityAddress).to.eq(entityAccount.address)
+                expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
+                expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            }
+        })
+
+        it("Should fail updating the census on terminated processes", async () => {
+            // 1 - ENDED
+            let mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+            tx = await contractInstance.setStatus(processId, ProcessStatus.ENDED)
+            await tx.wait()
+
+            // Try to update it
+            try {
+                tx = await contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree")
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.mode).to.eq(mode)
+            expect(processData1.status).to.eq(ProcessStatus.ENDED, "The process should be ended")
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
+            expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+
+            // 2 - CANCELED
+
+            mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+            tx = await contractInstance.setStatus(processId, ProcessStatus.CANCELED)
+            await tx.wait()
+
+            // Try to update it
+            try {
+                tx = await contractInstance.setCensus(processId, "123412341234", "345634563456")
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData3 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData3.mode).to.eq(mode)
+            expect(processData3.status).to.eq(ProcessStatus.CANCELED, "The process should be canceled")
+            expect(processData3.entityAddress).to.eq(entityAccount.address)
+            expect(processData3.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
+            expect(processData3.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+
+            // 3 - RESULTS
+
+            mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
+            contractInstance = await new ProcessBuilder().withMode(mode).build()
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            // one is already created by the builder
+
+            const processData4 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData4.status).to.eq(ProcessStatus.PAUSED, "The process should be paused")
+
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
+            tx = await contractInstance.setResults(processId, "{}")
+            await tx.wait()
+
+            contractInstance = contractInstance.connect(entityAccount.wallet) as any
+
+            // Try to update it
+            try {
+                tx = await contractInstance.setCensus(processId, "123412341234", "345634563456")
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Process terminated/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData5 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData5.mode).to.eq(mode)
+            expect(processData5.status).to.eq(ProcessStatus.RESULTS, "The process should have results")
+            expect(processData5.entityAddress).to.eq(entityAccount.address)
+            expect(processData5.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
+            expect(processData5.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+        })
+
+        it("Should emit an event")
     })
 
     describe("Process Results", () => {
         const results = '{"results":{"A":1234,"B":2345,"C":3456}}'
 
         it("should be accepted when the sender is a registered oracle", async () => {
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             // One is already created by the builder
 
@@ -2582,7 +2983,7 @@ describe("Voting Process", () => {
 
             // Register an oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
             await tx.wait()
 
             // Publish the results
@@ -2600,7 +3001,7 @@ describe("Voting Process", () => {
 
             // Register an oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
             await tx.wait()
 
             try {
@@ -2628,7 +3029,7 @@ describe("Voting Process", () => {
 
         it("should not be accepted when the process is canceled", async () => {
             contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ interruptible: true })).build()
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             // One is already created by the builder
 
@@ -2638,7 +3039,7 @@ describe("Voting Process", () => {
 
             // Register an oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
             await tx.wait()
 
             // Attempt to publish the results after canceling
@@ -2657,13 +3058,13 @@ describe("Voting Process", () => {
         }).timeout(5000)
 
         it("should retrieve the submited results", async () => {
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             // One is already created by the builder
 
             // Register an oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
             await tx.wait()
 
             // Publish the results
@@ -2680,7 +3081,7 @@ describe("Voting Process", () => {
             for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
                 let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                 contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
                 // one is already created by the builder
 
                 const processData0 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2693,7 +3094,7 @@ describe("Voting Process", () => {
                     throw new Error("The transaction should have thrown an error but didn't")
                 }
                 catch (err) {
-                    expect(err.message).to.match(/revert onlyOracle/, "The transaction threw an unexpected error:\n" + err.message)
+                    expect(err.message).to.match(/revert Not oracle/, "The transaction threw an unexpected error:\n" + err.message)
                 }
 
                 const processData5 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2702,7 +3103,7 @@ describe("Voting Process", () => {
 
                 // Set the RESULTS (now oracle)
                 contractInstance = contractInstance.connect(deployAccount.wallet) as any
-                tx = await contractInstance.addOracle(account.address)
+                tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, account.address)
                 await tx.wait()
                 contractInstance = contractInstance.connect(account.wallet) as any
                 tx = await contractInstance.setResults(processId1, "1234")
@@ -2717,13 +3118,13 @@ describe("Voting Process", () => {
 
         it("should prevent publishing twice", async () => {
             const originalResults = "SOMETHING_DIFFERENT_HERE"
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             // One is already created by the builder
 
             // Register an oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
             await tx.wait()
 
             // publish results
@@ -2758,48 +3159,24 @@ describe("Voting Process", () => {
         }).timeout(5000)
 
         it("should emit an event", async () => {
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             // Register an oracle
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
-            tx = await contractInstance.addOracle(authorizedOracleAccount1.address)
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
             await tx.wait()
 
             // one is already created by the builder
 
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            const result: { processId: string, results: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ResultsAvailable", (processId: string, results: string) => {
-                    resolve({ processId, results })
-                })
+            const result: { processId: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("ResultsAvailable", (processId: string) => resolve({ processId }))
                 contractInstance.setResults(processId1, results).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
             expect(result.processId).to.equal(processId1)
-            expect(result.results).to.equal(results)
         }).timeout(5000)
     })
 
-    describe("Dynamic Census", () => {
-        it("Should keep the census read-only by default")
-
-        it("Should allow to update the census in dynamic census mode")
-
-        it("Should emit an event")
-    })
-
-    describe("Serial envelope", () => {
-        it("The question index should be read-only by default")
-
-        it("The question index can be incremented in multi-envelope mode")
-
-        it("Should fail if questionCount is zero")
-
-        it("Should end a process after the last question has been incremented")
-
-        it("Should emit an event when the current question is incremented")
-
-        it("Should emit an event when question increment ends the process")
-    })
 })

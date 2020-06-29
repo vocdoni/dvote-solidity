@@ -106,7 +106,7 @@ contract VotingProcess {
     // PER-PROCESS DATA
 
     Process[] processes; // Array of processes. Index [0] is reserved (see setResults)
-    mapping(bytes32 => uint256) processesIndex; // Mapping between processId's and their index in `processes[]`
+    mapping(bytes32 => uint256) processesIndex; // Mapping between processId's and their index within `processes[]`
     mapping(address => uint256) entityProcessCount; // Index of the last process for each entity address
 
     // EVENTS
@@ -129,13 +129,13 @@ contract VotingProcess {
         bytes32 processId,
         Status status
     );
-    event CensusUpdated(address indexed entityAddress, bytes32 processId);
     event QuestionIndexUpdated(
         address indexed entityAddress,
         bytes32 processId,
         uint8 newIndex
     );
-    event ResultsAvailable(bytes32 indexed processId, string results);
+    event CensusUpdated(address indexed entityAddress, bytes32 processId);
+    event ResultsAvailable(bytes32 indexed processId);
 
     // MODIFIERS
 
@@ -253,7 +253,7 @@ contract VotingProcess {
     {
         require(
             !equalStrings(namespaces[namespace].chainId, newChainId),
-            "chainId must differ"
+            "Must differ"
         );
         namespaces[namespace].chainId = newChainId;
         emit ChainIdUpdated(newChainId, namespace);
@@ -265,7 +265,7 @@ contract VotingProcess {
     {
         require(
             equalStrings(namespaces[namespace].genesis, newGenesis) == false,
-            "Genesis must differ"
+            "Must differ"
         );
 
         namespaces[namespace].genesis = newGenesis;
@@ -277,10 +277,10 @@ contract VotingProcess {
         public
         onlyContractOwner
     {
-        require(
-            isValidator(validatorPublicKey, namespace) == false,
-            "Already present"
-        );
+        // Should check for duplicates, but this would make transactions increasingly expensive
+        // as more and more validators are added over time. Plus, potential duplicate
+        // validators would not alter the expected behavior on nodes.
+
         namespaces[namespace].validators.push(validatorPublicKey);
 
         emit ValidatorAdded(validatorPublicKey, namespace);
@@ -312,7 +312,10 @@ contract VotingProcess {
         public
         onlyContractOwner
     {
-        require(isOracle(oracleAddress, namespace) == false, "Already present");
+        // Should check for duplicates, but this would make transactions increasingly expensive
+        // as more and more oracles are added over time. Plus, potential duplicate
+        // oracles would not alter the expected behavior on nodes.
+
         namespaces[namespace].oracles.push(oracleAddress);
 
         emit OracleAdded(oracleAddress, namespace);
@@ -358,7 +361,7 @@ contract VotingProcess {
         );
     }
 
-    function isValidator(string memory validatorPublicKey, uint16 namespace)
+    function isValidator(uint16 namespace, string memory validatorPublicKey)
         public
         view
         returns (bool)
@@ -376,7 +379,7 @@ contract VotingProcess {
         return false;
     }
 
-    function isOracle(address oracleAddress, uint16 namespace)
+    function isOracle(uint16 namespace, address oracleAddress)
         public
         view
         returns (bool)
@@ -562,9 +565,6 @@ contract VotingProcess {
             if (processes[processIndex].mode & MODE_INTERRUPTIBLE == 0) {
                 // We can only set it to READY
                 require(newStatus == Status.READY, "Not interruptible");
-            } else {
-                // We can set it to [READY, ENDED, CANCELED]
-                require(newStatus != currentStatus, "Status must change");
             }
         } else {
             // currentStatus is READY
@@ -575,10 +575,10 @@ contract VotingProcess {
             }
 
             // newStatus can only be [READY, ENDED, CANCELED, PAUSED] (see require above).
-
-            require(newStatus != currentStatus, "Status must change");
-            // if currentStatus is READY => Can go to [ENDED, CANCELED, PAUSED].
         }
+        require(newStatus != currentStatus, "Status must change");
+        // if currentStatus is READY => Can go to [ENDED, CANCELED, PAUSED].
+        // if currentStatus is PAUSED => Can go to [READY, ENDED, CANCELED].
 
         // Note: the process can also be ended from incrementQuestionIndex
         // if questionIndex is already at the last one
@@ -603,7 +603,7 @@ contract VotingProcess {
         );
         require(
             processes[processIndex].envelopeType & ENV_TYPE_SERIAL != 0,
-            "Process is not SERIAL"
+            "Process not serial"
         );
 
         uint8 nextIdx = processes[processIndex].questionIndex.add8(1);
@@ -613,11 +613,6 @@ contract VotingProcess {
 
             emit QuestionIndexUpdated(msg.sender, processId, nextIdx);
         } else {
-            require(
-                processes[processIndex].mode & MODE_INTERRUPTIBLE != 0,
-                "Process not interruptible"
-            );
-
             // End the process if the last question is already active and
             // the process is interruptible
             processes[processIndex].status = Status.ENDED;
@@ -664,27 +659,24 @@ contract VotingProcess {
 
         // The sender must be an oracle within the process' namespace
         require(
-            isOracle(msg.sender, processes[processIndex].namespace),
+            isOracle(processes[processIndex].namespace, msg.sender),
             "Not oracle"
         );
         require(
             processes[processIndex].entityAddress != address(0x0),
             "No process"
         );
-        // cannot publish results on a canceled process
+        // cannot publish results on a canceled process or on a process
+        // that already has results
         require(
-            processes[processIndex].status != Status.CANCELED,
-            "Process is canceled"
-        );
-        // results can only be published once
-        require(
-            processes[processIndex].status != Status.RESULTS,
-            "Results already set"
+            processes[processIndex].status != Status.CANCELED &&
+                processes[processIndex].status != Status.RESULTS,
+            "Canceled or already set"
         );
 
         processes[processIndex].results = results;
         processes[processIndex].status = Status.RESULTS;
 
-        emit ResultsAvailable(processId, results);
+        emit ResultsAvailable(processId);
     }
 }

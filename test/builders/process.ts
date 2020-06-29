@@ -5,7 +5,8 @@ import { getAccounts, TestAccount } from "../utils"
 const { abi: votingProcessAbi, bytecode: votingProcessByteCode } = require("../../build/voting-process.json")
 
 // DEFAULT VALUES
-export const DEFAULT_CHAIN_ID = 0
+export const DEFAULT_NAMESPACE = 0
+export const DEFAULT_CHAIN_ID = "vochain"
 export const DEFAULT_PROCESS_MODE = ProcessMode.make()
 export const DEFAULT_ENVELOPE_TYPE = ProcessEnvelopeType.make()
 export const DEFAULT_METADATA_CONTENT_HASHED_URI = "ipfs://1234,https://server/uri!0987654321"
@@ -19,7 +20,6 @@ export const DEFAULT_MAX_VALUE = 5
 export const DEFAULT_UNIQUE_VALUES = false
 export const DEFAULT_MAX_TOTAL_COST = 0
 export const DEFAULT_COST_EXPONENT = 10000
-export const DEFAULT_NAMESPACE = 0
 export const DEFAULT_PARAMS_SIGNATURE = "0x1111111111111111111111111111111111111111111111111111111111111111"
 
 // BUILDER
@@ -32,7 +32,6 @@ export default class ProcessBuilder {
     merkleTree: string = DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI
     startBlock: number = DEFAULT_START_BLOCK
     blockCount: number = DEFAULT_BLOCK_COUNT
-    chainId: number = DEFAULT_CHAIN_ID
     mode: IProcessMode = DEFAULT_PROCESS_MODE
     envelopeType: IProcessEnvelopeType = DEFAULT_ENVELOPE_TYPE
     questionCount: number = DEFAULT_QUESTION_COUNT
@@ -44,7 +43,6 @@ export default class ProcessBuilder {
     namespace: number = DEFAULT_NAMESPACE
     paramsSignature: string = DEFAULT_PARAMS_SIGNATURE
 
-
     constructor() {
         this.accounts = getAccounts()
         this.entityAccount = this.accounts[1]
@@ -53,7 +51,7 @@ export default class ProcessBuilder {
     async build(processCount: number = 1): Promise<Contract & ProcessContractMethods> {
         const deployAccount = this.accounts[0]
         const contractFactory = new ContractFactory(votingProcessAbi, votingProcessByteCode, deployAccount.wallet)
-        let contractInstance = await contractFactory.deploy(this.chainId) as Contract & ProcessContractMethods
+        let contractInstance = await contractFactory.deploy() as Contract & ProcessContractMethods
 
         contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
 
@@ -87,10 +85,6 @@ export default class ProcessBuilder {
         if (!metadata) throw new Error("Empty metadata value")
 
         this.metadata = metadata
-        return this
-    }
-    withChainId(chainId: number) {
-        this.chainId = chainId
         return this
     }
     withMode(mode: IProcessMode) {

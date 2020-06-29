@@ -238,26 +238,23 @@ export interface ProcessContractMethods {
     /** Retrieves the amount of processes that the entity has created */
     getEntityProcessCount(entityAddress: string): Promise<BigNumber>,
     /** Get the process ID that would be assigned to the next process */
-    getNextProcessId(entityAddress: string): Promise<string>,
+    getNextProcessId(entityAddress: string, namespace: number): Promise<string>,
     /** Compute the process ID that corresponds to the given parameters */
-    getProcessId(entityAddress: string, processCountIndex: number): Promise<string>,
+    getProcessId(entityAddress: string, processCountIndex: number, namespace: number): Promise<string>,
     /** Get the windex within the global array where the given process is stored */
     getProcessIndex(processId: string): Promise<BigNumber>,
 
     // GETTERS
 
-    /** Retrieve the current genesis block content link */
-    getGenesis(): Promise<string>,
-    /** Retrieve the current Chain ID */
-    getChainId(): Promise<BigNumber>,
-    /** Retrieves the current list of validators on the Vochain */
-    getValidators(): Promise<string[]>,
-    /** Checks whether the given public key is registered as a validator */
-    isValidator(validatorPublicKey: string): Promise<boolean>,
-    /** Retrieves the current list of oracles on the Vochain */
-    getOracles(): Promise<string[]>,
-    /** Checks whether the given address is registered as an oracle */
-    isOracle(oracleAddress: string): Promise<boolean>,
+    /**
+     * Retrieve all the fields of the given namespace:
+     * `[ chainId: string, genesis: string,validators: string[],oracles: string[] ]`
+     * */
+    getNamespace(namespace: number): Promise<[string, string, string[], string[]]>,
+    /** Checks whether the given public key is registered as a validator in the given namespace */
+    isValidator(namespace: number, validatorPublicKey: string): Promise<boolean>,
+    /** Checks whether the given address is registered as an oracle in the given namespace */
+    isOracle(namespace: number, oracleAddress: string): Promise<boolean>,
     /**
      * Retrieve the on-chain parameters for the given process:
      * 
@@ -281,18 +278,20 @@ export interface ProcessContractMethods {
 
     // GLOBAL METHODS
 
-    /** Update the genesis link and hash */
-    setGenesis(genesisData: string): Promise<ContractTransaction>,
-    /** Update the Chain ID */
-    setChainId(newChainId: number): Promise<ContractTransaction>,
+    /** Set all fields of a certain namespace */
+    setNamespace(namespace: number, chainId: string, genesis: string, validators: string[], oracles: string[]): Promise<ContractTransaction>,
+    /** Update the Chain ID of the given namespace */
+    setChainId(namespace: number, chainId: string): Promise<ContractTransaction>,
+    /** Update the genesis of the given namespace */
+    setGenesis(namespace: number, genesisData: string): Promise<ContractTransaction>,
     /** Registers the public key of a new validator */
-    addValidator(validatorPublicKey: string): Promise<ContractTransaction>,
+    addValidator(namespace: number, validatorPublicKey: string): Promise<ContractTransaction>,
     /** Removes the public key at the given index for a validator */
-    removeValidator(idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    removeValidator(namespace: number, idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
     /** Registers the address of a new oracle */
-    addOracle(oracleAddr: string): Promise<ContractTransaction>,
+    addOracle(namespace: number, oracleAddr: string): Promise<ContractTransaction>,
     /** Removes the address at the given index for an oracle */
-    removeOracle(idx: number, oracleAddr: string): Promise<ContractTransaction>,
+    removeOracle(namespace: number, idx: number, oracleAddr: string): Promise<ContractTransaction>,
 
     // ENTITY METHODS
 
@@ -312,7 +311,6 @@ export interface ProcessContractMethods {
      * ]```
      * */
     create(...args: WrappedProcessCreateParams): Promise<ContractTransaction>,
-
     /** Update the process status that corresponds to the given ID */
     setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
     /** Increments the index of the current question (only when INCREMENTAL mode is set) */
