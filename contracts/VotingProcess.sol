@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./math/SafeAdd.sol";
 
+
 /*
 Process Mode flags
 
@@ -120,22 +121,18 @@ contract VotingProcess {
     event OracleRemoved(address oracleAddress, uint16 namespace);
 
     event ProcessCreated(
-        address indexed entityAddress,
         bytes32 processId,
-        string merkleTree
+        string merkleTree,
+        uint16 namespace
     );
-    event StatusUpdated(
-        address indexed entityAddress,
-        bytes32 processId,
-        Status status
-    );
+    event StatusUpdated(bytes32 processId, Status status, uint16 namespace);
     event QuestionIndexUpdated(
-        address indexed entityAddress,
         bytes32 processId,
+        uint16 namespace,
         uint8 newIndex
     );
-    event CensusUpdated(address indexed entityAddress, bytes32 processId);
-    event ResultsAvailable(bytes32 indexed processId);
+    event CensusUpdated(bytes32 processId, uint16 namespace);
+    event ResultsAvailable(bytes32 processId);
 
     // MODIFIERS
 
@@ -321,11 +318,10 @@ contract VotingProcess {
         emit OracleAdded(oracleAddress, namespace);
     }
 
-    function removeOracle(
-        uint16 namespace,
-        uint256 idx,
-        address oracleAddress
-    ) public onlyContractOwner {
+    function removeOracle(uint16 namespace, uint256 idx, address oracleAddress)
+        public
+        onlyContractOwner
+    {
         uint256 currentLength = namespaces[namespace].oracles.length;
         require(idx < currentLength, "Invalid index");
         require(
@@ -497,8 +493,7 @@ contract VotingProcess {
         }
         require(questionCount_maxVoteOverwrites_maxValue[2] > 0, "No maxValue");
 
-        address entityAddress = msg.sender;
-        bytes32 processId = getNextProcessId(entityAddress, namespace);
+        bytes32 processId = getNextProcessId(msg.sender, namespace);
 
         // By default, processes start PAUSED (auto start disabled)
         Status status = Status.PAUSED;
@@ -511,7 +506,7 @@ contract VotingProcess {
         Process memory process = Process({
             mode: mode,
             envelopeType: mode_envelopeType[1],
-            entityAddress: entityAddress,
+            entityAddress: msg.sender,
             startBlock: startBlock,
             blockCount: blockCount,
             metadata: metadata_merkleRoot_merkleTree[0],
@@ -532,12 +527,12 @@ contract VotingProcess {
 
         processesIndex[processId] = processes.length; // N - 1 after the entry is pushed to the processes list
         processes.push(process);
-        entityProcessCount[entityAddress]++;
+        entityProcessCount[msg.sender]++;
 
         emit ProcessCreated(
-            entityAddress,
             processId,
-            metadata_merkleRoot_merkleTree[2]
+            metadata_merkleRoot_merkleTree[2],
+            namespace
         );
     }
 
@@ -584,7 +579,11 @@ contract VotingProcess {
         // if questionIndex is already at the last one
         processes[processIndex].status = newStatus;
 
-        emit StatusUpdated(msg.sender, processId, newStatus);
+        emit StatusUpdated(
+            processId,
+            newStatus,
+            processes[processIndex].namespace
+        );
     }
 
     function incrementQuestionIndex(bytes32 processId)
@@ -611,13 +610,21 @@ contract VotingProcess {
         if (nextIdx < processes[processIndex].questionCount) {
             processes[processIndex].questionIndex = nextIdx;
 
-            emit QuestionIndexUpdated(msg.sender, processId, nextIdx);
+            emit QuestionIndexUpdated(
+                processId,
+                processes[processIndex].namespace,
+                nextIdx
+            );
         } else {
             // End the process if the last question is already active and
             // the process is interruptible
             processes[processIndex].status = Status.ENDED;
 
-            emit StatusUpdated(msg.sender, processId, Status.ENDED);
+            emit StatusUpdated(
+                processId,
+                Status.ENDED,
+                processes[processIndex].namespace
+            );
         }
     }
 
@@ -647,7 +654,7 @@ contract VotingProcess {
         processes[processIndex].censusMerkleRoot = censusMerkleRoot;
         processes[processIndex].censusMerkleTree = censusMerkleTree;
 
-        emit CensusUpdated(msg.sender, processId);
+        emit CensusUpdated(processId, processes[processIndex].namespace);
     }
 
     function setResults(bytes32 processId, string memory results) public {
