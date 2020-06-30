@@ -33,16 +33,16 @@ contract VotingProcess {
     // CONSTANTS AND ENUMS
 
     // Process Mode flags
-    uint8 constant MODE_AUTO_START = 1 << 0;
-    uint8 constant MODE_INTERRUPTIBLE = 1 << 1;
-    uint8 constant MODE_DYNAMIC_CENSUS = 1 << 2;
-    uint8 constant MODE_ALLOW_VOTE_OVERWRITE = 1 << 3;
-    uint8 constant MODE_ENCRYPTED_METADATA = 1 << 4;
+    uint8 internal constant MODE_AUTO_START = 1 << 0;
+    uint8 internal constant MODE_INTERRUPTIBLE = 1 << 1;
+    uint8 internal constant MODE_DYNAMIC_CENSUS = 1 << 2;
+    uint8 internal constant MODE_ALLOW_VOTE_OVERWRITE = 1 << 3;
+    uint8 internal constant MODE_ENCRYPTED_METADATA = 1 << 4;
 
     // Envelope Type flags
-    uint8 constant ENV_TYPE_SERIAL = 1 << 0;
-    uint8 constant ENV_TYPE_ANONYMOUS = 1 << 1;
-    uint8 constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2;
+    uint8 internal constant ENV_TYPE_SERIAL = 1 << 0;
+    uint8 internal constant ENV_TYPE_ANONYMOUS = 1 << 1;
+    uint8 internal constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2;
 
     // Process status
     enum Status {READY, ENDED, CANCELED, PAUSED, RESULTS}
@@ -53,7 +53,7 @@ contract VotingProcess {
 
     // GLOBAL DATA
 
-    address contractOwner; // See `onlyContractOwner`
+    address internal contractOwner; // See `onlyContractOwner`
 
     struct Namespace {
         string chainId;
@@ -61,7 +61,7 @@ contract VotingProcess {
         string[] validators; // Public key array
         address[] oracles; // Oracles allowed to create Vochain processes and publish results on this contract/namespace
     }
-    mapping(uint16 => Namespace) namespaces;
+    mapping(uint16 => Namespace) internal namespaces;
 
     // DATA STRUCTS
 
@@ -105,9 +105,9 @@ contract VotingProcess {
 
     // PER-PROCESS DATA
 
-    Process[] processes; // Array of processes. Index [0] is reserved (see setResults)
-    mapping(bytes32 => uint256) processesIndex; // Mapping between processId's and their index within `processes[]`
-    mapping(address => uint256) entityProcessCount; // Index of the last process for each entity address
+    Process[] internal processes; // Array of processes. Index [0] is reserved (see setResults)
+    mapping(bytes32 => uint256) internal processesIndex; // Mapping between processId's and their index within `processes[]`
+    mapping(address => uint256) internal entityProcessCount; // Index of the last process for each entity address
 
     // EVENTS
 
@@ -260,7 +260,7 @@ contract VotingProcess {
         onlyContractOwner
     {
         require(
-            equalStrings(namespaces[namespace].genesis, newGenesis) == false,
+            !equalStrings(namespaces[namespace].genesis, newGenesis),
             "Must differ"
         );
 
@@ -273,9 +273,7 @@ contract VotingProcess {
         public
         onlyContractOwner
     {
-        // Should check for duplicates, but this would make transactions increasingly expensive
-        // as more and more validators are added over time. Plus, potential duplicate
-        // validators would not alter the expected behavior on nodes.
+        require(!isValidator(namespace, validatorPublicKey), "Already present");
 
         namespaces[namespace].validators.push(validatorPublicKey);
 
@@ -308,9 +306,7 @@ contract VotingProcess {
         public
         onlyContractOwner
     {
-        // Should check for duplicates, but this would make transactions increasingly expensive
-        // as more and more oracles are added over time. Plus, potential duplicate
-        // oracles would not alter the expected behavior on nodes.
+        require(!isOracle(namespace, oracleAddress), "Already present");
 
         namespaces[namespace].oracles.push(oracleAddress);
 
@@ -574,7 +570,7 @@ contract VotingProcess {
 
         // If currentStatus is READY => Can go to [ENDED, CANCELED, PAUSED].
         // If currentStatus is PAUSED => Can go to [READY, ENDED, CANCELED].
-        require(newStatus != currentStatus, "Must change");
+        require(newStatus != currentStatus, "Must differ");
 
         // Note: the process can also be ended from incrementQuestionIndex
         // If questionIndex is already at the last one
@@ -597,9 +593,8 @@ contract VotingProcess {
         // such process has been created by msg.sender
 
         require(
-            processes[processIndex].status == Status.READY ||
-                processes[processIndex].status == Status.PAUSED,
-            "Process terminated"
+            processes[processIndex].status == Status.READY,
+            "Process not ready"
         );
         require( // If all votes should be sent within a single envelope, abort
             processes[processIndex].envelopeType & ENV_TYPE_SERIAL != 0,

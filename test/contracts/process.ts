@@ -3,7 +3,7 @@ import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
-import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
+import { getAccounts, TestAccount } from "../utils"
 import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, unwrapProcessState, wrapProcessCreateParams } from "../../lib"
 
 import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_VALUE, DEFAULT_UNIQUE_VALUES, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE } from "../builders/process"
@@ -917,7 +917,7 @@ describe("Voting Process", () => {
             expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(0, "Should be empty")
 
             // Loop process creation
-            for (let idx = 0; idx < 10; idx+=2) {
+            for (let idx = 0; idx < 10; idx += 2) {
                 for (let namespace = 5; namespace <= 10; namespace += 5) {
                     expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(created, "Pre count mismatch")
                     nextProcessId = await contractInstance.getNextProcessId(entityAccount.address, namespace)
@@ -928,8 +928,8 @@ describe("Voting Process", () => {
 
                     // Create nextProcessId
                     nonce = idx * namespace
-                    mode = ProcessMode.make({autoStart: true})
-                    envelopeType = ProcessEnvelopeType.make({encryptedVotes: true})
+                    mode = ProcessMode.make({ autoStart: true })
+                    envelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
                     tx = await contractInstance.create(
                         [mode, envelopeType],
                         [`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `0x30${idx}${namespace}`],
@@ -1135,7 +1135,7 @@ describe("Voting Process", () => {
             expect(processData3.paramsSignature).to.eq(newParamsSignature)
         })
 
-        it("should increase the processCount of the entity on success", async () => {
+        it("should increment the processCount of the entity on success", async () => {
             const prev = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
             expect(prev).to.eq(1)
 
@@ -1154,7 +1154,7 @@ describe("Voting Process", () => {
 
             const current = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
 
-            expect(current).to.eq(prev + 1, "processCount should have increased by 1")
+            expect(current).to.eq(prev + 1, "processCount should have incrementd by 1")
         })
 
         it("should fail if auto start and startBlock is zero", () => {
@@ -1281,7 +1281,7 @@ describe("Voting Process", () => {
             }).to.throw
         })
 
-        it("should not increase the processCount of the entity on error", async () => {
+        it("should not increment the processCount of the entity on error", async () => {
             const prev = Number(await contractInstance.getEntityProcessCount(entityAccount.address))
             expect(prev).to.eq(1)
 
@@ -1315,9 +1315,9 @@ describe("Voting Process", () => {
 
             // One has already been created by the builder
 
-            const result: { entityAddress: string, processId: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ProcessCreated", (entityAddress: string, processId: string) => {
-                    resolve({ entityAddress, processId })
+            const result: { processId: string, namespace: number, merkleTree: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("ProcessCreated", (processId: string, namespace: number, merkleTree: string) => {
+                    resolve({ namespace, processId, merkleTree })
                 })
                 // contractInstance.create(
                 //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
@@ -1333,8 +1333,9 @@ describe("Voting Process", () => {
             })
 
             expect(result).to.be.ok
-            expect(result.entityAddress).to.equal(entityAccount.address)
             expect(result.processId).to.equal(expectedProcessId)
+            expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
+            expect(result.merkleTree).to.equal(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
         }).timeout(7000)
     })
 
@@ -1567,7 +1568,7 @@ describe("Voting Process", () => {
                         throw new Error("The transaction should have thrown an error but didn't")
                     }
                     catch (err) {
-                        expect(err.message).to.match(/revert Status must change/, "The transaction threw an unexpected error:\n" + err.message)
+                        expect(err.message).to.match(/revert Must differ/, "The transaction threw an unexpected error:\n" + err.message)
                     }
 
                     const processData2 = unwrapProcessState(await contractInstance.get(processId1))
@@ -1847,7 +1848,7 @@ describe("Voting Process", () => {
                         throw new Error("The transaction should have thrown an error but didn't")
                     }
                     catch (err) {
-                        expect(err.message).to.match(/revert Status must change/, "The transaction threw an unexpected error:\n" + err.message)
+                        expect(err.message).to.match(/revert Must differ/, "The transaction threw an unexpected error:\n" + err.message)
                     }
 
                     const processData2 = unwrapProcessState(await contractInstance.get(processId1))
@@ -2129,7 +2130,7 @@ describe("Voting Process", () => {
                 })
 
                 it("should never allow the status to be updated [other account]", async () => {
-                    for (let account of [authorizedOracleAccount1, randomAccount1]) {
+                    for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
@@ -2211,7 +2212,7 @@ describe("Voting Process", () => {
                         expect(processData5.entityAddress).to.eq(entityAccount.address)
                         expect(processData5.status).to.eq(ProcessStatus.ENDED, "The process should remain ended")
                     }
-                })
+                }).timeout(5000)
             })
 
             describe("from canceled", () => {
@@ -2292,7 +2293,7 @@ describe("Voting Process", () => {
                 })
 
                 it("should never allow the status to be updated [other account]", async () => {
-                    for (let account of [authorizedOracleAccount1, randomAccount1]) {
+                    for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
@@ -2374,7 +2375,7 @@ describe("Voting Process", () => {
                         expect(processData5.entityAddress).to.eq(entityAccount.address)
                         expect(processData5.status).to.eq(ProcessStatus.CANCELED, "The process should remain canceled")
                     }
-                })
+                }).timeout(5000)
             })
 
             describe("from results", () => {
@@ -2548,7 +2549,7 @@ describe("Voting Process", () => {
                         expect(processData5.entityAddress).to.eq(entityAccount.address)
                         expect(processData5.status).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
                     }
-                })
+                }).timeout(4000)
             })
 
             describe("only the oracle", () => {
@@ -2593,21 +2594,287 @@ describe("Voting Process", () => {
             })
         })
 
-        it("should emit an event")
+        it("should emit an event", async () => {
+            const scenarios = [
+                { mode: ProcessMode.make({ autoStart: false, interruptible: true }), status: ProcessStatus.READY },
+                { mode: ProcessMode.make({ autoStart: true, interruptible: true }), status: ProcessStatus.PAUSED },
+                { mode: ProcessMode.make({ interruptible: true }), status: ProcessStatus.ENDED },
+                { mode: ProcessMode.make({ interruptible: true }), status: ProcessStatus.CANCELED },
+            ]
+            for (let scenario of scenarios) {
+                const contractInstance = await new ProcessBuilder().withMode(scenario.mode).build()
+                const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+
+                // One has already been created by the builder
+
+                const result: { processId: string, namespace: number, newStatus: number } = await new Promise((resolve, reject) => {
+                    contractInstance.on("StatusUpdated", (processId: string, namespace: number, newStatus: number) => {
+                        resolve({ namespace, processId, newStatus })
+                    })
+                    contractInstance.setStatus(processId, scenario.status).then(tx => tx.wait()).catch(reject)
+                })
+
+                expect(result).to.be.ok
+                expect(result.processId).to.equal(processId)
+                expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
+                expect(result.newStatus).to.equal(scenario.status)
+            }
+        }).timeout(20000)
     })
 
     describe("Serial envelope", () => {
-        it("The question index should be read-only by default")
+        it("The question index should be read-only by default", async () => {
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true })) // status = ready
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: false }))
+                .withQuestionCount(5)
+                .build()
 
-        it("The question index can be incremented in multi-envelope mode")
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.questionIndex).to.eq(0, "The process should be at question 0")
 
-        it("Should fail if questionCount is zero")
+            // Try to increment (fail)
+            try {
+                tx = await contractInstance.incrementQuestionIndex(processId)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Process not serial/, "The transaction threw an unexpected error:\n" + err.message)
+            }
 
-        it("Should end a process after the last question has been incremented")
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.questionIndex).to.eq(0, "The process should remain at question 0")
+        })
 
-        it("Should emit an event when the current question is incremented")
+        it("The question index can be incremented in serial envelope mode", async () => {
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true })) // status = ready
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withQuestionCount(5)
+                .build()
 
-        it("Should emit an event when question increment ends the process")
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.envelopeType).to.eq(ProcessEnvelopeType.make({ serial: true }))
+            expect(processData0.questionIndex).to.eq(0, "The process should be at question 0")
+
+            tx = await contractInstance.incrementQuestionIndex(processId)
+            await tx.wait()
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.questionIndex).to.eq(1, "The process should now be at question 1")
+
+            tx = await contractInstance.incrementQuestionIndex(processId)
+            await tx.wait()
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.entityAddress).to.eq(entityAccount.address)
+            expect(processData2.questionIndex).to.eq(2, "The process should now be at question 2")
+        })
+
+        it("Should only allow the process creator to increment", async () => {
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true })) // status = ready
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withQuestionCount(5)
+                .build()
+
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.questionIndex).to.eq(0, "The process should be at question 0")
+
+            for (let account of [randomAccount1, randomAccount2]) {
+                contractInstance = contractInstance.connect(account.wallet) as any
+
+                // Try to increment (fail)
+                try {
+                    tx = await contractInstance.incrementQuestionIndex(processId)
+                    await tx.wait()
+                    throw new Error("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
+                }
+            }
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.questionIndex).to.eq(0, "The process should remain at question 0")
+        })
+
+        it("Should fail if the process is paused", async () => {
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true, interruptible: true }))
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withQuestionCount(5)
+                .build()
+
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.status).to.eq(ProcessStatus.READY, "Should be ready")
+            expect(processData0.questionIndex).to.eq(0, "The process should be at question 0")
+
+            tx = await contractInstance.setStatus(processId, ProcessStatus.PAUSED)
+            await tx.wait()
+
+            // Try to increment (fail)
+            try {
+                tx = await contractInstance.incrementQuestionIndex(processId)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Process not ready/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.entityAddress).to.eq(entityAccount.address)
+            expect(processData0.status).to.eq(ProcessStatus.READY, "Should remain ready")
+            expect(processData2.questionIndex).to.eq(0, "The process should remain at question 0")
+        }).timeout(7000)
+
+        it("Should fail if the process is terminated", async () => {
+            // ENDED, CANCELED
+            for (let status of [ProcessStatus.ENDED, ProcessStatus.CANCELED]) {
+                contractInstance = await new ProcessBuilder()
+                    .withMode(ProcessMode.make({ autoStart: true, interruptible: true }))
+                    .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                    .withQuestionCount(5)
+                    .build()
+
+                const processData0 = unwrapProcessState(await contractInstance.get(processId))
+                expect(processData0.questionIndex).to.eq(0, "The process should be at question 0")
+
+                tx = await contractInstance.setStatus(processId, status)
+                await tx.wait()
+
+                // Try to increment (fail)
+                try {
+                    tx = await contractInstance.incrementQuestionIndex(processId)
+                    await tx.wait()
+                    throw new Error("The transaction should have thrown an error but didn't")
+                }
+                catch (err) {
+                    expect(err.message).to.match(/revert Process not ready/, "The transaction threw an unexpected error:\n" + err.message)
+                }
+            }
+
+            // RESULTS
+
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true })) // status = ready
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withQuestionCount(5)
+                .build()
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.questionIndex).to.eq(0, "The process should be at question 0")
+
+            // set some results
+            contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            tx = await contractInstance.addOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)
+            await tx.wait()
+
+            contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
+            tx = await contractInstance.setResults(processId, "random-data")
+            await tx.wait()
+
+            contractInstance = contractInstance.connect(entityAccount.wallet) as any
+
+            // Try to increment (fail)
+            try {
+                tx = await contractInstance.incrementQuestionIndex(processId)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Process not ready/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.entityAddress).to.eq(entityAccount.address)
+            expect(processData2.questionIndex).to.eq(0, "The process should remain at question 0")
+        }).timeout(7000)
+
+        it("Should end a process after the last question has been incremented", async () => {
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true })) // status = ready
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withQuestionCount(5)
+                .build()
+
+            const processData0 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData0.questionIndex).to.eq(0, "The process should be at question 0")
+
+            for (let idx = 0; idx < 4; idx++) {
+                tx = await contractInstance.incrementQuestionIndex(processId)
+                await tx.wait()
+
+                const processData1 = unwrapProcessState(await contractInstance.get(processId))
+                expect(processData1.questionIndex).to.eq(idx + 1, "The process should be at question " + (idx + 1))
+            }
+
+            // last increment
+            tx = await contractInstance.incrementQuestionIndex(processId)
+            await tx.wait()
+
+            const processData2 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData2.status).to.eq(ProcessStatus.ENDED, "The process should be ended")
+        }).timeout(6000)
+
+        it("Should emit an event when the current question is incremented", async () => {
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true }))
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withQuestionCount(5)
+                .build()
+
+            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+
+            // One has already been created by the builder
+
+            const result: { processId: string, namespace: number, nextId: number } = await new Promise((resolve, reject) => {
+                contractInstance.on("QuestionIndexUpdated", (processId: string, namespace: number, nextId: number) => {
+                    resolve({ namespace, processId, nextId })
+                })
+                contractInstance.incrementQuestionIndex(processId).then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.processId).to.equal(expectedProcessId)
+            expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
+            expect(result.nextId).to.equal(1)
+        }).timeout(7000)
+
+        it("Should emit an event when question increment ends the process", async () => {
+            contractInstance = await new ProcessBuilder()
+                .withMode(ProcessMode.make({ autoStart: true }))
+                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withQuestionCount(2)
+                .build()
+
+            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+
+            // One has already been created by the builder
+
+            const result: { processId: string, namespace: number, newStatus: number } = await new Promise((resolve, reject) => {
+                contractInstance.on("StatusUpdated", (processId: string, namespace: number, newStatus: number) => {
+                    resolve({ namespace, processId, newStatus })
+                })
+                // 2x
+                contractInstance.incrementQuestionIndex(processId).then(tx => tx.wait())
+                    .then(() => contractInstance.incrementQuestionIndex(processId).then(tx => tx.wait()))
+                    .catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.processId).to.equal(expectedProcessId)
+            expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
+            expect(result.newStatus).to.equal(ProcessStatus.ENDED)
+
+            const processData1 = unwrapProcessState(await contractInstance.get(processId))
+            expect(processData1.status).to.eq(ProcessStatus.ENDED, "The process should be ended")
+        }).timeout(8000)
     })
 
     describe("Dynamic Census", () => {
@@ -2828,9 +3095,25 @@ describe("Voting Process", () => {
             expect(processData5.entityAddress).to.eq(entityAccount.address)
             expect(processData5.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
             expect(processData5.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
-        })
+        }).timeout(4000)
 
-        it("Should emit an event")
+        it("should emit an event", async () => {
+            const contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ dynamicCensus: true })).build()
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+
+            // One has already been created by the builder
+
+            const result: { processId: string, namespace: number } = await new Promise((resolve, reject) => {
+                contractInstance.on("CensusUpdated", (processId: string, namespace: number) => {
+                    resolve({ namespace, processId })
+                })
+                contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree-uri").then(tx => tx.wait()).catch(reject)
+            })
+
+            expect(result).to.be.ok
+            expect(result.processId).to.equal(processId)
+            expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
+        }).timeout(7000)
     })
 
     describe("Process Results", () => {

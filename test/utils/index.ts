@@ -41,6 +41,10 @@ export function incrementTimestamp(seconds = 10): Promise<number> {
         .then(block => block.timestamp)
 }
 
+export function mineBlock(): Promise<any> {
+    return localProvider.send("evm_mine", [])
+}
+
 // TYPES
 
 export type TestAccount = {
