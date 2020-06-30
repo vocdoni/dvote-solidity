@@ -2,26 +2,25 @@
 
 ## 0.7.0
 
-- Substantial Voting contract refactor to support a wide range of participatory processes
-    - Adding `mode`, `envelopeType` and `status`
-        - Auto start
-        - Interruptible processes
-        - Vote overwrite
-        - Encrypted votes and/or metadata
-        - Serial envelope submission (assembly mode)
-        - Anonymous voters
-    - Adding `questionIndex` and `questionCount`
-    - Adding `maxValue`, `uniqueValues`, `maxTotalCost`, `costExponent`, `maxVotesOverwrite`, `paramsSignature` and `namespace`
-    - Unify the naming conventions of the getters/setters
-    - Using 5 status: `READY, ENDED, CANCELED, PAUSED, RESULTS`
-- Providing TypeScript wrappers for the process flags (mode, envelopetype and status)
+Substantial Voting contract refactor to support a wide range of participatory processes
+
+- Adding `mode`, `envelopeType` and `status` to every process
+    - Process mode flags (auto start, interruptible, dynamic census, vote overwrite, encrypted metadata)
+    - Envelope type flags (serial envelopes, anonymous voting, encrypted votes)
+    - Status (ready, ended, canceled, paused, results)
+    - Providing TypeScript wrappers to work with them
+- Adding `questionIndex` and `questionCount` for serial voting
+- Adding `maxValue`, `uniqueValues`, `maxTotalCost`, `costExponent`, `maxVotesOverwrite` and `paramsSignature` to parameterize processes
 - Introducing namespaces
-- Condensed parameters into tuples
-- `getProcessId` is now pure
+  - Chain ID, genesis data, validators and oracles now belong to a namespace
+  - Global getters are replaced by `getNamespace()`
+- Unified naming conventions for getters, setters and events
+- Condensed contract parameters into tuples
+- `getProcessId()` is now pure
   - The processId is computed using the namespace instead of the genesis data and the chainId
-- Global getters condensed into `getNamespace()`
-  - Chain ID, Genesis, validators and oracles
-- Using Solidity 0.6.9
+- Using Solidity 0.6.x
+- Testing using in-memory Ganache server, which enables self-sufficient CI tests
+- Refactoring the tests to run with Ethers.js
 
 ## 0.6.0
 
