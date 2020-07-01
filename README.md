@@ -7,7 +7,9 @@ This repo provides toolkit to interact with the EntityResolver and the VotingPro
 
 ## Get started
 
-Install NodeJS and NPM on your system.
+To get the raw JSON contract ABI and bytecode [click here](https://gitlab.com/vocdoni/dvote-solidity/-/jobs/artifacts/master/download?job=dvote-solidity-build).
+
+For JavaScript, [install NodeJS](https://www.nodejs.org) and NPM on your system.
 
 ```
 npm install dvote-solidity
@@ -29,37 +31,14 @@ console.log(VotingProcess.bytecode)
 
 If you use Typescript, you may need to add `"resolveJsonModule": true` in your `tsconfig.json` file.
 
-Then use Web3 or Ethers.js to attach to an instance or deploy your own:
+Then use a client library to attach to an instance or deploy your own:
 
-### Web3
-
-```javascript
-const Web3 = require("web3")
-const web3 = new Web3(_your_provider_)
-
-function deployEntityResolver() {
-	return web3.eth.getAccounts().then(accounts => {
-		return new web3.eth.Contract(entityResolverAbi)
-			.deploy({ data: entityResolverByteCode })
-			.send({ from: accounts[0], gas: "1300000" })
-	})
-}
-
-function deployVotingProcess() {
-	return web3.eth.getAccounts().then(accounts => {
-		return new web3.eth.Contract(votingProcessAbi)
-			.deploy({ data: votingProcessByteCode })
-			.send({ from: accounts[0], gas: "2600000" })
-	})
-}
-```
-
-### Ethers.js
+### Ethers.js (recommended)
 
 ```javascript
 const { EntityResolver, VotingProcess } = require("dvote-solidity")
 const ethers = require("ethers")
-const config = ...
+const config = { ... }
 
 const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = EntityResolver
 const { abi: votingProcessAbi, bytecode: votingProcessByteCode } = VotingProcess
@@ -89,6 +68,29 @@ const tx1 = await resolver.setText(...)
 await tx1.wait()
 const tx2 = await process.create(...)
 await tx2.wait()
+```
+
+### Web3
+
+```javascript
+const Web3 = require("web3")
+const web3 = new Web3(_your_provider_)
+
+function deployEntityResolver() {
+	return web3.eth.getAccounts().then(accounts => {
+		return new web3.eth.Contract(entityResolverAbi)
+			.deploy({ data: entityResolverByteCode })
+			.send({ from: accounts[0], gas: "1300000" })
+	})
+}
+
+function deployVotingProcess() {
+	return web3.eth.getAccounts().then(accounts => {
+		return new web3.eth.Contract(votingProcessAbi)
+			.deploy({ data: votingProcessByteCode })
+			.send({ from: accounts[0], gas: "2600000" })
+	})
+}
 ```
 
 ## Types and values
