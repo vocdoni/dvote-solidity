@@ -100,15 +100,39 @@ struct Process {
     uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/components/process
     uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/components/process
     address entityAddress; // The Ethereum address of the Entity
-    uint256 startBlock; // Tendermint block number on which the voting process starts
-    uint256 blockCount; // Amount of Tendermint blocks during which the voting process is active
+    uint64 startBlock; // Tendermint block number on which the voting process starts
+    uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
     string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
     string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
     string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
-    uint8 status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
+    Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
     uint8 questionIndex; // The index of the currently active question (only assembly processes)
-    uint8 questionCount; // How many questions the process has (only assembly processes)
-    string results; // string containing the results
+    // How many choices should be on every question.
+    // questionCount >= 1
+    uint8 questionCount;
+    // Determines the acceptable value range.
+    // N => valid votes will range from 1 to N (inclusive)
+    uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last counts)
+    uint8 maxValue;
+    // Choices for a question cannot appear twice or more
+    bool uniqueValues;
+    // Limits up to how much cost, the values of a vote can add up to (if applicable).
+    // 0 => No limit / Not applicable
+    uint16 maxTotalCost;
+    // Defines the exponent that will be used to compute the "cost" of the options voted and compare it against `maxTotalCost`.
+    // totalCost = Σ (value[i] ** costExponent) <= maxTotalCost
+    //
+    // Exponent range:
+    // - 0 => 0.0000
+    // - 10000 => 1.0000
+    // - 65535 => 6.5535
+    uint16 costExponent;
+    uint16 namespace; // See namespaces above
+    bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
+    // Self-assign to a certain namespace.
+    // This will determine the oracles that listen and react to it.
+    // Indirectly, it will also determine the Vochain that hosts this process.
+    string results; // string containing the scrutiny results
 }
 ```
 

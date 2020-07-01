@@ -93,6 +93,7 @@ contract VotingProcess {
         //
         // Exponent range:
         // - 0 => 0.0000
+        // - 10000 => 1.0000
         // - 65535 => 6.5535
         uint16 costExponent;
         uint16 namespace; // See namespaces above
