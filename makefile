@@ -49,10 +49,10 @@ build/index.js: build build/entity-resolver.json build/voting-process.json lib/i
 	$(TSC) --build tsconfig.json
 
 build/entity-resolver.json: build/solc
-	@echo "{\"abi\": $$(cat build/solc/*EntityResolver.abi), \"bytecode\": \"0x$$(cat build/solc/*EntityResolver.bin)\"}" > $@
+	@echo "{\"abi\":$$(cat build/solc/*EntityResolver.abi),\"bytecode\":\"0x$$(cat build/solc/*EntityResolver.bin)\"}" > $@
 
 build/voting-process.json:
-	@echo "{\"abi\": $$(cat build/solc/*VotingProcess.abi), \"bytecode\": \"0x$$(cat build/solc/*VotingProcess.bin)\"}" > $@
+	@echo "{\"abi\":$$(cat build/solc/*VotingProcess.abi),\"bytecode\":\"0x$$(cat build/solc/*VotingProcess.bin)\"}" > $@
 
 # Intermediate solidity compiled artifacts
 build/solc: $(CONTRACT_SOURCES)

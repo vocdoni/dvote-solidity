@@ -17,17 +17,18 @@ dvote-solidity-build:
   script:
     - apt-get install make
     - make all
+    - make test
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     paths:
       - build/
 
 
-#dvote-solidity-test:
+# dvote-solidity-test:
 #  stage: test
 #  script:
 #    - apt-get install make
-#    - make all test
+#    - make test
 
 
 # dvote-solidity-release:
