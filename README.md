@@ -1,9 +1,32 @@
 # DVote Solidity
-This repo provides toolkit to interact with the EntityResolver and the VotingProcess smart contracts.
+This repo provides toolkit to interact with the EntityResolver, the Process and the Namespace smart contracts.
 
 * Smart Contracts source code in Solidity
 * JSON files with the contract ABI and the Bytecode of each
 * JS/Typescript support to import the JSON ABI and Bytecode
+
+## Contracts
+
+### Entity Resolver
+The entity resolver is a flexible way to reference entities by their ethereum address or by the Entity ID (the hash of the address). It features the standard ENS implementation plus a specialized version of Text records that allows arrays.
+
+It is currently used for its Text records, which store a link to the Entity Metadata on IPFS.
+
+### Namespace
+
+Allows to define different voting namespaces (production, development, organization X, Y, Z, ...). A namespace contains a `chainId`, `genesis` information, `validators[]` and `oracles[]`.
+
+Every process instance (see below) has to point to one namespace contract.
+
+### Process
+
+In vocdoni, everything is a process, the main building block of any decentralized governance activity.
+
+- Allows to set the details that define the vote
+- Allows to control how the Vochain should handle the process
+- Allows to control what status clients should display
+- Acts as the persistent source of truth
+- Stores the results
 
 ## Get started
 
@@ -15,33 +38,39 @@ For JavaScript, [install NodeJS](https://www.nodejs.org) and NPM on your system.
 npm install dvote-solidity
 ```
 
+See [the example](./-/tree/master/lib/example.js) on `/lib/example.js`
+
 ## Usage
 
 To import the ABI and the bytecode:
 
 ```javascript
-const { EntityResolver, VotingProcess } = require("dvote-solidity")
+const { EntityResolver, Process, Namespace } = require("dvote-solidity")
 
 console.log(EntityResolver.abi)
 console.log(EntityResolver.bytecode)
 
-console.log(VotingProcess.abi)
-console.log(VotingProcess.bytecode)
+console.log(Process.abi)
+console.log(Process.bytecode)
+
+console.log(Namespace.abi)
+console.log(Namespace.bytecode)
 ```
 
 If you use Typescript, you may need to add `"resolveJsonModule": true` in your `tsconfig.json` file.
 
 Then use a client library to attach to an instance or deploy your own:
 
-### Ethers.js (recommended)
+### JavaScript (ethers.js)
 
 ```javascript
-const { EntityResolver, VotingProcess } = require("dvote-solidity")
+const { EntityResolver, Process } = require("dvote-solidity")
 const ethers = require("ethers")
 const config = { ... }
 
 const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = EntityResolver
-const { abi: votingProcessAbi, bytecode: votingProcessByteCode } = VotingProcess
+const { abi: processAbi, bytecode: processByteCode } = Process
+const { abi: namespaceAbi, bytecode: namespaceByteCode } = Namespace
 
 const provider = new ethers.providers.JsonRpcProvider(config.GATEWAY_URL)
 
@@ -52,25 +81,34 @@ const wallet = new ethers.Wallet(privateKey, provider);
 
 // deploying
 const resolverFactory = new ethers.ContractFactory(entityResolverAbi, entityResolverByteCode, wallet)
-const processFactory = new ethers.ContractFactory(votingProcessAbi, votingProcessByteCode, wallet)
+const processFactory = new ethers.ContractFactory(processAbi, processByteCode, wallet)
+const namespaceFactory = new ethers.ContractFactory(namespaceAbi, namespaceByteCode, wallet)
 
 const resolverInstance = await resolverFactory.deploy()
-console.log(resolverInstance.address)
+console.log("Resolver deployed at", resolverInstance.address)
 
-const processInstance = await processFactory.deploy()
-console.log(processInstance.address)
+const namespaceInstance = await namespaceFactory.deploy()
+console.log("Namespace deployed at", namespaceInstance.address)
+
+// The process contract needs the address of an already deployed namespace instance
+const predecessorInstanceAddress = "0x0000000000000000000000000000000000000000" // No predecessor
+const processInstance = await processFactory.deploy(predecessorInstanceAddress, namespaceInstance.address)
+console.log("Process deployed at", processInstance.address)
 
 // or attaching
-const resolver = new ethers.Contract(resolverAddress, entityResolverAbi, wallet);
-const process = new ethers.Contract(processAddress, votingProcessAbi, wallet);
+const resolver = new ethers.Contract(resolverAddress, entityResolverAbi, wallet)
+const process = new ethers.Contract(processAddress, processAbi, wallet)
+const namespace = new ethers.Contract(namespaceAddress, namespaceAbi, wallet)
 
 const tx1 = await resolver.setText(...)
 await tx1.wait()
-const tx2 = await process.create(...)
+const tx2 = await process.newProcess(...)
 await tx2.wait()
+const tx3 = await process.addOracle(...)
+await tx3.wait()
 ```
 
-### Web3
+### Web3.js
 
 ```javascript
 const Web3 = require("web3")
@@ -84,10 +122,10 @@ function deployEntityResolver() {
 	})
 }
 
-function deployVotingProcess() {
+function deployProcess() {
 	return web3.eth.getAccounts().then(accounts => {
-		return new web3.eth.Contract(votingProcessAbi)
-			.deploy({ data: votingProcessByteCode })
+		return new web3.eth.Contract(processAbi)
+			.deploy({ data: processByteCode })
 			.send({ from: accounts[0], gas: "2600000" })
 	})
 }
@@ -108,18 +146,27 @@ struct Process {
     string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
     string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
     Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
+    
     uint8 questionIndex; // The index of the currently active question (only assembly processes)
-    // How many choices should be on every question.
+    // How many questions are available to vote
     // questionCount >= 1
     uint8 questionCount;
+    
+    // How many choices can be made for each question.
+    // 1 <= maxCount <= 100
+    uint8 maxCount;
+    
     // Determines the acceptable value range.
-    // N => valid votes will range from 1 to N (inclusive)
-    uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last counts)
+    // N => valid votes will range from 0 to N (inclusive)
     uint8 maxValue;
+    
+    uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last one counts)
     // Choices for a question cannot appear twice or more
+    
     bool uniqueValues;
     // Limits up to how much cost, the values of a vote can add up to (if applicable).
     // 0 => No limit / Not applicable
+    
     uint16 maxTotalCost;
     // Defines the exponent that will be used to compute the "cost" of the options voted and compare it against `maxTotalCost`.
     // totalCost = Σ (value[i] ** costExponent) <= maxTotalCost
@@ -129,12 +176,16 @@ struct Process {
     // - 10000 => 1.0000
     // - 65535 => 6.5535
     uint16 costExponent;
-    uint16 namespace; // See namespaces above
-    bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
+    
     // Self-assign to a certain namespace.
     // This will determine the oracles that listen and react to it.
     // Indirectly, it will also determine the Vochain that hosts this process.
-    string results; // string containing the scrutiny results
+    
+    uint16 namespace;
+    
+    bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
+    
+    string results; // string containing the results
 }
 ```
 
@@ -156,32 +207,34 @@ The process mode affects both the Vochain, the contract itself and even the meta
      ||||`- autoStart
      |||`-- interruptible
      ||`--- dynamicCensus
-     |`---- allowVoteOverride
+     |`---- allowVoteOverwrite
      `----- encryptedMetadata
 ```
 
 ### autoStart
 
-- `false` ⇒ Will start by itself on block `startBlock`
-- `true` ⇒ Needs to be manually started by the admin
+- `false` ⇒ Needs to be set to `READY` by the creator. Starts `PAUSED` by default.
+- `true` ⇒ Will start by itself at block `startBlock`.
 
-Enforce `startBlock` > 0 accordingly
+`newProcess()` enforces `startBlock` > 0 accordingly
 
 ### interruptible
 
-- `false` ⇒ AUTO_END only
-- `true` ⇒ The admin can end, pause and cancel, in addition to AUTO_END
-    - Pausing a process prevents votes from being received. `numberOfBlocks` stays unchanged by now
+- `false` ⇒ Only the Vochain can `END` the process at block `startBlock + blockCount`
+- `true` ⇒ In addition to the above, the admin can `END`, `PAUSE` and `CANCEL`
+    - Pausing a process prevents votes from being received, `blockCount` stays unchanged by now
 
 ### dynamicCensus
 
 - `false` ⇒ Census is immutable
-- `true` ⇒ Census can be edited during the life-cycle of the process. Allowing to add, subtract new keys, or change the census entirely, to a process that has already started. The admin has the opportunity to obscurely cheat by enabling keys and then remove them
+- `true` ⇒ Census can be edited during the life-cycle of the process. Allowing to add, subtract new keys, or change the census entirely, to a process that has already started.
+    - Intended for long-term polls
+    - Warning: The admin has the opportunity to obscurely cheat by enabling keys and then removing them
 
-### allowVoteOverride
+### allowVoteOverwrite
 
 - `false` ⇒ Only the first vote is counted
-- `true` ⇒ The last vote is valid. The previous one can be overwritten up to `maxVoteOverwrites` times.
+- `true` ⇒ The last vote is counted. The previous vote can be overwritten up to `maxVoteOverwrites` times.
 
 ### encryptedMetadata
 
@@ -234,18 +287,20 @@ The envelope type tells how the vote envelope is formatted and handled. Its valu
 
 ### serial
 
-- `false` Only one envelope is expected with all votes
-- `true` The process accepts an envelope for each question
+- `false` A single envelope is expected with all votes in it
+- `true` An envelope needs to be sent for each question, as `questionIndex` increases
 
 ### anonymous
 
-- `false` The voter identity (public key) can be known and therefore we say the vote is pseudonymous. If  an observer can correlate the voter public key with personal data the voter can be identified.
-- `true` The voter public key won't be known. Instead, the voter will prove that it can vote by computing a ZK-Snarks proof on its device.
+- `false` The voter identity (public key) can be known and therefore, the vote is pseudonymous. If an observer can correlate the voter public key with personal data, the voter could be identified.
+- `true` The voter public key can't be known. Instead, the voter will submit a ZK-snark proof, ensuring that:
+  - He/she belongs to the census of the process
+  - He/she has not already voted on the process
 
 ### encryptedVote
 
 - `false` Votes are sent in plain text. Results can be seen in real time.
-- `true` The vote payload will be encrypted. The results will only be available once the encryption key is published at the end of the process by the miners.
+- `true` The vote payload will be encrypted. The results will become available once the encryption key is published at the end of the process by the miners.
 
 ### JavaScript wrapper
 
@@ -278,7 +333,7 @@ The status of a process is a simple enum, defined as follows:
 
 - `READY` (0)
   - The process is marked as ready. It is intended as a **passive authorization** to open the process
-  - Vochain nodes will accept incoming votes if `AUTO_START` is enabled
+  - Vochain nodes will accept incoming votes if `AUTO_START` is disabled
   - Otherwise, they will accept votes when the Vochain block number reaches `startBlock`
 - `ENDED` (1)
   - Tells the Vochain to stop accepting votes and start computing the results (if not already available)
@@ -306,143 +361,181 @@ Feel free to contribute any additional test cases that you consider necessary.
 
 ```mocha
   Entity Resolver
-    ✓ Should deploy the contract (112ms)
-    ✓ Should compute the ID of an entity by its address (194ms)
+    ✓ Should deploy the contract (685ms)
+    ✓ Should compute the ID of an entity by its address (1056ms)
     Text Records
-      ✓ Should set a Text record and keep the right value (159ms)
-      ✓ Should override an existing Text record (111ms)
-      ✓ Should reject updates from extraneous accounts (184ms)
-      ✓ Should override the entity name (213ms)
-      ✓ Should emit an event (4013ms)
+      ✓ Should set a Text record and keep the right value (954ms)
+      ✓ Should override an existing Text record (631ms)
+      ✓ Should reject updates from extraneous accounts (1397ms)
+      ✓ Should override the entity name (1363ms)
+      ✓ Should emit an event (4020ms)
     Text List records
-      ✓ Push a Text List record (271ms)
-      ✓ Set a Text List record (395ms)
-      ✓ Remove a Text List record (810ms)
-      ✓ Should fail updating non-existing indexes
-      ✓ Should fail removing non-existing indexes (469ms)
-      ✓ Should reject pushing values from extraneous accounts (117ms)
-      ✓ Should reject setting values from extraneous accounts (264ms)
-      ✓ Should emit events on push (929ms)
-      ✓ Should emit events on update (3920ms)
-      ✓ Should emit events on remove (3932ms)
+      ✓ Push a Text List record (1521ms)
+      ✓ Set a Text List record (2260ms)
+      ✓ Remove a Text List record (4342ms)
+      ✓ Should fail updating non-existing indexes (142ms)
+      ✓ Should fail removing non-existing indexes (2591ms)
+      ✓ Should reject pushing values from extraneous accounts (538ms)
+      ✓ Should reject setting values from extraneous accounts (1117ms)
+      ✓ Should emit events on push (447ms)
+      ✓ Should emit events on update (3458ms)
+      ✓ Should emit events on remove (3914ms)
 
-  Voting Process
-    ✓ should deploy the contract (432ms)
-    ✓ should compute a processId from the entity address, index and namespace (130ms)
-    ✓ should compute the next processId (437ms)
+  Namespace contract
+    ✓ should deploy the contract (192ms)
     Namespace management
-      ✓ should set a whole namespace at once (1461ms)
-      ✓ should allow only the contract creator to update a namespace (42ms)
-      ✓ should emit an event (2801ms)
+      ✓ should set a whole namespace at once (1774ms)
+      ✓ should allow only the contract creator to update a namespace (43ms)
+      ✓ should emit an event (367ms)
     ChainID updates
       ✓ only contract creator
-      ✓ should persist (80ms)
-      ✓ should fail if duplicated (91ms)
-      ✓ should emit an event (2025ms)
+      ✓ should persist (123ms)
+      ✓ should fail if duplicated (104ms)
+      ✓ should emit an event (2584ms)
     Genesis updates
       ✓ only contract creator
-      ✓ should persist (188ms)
-      ✓ should fail if duplicated (91ms)
-      ✓ should emit an event (2050ms)
+      ✓ should persist (259ms)
+      ✓ should fail if duplicated (101ms)
+      ✓ should emit an event (2452ms)
     Validator inclusion
-      ✓ only when the contract owner requests it (164ms)
-      ✓ should add the validator public key to the validator list (238ms)
-      ✓ should fail if it is already present (162ms)
-      ✓ should add the validator to the right namespace (199ms)
-      ✓ should emit an event (1165ms)
+      ✓ only when the contract owner requests it (431ms)
+      ✓ should add the validator public key to the validator list (462ms)
+      ✓ should fail if it is already present (427ms)
+      ✓ should add the validator to the right namespace (402ms)
+      ✓ should emit an event (864ms)
     Validator removal
-      ✓ only when the contract owner account requests it (259ms)
-      ✓ should fail if the idx does not match validatorPublicKey (168ms)
-      ✓ should remove from the right namespace (212ms)
-      ✓ should emit an event (1725ms)
+      ✓ only when the contract owner account requests it (484ms)
+      ✓ should fail if the idx does not match validatorPublicKey (408ms)
+      ✓ should remove from the right namespace (443ms)
+      ✓ should emit an event (1235ms)
     Oracle inclusion
-      ✓ only when the contract owner requests it (152ms)
-      ✓ should add the oracle address to the oracle list (194ms)
-      ✓ should fail if it is already present (135ms)
-      ✓ should add the validator to the right namespace (180ms)
-      ✓ should emit an event (1186ms)
+      ✓ only when the contract owner requests it (1008ms)
+      ✓ should add the oracle address to the oracle list (1037ms)
+      ✓ should fail if it is already present (1012ms)
+      ✓ should add the validator to the right namespace (1035ms)
+      ✓ should emit an event (2415ms)
     Oracle removal
-      ✓ only when the contract owner requests it (227ms)
-      ✓ should fail if the idx is not valid (215ms)
-      ✓ should fail if the idx does not match oracleAddress (189ms)
-      ✓ should remove from the right namespace (206ms)
-      ✓ should emit an event (1091ms)
+      ✓ only when the contract owner requests it (1068ms)
+      ✓ should fail if the idx is not valid (1058ms)
+      ✓ should fail if the idx does not match oracleAddress (1393ms)
+      ✓ should remove from the right namespace (1022ms)
+      ✓ should emit an event (2119ms)
+
+  Process contract
+    ✓ should deploy the contract (1456ms)
+    ✓ should fail deploying if the predecessor address is not a contract (354ms)
+    ✓ should fail deploying if the namespace address is not a contract (727ms)
+    ✓ should compute a processId from the entity address, index and namespace (102ms)
+    ✓ should compute the next processId (275ms)
     Process Creation
-      ✓ should allow anyone to create a process (468ms)
-      ✓ retrieved metadata should match the one submitted (3209ms)
-      ✓ getting a non-existent process should fail (52ms)
-      ✓ unwrapped metadata should match the unwrapped response (784ms)
-      ✓ should increment the processCount of the entity on success (222ms)
+      ✓ should allow anyone to create a process (478ms)
+      ✓ retrieved metadata should match the one submitted (3119ms)
+      ✓ getting a non-existent process should fail (59ms)
+      ✓ unwrapped metadata should match the unwrapped response (745ms)
+      ✓ paramsSignature should match the given one (681ms)
+      ✓ should increment the processCount of the entity on success (199ms)
       ✓ should fail with auto start set and startBlock being zero
       ✓ should fail if not interruptible and blockCount is zero
       ✓ should fail if the metadata or census references are empty
       ✓ should fail if questionCount is zero
-      ✓ should fail if allowVoteOverwrite is set but maxVoteOverwrites is zero
+      ✓ should fail if maxCount is zero or above 100 (52ms)
       ✓ should fail if maxValue is zero
-      ✓ should not increment the processCount of the entity on error (45ms)
-      ✓ should emit an event (1836ms)
+      ✓ should fail if allowVoteOverwrite is set but maxVoteOverwrites is zero
+      ✓ should not increment the processCount of the entity on error (48ms)
+      ✓ should emit an event (3017ms)
     Process Status
-      ✓ setting the status of a non-existent process should fail (52ms)
-      ✓ should create paused processes by default (410ms)
-      ✓ should create processes in ready status when autoStart is set (394ms)
-      ✓ should reject invalid status codes (554ms)
-      ✓ should emit an event (14902ms)
+      ✓ setting the status of a non-existent process should fail (62ms)
+      ✓ should create paused processes by default (643ms)
+      ✓ should create processes in ready status when autoStart is set (615ms)
+      ✓ should reject invalid status codes (770ms)
+      ✓ should emit an event (15750ms)
       Not interruptible
-        ✓ should allow paused => ready (the first time) if autoStart is not set (658ms)
-        ✓ should reject any other status update (656ms)
+        ✓ should allow paused => ready (the first time) if autoStart is not set (1178ms)
+        ✓ should reject any other status update (934ms)
       Interruptible
         from ready
-          ✓ should fail if setting to ready (510ms)
-          ✓ should allow to set to paused (600ms)
-          ✓ should allow to set to ended (550ms)
-          ✓ should allow to set to canceled (687ms)
-          ✓ should fail if setting to results (494ms)
-          ✓ should fail if someone else tries to update the status (2310ms)
+          ✓ should fail if setting to ready (638ms)
+          ✓ should allow to set to paused (903ms)
+          ✓ should allow to set to ended (743ms)
+          ✓ should allow to set to canceled (900ms)
+          ✓ should fail if setting to results (681ms)
+          ✓ should fail if someone else tries to update the status (1922ms)
         from paused
-          ✓ should allow to set to ready (715ms)
-          ✓ should fail if setting to paused (780ms)
-          ✓ should allow to set to ended (537ms)
-          ✓ should allow to set to canceled (543ms)
-          ✓ should fail if setting to results (608ms)
-          ✓ should fail if someone else tries to update the status (2292ms)
+          ✓ should allow to set to ready (787ms)
+          ✓ should fail if setting to paused (679ms)
+          ✓ should allow to set to ended (771ms)
+          ✓ should allow to set to canceled (748ms)
+          ✓ should fail if setting to results (658ms)
+          ✓ should fail if someone else tries to update the status (2885ms)
         from ended
-          ✓ should never allow the status to be updated [creator] (766ms)
-          ✓ should never allow the status to be updated [other account] (1455ms)
+          ✓ should never allow the status to be updated [creator] (869ms)
+          ✓ should never allow the status to be updated [other account] (2317ms)
         from canceled
-          ✓ should never allow the status to be updated [creator] (625ms)
-          ✓ should never allow the status to be updated [other account] (1409ms)
+          ✓ should never allow the status to be updated [creator] (853ms)
+          ✓ should never allow the status to be updated [other account] (1878ms)
         from results
-          ✓ should never allow the status to be updated [creator] (785ms)
-          ✓ should never allow the status to be updated [other account] (1589ms)
+          ✓ should never allow the status to be updated [creator] (908ms)
+          ✓ should never allow the status to be updated [other account] (2156ms)
         only the oracle
-          ✓ can set the results (1312ms)
+          ✓ can set the results (1204ms)
     Serial envelope
-      ✓ incrementing the question index of a non-existent process should fail (66ms)
-      ✓ The question index should be read-only by default (410ms)
-      ✓ The question index can be incremented in serial envelope mode (547ms)
-      ✓ Should only allow the process creator to increment (520ms)
-      ✓ Should fail if the process is paused (478ms)
-      ✓ Should fail if the process is terminated (1548ms)
-      ✓ Should end a process after the last question has been incremented (893ms)
-      ✓ Should emit an event when the current question is incremented (3256ms)
-      ✓ Should emit an event when question increment ends the process (3623ms)
+      ✓ incrementing the question index of a non-existent process should fail (172ms)
+      ✓ The question index should be read-only by default (696ms)
+      ✓ The question index can be incremented in serial envelope mode (886ms)
+      ✓ Should only allow the process creator to increment (801ms)
+      ✓ Should fail if the process is paused (765ms)
+      ✓ Should fail if the process is terminated (2338ms)
+      ✓ Should end a process after the last question has been incremented (1095ms)
+      ✓ Should emit an event when the current question is incremented (4591ms)
+      ✓ Should emit an event when question increment ends the process (3393ms)
     Dynamic Census
-      ✓ setting the census of a non-existent process should fail (71ms)
-      ✓ Should keep the census read-only by default (876ms)
-      ✓ Should allow to update the census in dynamic census mode (986ms)
-      ✓ Should only allow the creator to update the census (493ms)
-      ✓ Should fail updating the census on terminated processes (1974ms)
-      ✓ should emit an event (1113ms)
+      ✓ setting the census of a non-existent process should fail (86ms)
+      ✓ Should keep the census read-only by default (1398ms)
+      ✓ Should allow to update the census in dynamic census mode (1941ms)
+      ✓ Should only allow the creator to update the census (799ms)
+      ✓ Should fail updating the census on terminated processes (2349ms)
+      ✓ should emit an event (1711ms)
     Process Results
-      ✓ getting the results of a non-existent process should fail (127ms)
-      ✓ setting results on a non-existent process should fail (156ms)
-      ✓ should be accepted when the sender is a registered oracle (217ms)
-      ✓ should be accepted when the processId exists (111ms)
-      ✓ should not be accepted when the process is canceled (568ms)
-      ✓ should retrieve the submited results (257ms)
-      ✓ allow oracles to set the results (1214ms)
-      ✓ should prevent publishing twice (239ms)
-      ✓ should emit an event (1280ms)
+      ✓ getting the results of a non-existent process should fail (54ms)
+      ✓ setting results on a non-existent process should fail (686ms)
+      ✓ should be accepted when the sender is a registered oracle (242ms)
+      ✓ should be accepted when the processId exists (740ms)
+      ✓ should not be accepted when the process is canceled (1070ms)
+      ✓ should retrieve the submited results (725ms)
+      ✓ should allow oracles to set the results (1292ms)
+      ✓ should prevent publishing twice (821ms)
+      ✓ should emit an event (896ms)
+    Namespace management
+      ✓ should allow to retrieve the current namespace contract address (617ms)
+      ✓ should allow the contract creator to update the namespace contract address (368ms)
+      ✓ should fail if someone else attempts to update the namespace contract address (657ms)
+      ✓ should stop allowing setResults from an oracle that no longer belongs to the new instance (1912ms)
+      ✓ should emit an event (1232ms)
+    Instance forking
+      ✓ should allow to deploy a contract with no predecessorAddress (422ms)
+      ✓ should not allow to deploy with itself as a predecessor (289ms)
+      ✓ should retrieve the predecessorAddress if set (1023ms)
+      ✓ should retrieve the successorAddress if set (1160ms)
+      ✓ should have no successor by default (1041ms)
+      ✓ should allow to read processes on the old instance from the new one (1808ms)
+      ✓ should get the instance address where a process was originally created (2385ms)
+      ✓ reading from non-existing processes should fail the same from a forked instance (1268ms)
+      ✓ getEntityProcessCount should count both new and old processes (3478ms)
+      ✓ namespace data should stay the same after a fork (1023ms)
+    Instance activation
+      ✓ should retrieve the activationBlock if set (1538ms)
+      ✓ should not allow to create new processes before it has been activated (1139ms)
+      ✓ should allow to create new processes after the predecessor activates it (1365ms)
+      ✓ should not allow to create new processes after a successor has been activated (1275ms)
+      ✓ should not allow to update the census after a successor has been activated (1202ms)
+      ✓ should allow to update the status, questionIndex and results after a successor has been activated (1527ms)
+      ✓ only the predecessor should be able to activate a new contract (2300ms)
+      ✓ only the contract owner should be able to call activateSuccessor contract (1270ms)
+      ✓ should not allow to activate itself as a successor (636ms)
+      ✓ should not allow to activate if not active itself (1597ms)
+      ✓ should fail activating with no predecessor defined (1243ms)
+      ✓ can only be deactivated once (1281ms)
+      ✓ can only be activated once (640ms)
 
   Envelope Type wrapper
     ✓ Should build correct bitmasks
@@ -463,6 +556,6 @@ Feel free to contribute any additional test cases that you consider necessary.
     ✓ should fail on invalid process status
 
 
-  123 passing (2m)
+  156 passing (5m)
 ```
 

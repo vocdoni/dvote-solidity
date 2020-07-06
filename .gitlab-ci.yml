@@ -22,6 +22,16 @@ dvote-solidity-build:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     paths:
       - build/
+  only:
+    changes:
+      - contracts/**/*
+      - lib/**/*
+      - test/**/*
+      - makefile
+      - package-lock.json
+      - package.json
+      - tsconfig.json
+      - .gitlab-ci.yml
 
 
 # dvote-solidity-test:

@@ -1,7 +1,7 @@
 
 import "mocha" // using @types/mocha
 import { expect } from "chai"
-import { Contract, Wallet, ContractFactory, utils, ContractTransaction } from "ethers"
+import { Contract, ContractFactory, utils, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
 import { EntityResolverContractMethods } from "../../lib"
@@ -23,7 +23,6 @@ let tx: ContractTransaction
 addCompletionHooks()
 
 describe('Entity Resolver', function () {
-
     const textRecordKey1 = "vnd.vocdoni.record1"
     const listRecordKey1 = "vnd.vocdoni.push-list"
 
@@ -428,4 +427,4 @@ describe('Entity Resolver', function () {
             expect(result3.index.toString()).to.equal("0")
         }).timeout(8000)
     })
-})
+}).timeout(4000)

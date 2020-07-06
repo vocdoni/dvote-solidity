@@ -3,9 +3,9 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "./profiles/AddrResolver.sol";
-import "./profiles/TextResolver.sol";
-import "./profiles/TextListResolver.sol";
+import "./profiles/addr-resolver.sol";
+import "./profiles/text-resolver.sol";
+import "./profiles/text-list-resolver.sol";
 
 
 contract EntityResolver is AddrResolver, TextResolver, TextListResolver {
