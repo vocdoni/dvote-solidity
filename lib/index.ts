@@ -1,5 +1,6 @@
 import * as EntityResolver from "./entity-resolver.json"
-import * as VotingProcess from "./voting-process.json"
+import * as Process from "./process.json"
+import * as Namespace from "./namespace.json"
 
 import { ContractTransaction } from "ethers"
 import { BigNumber } from "ethers/utils"
@@ -9,7 +10,8 @@ import { BigNumber } from "ethers/utils"
 ///////////////////////////////////////////////////////////////////////////////
 
 export { EntityResolver }
-export { VotingProcess }
+export { Process }
+export { Namespace }
 
 ///////////////////////////////////////////////////////////////////////////////
 // ENTITY RESOLVER TYPES
@@ -211,7 +213,7 @@ type WrappedProcessCreateParams = [
     string[], // metadata_censusMerkleRoot_censusMerkleTree
     number | BigNumber, // startBlock
     number, // blockCount
-    number[], // questionCount_maxVoteOverwrites_maxValue
+    number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     boolean, // uniqueValues
     number[], // maxTotalCost_costExponent
     number, // namespace
@@ -224,11 +226,9 @@ type WrappedProcessState = [
     BigNumber, // startBlock
     number, // blockCount
     IProcessStatus, // status
-    number[], // questionIndex_questionCount_maxVoteOverwrites_maxValue
+    number[], // questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites
     boolean, // uniqueValues
-    number[], // maxTotalCost_costExponent
-    number, // namespace
-    string // paramsSignature
+    number[] // maxTotalCost_costExponent_namespace
 ]
 
 /** Smart Contract operations for a Voting Process contract */
@@ -241,20 +241,21 @@ export interface ProcessContractMethods {
     getNextProcessId(entityAddress: string, namespace: number): Promise<string>,
     /** Compute the process ID that corresponds to the given parameters */
     getProcessId(entityAddress: string, processCountIndex: number, namespace: number): Promise<string>,
-    /** Get the windex within the global array where the given process is stored */
-    getProcessIndex(processId: string): Promise<BigNumber>,
+
+    // GLOBAL VARIABLES
+    /** The block at which the contract became active. If it is zero, then it still needs activation from its predecessor. */
+    activationBlock(): Promise<BigNumber>
+    /** The address of the contract in operation before us. It if is zero, it means that we are the first instance. */
+    predecessorAddress(): Promise<string>
+    /** The address of our successor. If zero, it means that we are the current active instance.
+     * Otherwise, new processes need to be created on the last successor instance.
+     */
+    successorAddress(): Promise<string>
+    /** The address of the contract that defined the details of all namespaces */
+    namespaceAddress(): Promise<string>
 
     // GETTERS
 
-    /**
-     * Retrieve all the fields of the given namespace:
-     * `[ chainId: string, genesis: string,validators: string[],oracles: string[] ]`
-     * */
-    getNamespace(namespace: number): Promise<[string, string, string[], string[]]>,
-    /** Checks whether the given public key is registered as a validator in the given namespace */
-    isValidator(namespace: number, validatorPublicKey: string): Promise<boolean>,
-    /** Checks whether the given address is registered as an oracle in the given namespace */
-    isOracle(namespace: number, oracleAddress: string): Promise<boolean>,
     /**
      * Retrieve the on-chain parameters for the given process:
      * 
@@ -265,7 +266,7 @@ export interface ProcessContractMethods {
         blockCount: number,
         metadata_censusMerkleRoot_censusMerkleTree: string[],
         status: IProcessStatus,
-        questionIndex_questionCount_maxVoteOverwrites_maxValue: number[],
+        questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites: number[],
         uniqueValues: boolean,
         maxTotalCost_costExponent: number[],
         namespace: number,
@@ -274,11 +275,62 @@ export interface ProcessContractMethods {
      */
     get(processId: string): Promise<WrappedProcessState>,
     /** Retrieve the available results for the given process */
+    getParamsSignature(processId: string): Promise<{ paramsSignature: string }>
+    /** Retrieve the available results for the given process */
     getResults(processId: string): Promise<{ results: string }>
+    /** Gets the address of the process instance where the given processId was originally created. 
+     * This allows to know where to send update transactions, after a fork has occurred. */
+    getCreationInstance(processId): Promise<string>,
 
     // GLOBAL METHODS
 
-    /** Set all fields of a certain namespace */
+    /** Sets the current instance as active, if not already */
+    activate(): Promise<ContractTransaction>,
+    /** Sets the target instance as the successor and deactivates the current one */
+    activateSuccessor(successor: string): Promise<ContractTransaction>,
+    /** Updates the address of the contract holding the details of the active namespaces */
+    setNamespaceAddress(namespaceAddr: string): Promise<ContractTransaction>,
+
+    // PER-PROCESS METHODS
+
+    /**
+     * Publish a new voting process using the given parameters
+     * 
+     * ```[
+        mode_envelopeType: number[], 
+        metadata_censusMerkleRoot_censusMerkleTree: string[], 
+        startBlock: number | BigNumber, 
+        blockCount: number, 
+        questionCount_maxCount_maxValue_maxVoteOverwrites: number[], 
+        uniqueValues: boolean, 
+        maxTotalCost_costExponent: number[], 
+        namespace: number, 
+        paramsSignature: string 
+     * ]```
+     * */
+    newProcess(...args: WrappedProcessCreateParams): Promise<ContractTransaction>,
+    /** Update the process status that corresponds to the given ID */
+    setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
+    /** Increments the index of the current question (only when INCREMENTAL mode is set) */
+    incrementQuestionIndex(processId: string): Promise<ContractTransaction>
+    /** Updates the census of the given process (only if the mode allows dynamic census) */
+    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
+    /** Sets the given results for the given process */
+    setResults(processId: string, results: string): Promise<ContractTransaction>,
+}
+
+/** Smart Contract operations for a Namespace */
+export interface NamespaceContractMethods {
+    // GETTERS
+
+    /** Retrieve all the fields of the given namespace: `[ chainId: string, genesis: string,validators: string[],oracles: string[] ]` */
+    getNamespace(namespace: number): Promise<[string, string, string[], string[]]>,
+    /** Checks whether the given public key is registered as a validator in the given namespace */
+    isValidator(namespace: number, validatorPublicKey: string): Promise<boolean>,
+    /** Checks whether the given address is registered as an oracle in the given namespace */
+    isOracle(namespace: number, oracleAddress: string): Promise<boolean>,
+
+    // SETTERS
     setNamespace(namespace: number, chainId: string, genesis: string, validators: string[], oracles: string[]): Promise<ContractTransaction>,
     /** Update the Chain ID of the given namespace */
     setChainId(namespace: number, chainId: string): Promise<ContractTransaction>,
@@ -292,33 +344,6 @@ export interface ProcessContractMethods {
     addOracle(namespace: number, oracleAddr: string): Promise<ContractTransaction>,
     /** Removes the address at the given index for an oracle */
     removeOracle(namespace: number, idx: number, oracleAddr: string): Promise<ContractTransaction>,
-
-    // ENTITY METHODS
-
-    /**
-     * Publish a new voting process using the given parameters
-     * 
-     * ```[
-        mode_envelopeType: number[], 
-        metadata_censusMerkleRoot_censusMerkleTree: string[], 
-        startBlock: number | BigNumber, 
-        blockCount: number, 
-        questionCount_maxVoteOverwrites_maxValue: number[], 
-        uniqueValues: boolean, 
-        maxTotalCost_costExponent: number[], 
-        namespace: number, 
-        paramsSignature: string 
-     * ]```
-     * */
-    create(...args: WrappedProcessCreateParams): Promise<ContractTransaction>,
-    /** Update the process status that corresponds to the given ID */
-    setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
-    /** Increments the index of the current question (only when INCREMENTAL mode is set) */
-    incrementQuestionIndex(processId: string): Promise<ContractTransaction>
-    /** Updates the census of the given process (only if the mode allows dynamic census) */
-    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
-    /** Sets the given results for the given process */
-    setResults(processId: string, results: string): Promise<ContractTransaction>,
 }
 
 // HELPERS
@@ -332,8 +357,9 @@ type JsonProcessCreateParams = {
     startBlock: number | BigNumber,
     blockCount: number,
     questionCount: number,
-    maxVoteOverwrites: number,
+    maxCount: number,
     maxValue: number,
+    maxVoteOverwrites: number,
     uniqueValues: boolean,
     maxTotalCost: number,
     costExponent: number,
@@ -352,13 +378,13 @@ type JsonProcessState = {
     status: IProcessStatus,
     questionIndex: number,
     questionCount: number,
-    maxVoteOverwrites: number,
+    maxCount: number,
     maxValue: number,
+    maxVoteOverwrites: number,
     uniqueValues: boolean,
     maxTotalCost: number,
     costExponent: number,
-    namespace: number,
-    paramsSignature: string
+    namespace: number
 }
 
 /** Arrange the JSON object into the parameters for `create()` */
@@ -368,7 +394,7 @@ export function wrapProcessCreateParams(input: JsonProcessCreateParams): Wrapped
         [input.metadata, input.censusMerkleRoot, input.censusMerkleTree], // metadata_censusMerkleRoot_censusMerkleTree: string
         input.startBlock, // number | startBlock: BigNumber
         input.blockCount,   // blockCount: number
-        [input.questionCount, input.maxVoteOverwrites, input.maxValue], // questionCount_maxVoteOverwrites_maxValue: number
+        [input.questionCount, input.maxCount, input.maxValue, input.maxVoteOverwrites], // questionCount_maxCount_maxValue_maxVoteOverwrites: number
         input.uniqueValues,            // uniqueValues: boolean
         [input.maxTotalCost, input.costExponent], // maxTotalCost_costExponent: number
         input.namespace, // namespace: number
@@ -378,7 +404,7 @@ export function wrapProcessCreateParams(input: JsonProcessCreateParams): Wrapped
 
 /** Convert the output data from `get()` into a JSON object */
 export function unwrapProcessState(output: WrappedProcessState): JsonProcessState {
-    if (!Array.isArray(output)) throw new Error("Invalid output")
+    if (!Array.isArray(output)) throw new Error("Invalid process output")
 
     return {
         mode: output[0][0],
@@ -392,12 +418,12 @@ export function unwrapProcessState(output: WrappedProcessState): JsonProcessStat
         status: output[5],
         questionIndex: output[6][0],
         questionCount: output[6][1],
-        maxVoteOverwrites: output[6][2],
+        maxCount: output[6][2],
         maxValue: output[6][3],
+        maxVoteOverwrites: output[6][4],
         uniqueValues: output[7],
         maxTotalCost: output[8][0],
         costExponent: output[8][1],
-        namespace: output[9],
-        paramsSignature: output[10]
+        namespace: output[8][2]
     }
 }

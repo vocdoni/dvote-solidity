@@ -1,5 +1,18 @@
 # DVote Solidity Changelog
 
+## 0.8.0
+
+- The process contracts are now future proof
+  - Instances can now be frozen and forked
+  - Process state can be retrieved from any predecessor
+  - Two new methods are available `activate` and `activateSuccessor`, to handle the transition with a single source of truth at all times
+  - For future versions to interact with deprecated ones, `ProcessStore` is now available as an interface
+  - Calls on processes created before `activationBlock` will be forwarded to the instance that holds them
+  - Updates on predecessor instances need to be made there, since `msg.sender` would not allow forwarding from the successor
+  - Inactive instances won't allow to create new processes or update the census
+- The namespace data has been moved to a separate contract (Namespaces)
+  - The `NamespaceStore` interface is also available, for all versions to be able to reference it
+
 ## 0.7.0
 
 Substantial Voting contract refactor to support a wide range of participatory processes

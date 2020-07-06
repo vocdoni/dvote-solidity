@@ -2,7 +2,7 @@
 
 pragma solidity ^0.6.0;
 
-import "../EntityResolverBase.sol";
+import "../entity-resolver-base.sol";
 
 
 abstract contract TextResolver is ResolverBase {
