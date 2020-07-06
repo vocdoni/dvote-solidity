@@ -5,6 +5,17 @@ This repo provides toolkit to interact with the EntityResolver, the Process and 
 * JSON files with the contract ABI and the Bytecode of each
 * JS/Typescript support to import the JSON ABI and Bytecode
 
+
+## Goerli (deployment)
+
+- Entity resolver deployed at `0x7fBf10CE8b0cF34b6F8104A83387ACe6E4b067eE`
+  - ENS: `entities.dev.vocdoni.eth`
+- Namespace deployed at `0xCB0d4fDeB158611c31550BCF5715617402adfAF4`
+- Process deployed at `0x0932D53F7545d39a747C68DD327e330daf104385`
+  - Predecessor: `0x0000000000000000000000000000000000000000`
+  - Namespace: `0xCB0d4fDeB158611c31550BCF5715617402adfAF4`
+  - ENS: `processes.dev.vocdoni.eth`
+
 ## Contracts
 
 ### Entity Resolver
