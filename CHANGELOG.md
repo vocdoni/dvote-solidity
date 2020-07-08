@@ -1,5 +1,11 @@
 # DVote Solidity Changelog
 
+## 0.9.0
+
+- Adding `ProcessContractParameters` to wrap and upwrap the params tuples submitted and retrieved from the Smart Contract
+- Removing `wrapProcessCreateParams` and `unwrapProcessState`
+- Allowing to read the raw `value` from `ProcessMode`, `ProcessEnvelopeType` and `ProcessStatus`
+
 ## 0.8.0
 
 - The process contracts are now future proof

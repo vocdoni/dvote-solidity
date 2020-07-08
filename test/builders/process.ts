@@ -1,4 +1,4 @@
-import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespaceContractMethods, wrapProcessCreateParams } from "../../lib/index"
+import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespaceContractMethods, ProcessContractParameters } from "../../lib/index"
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 import NamespaceBuilder from "./namespace"
@@ -91,7 +91,7 @@ export default class ProcessBuilder {
         contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
 
         for (let i = 0; i < processCount; i++) {
-            const params = wrapProcessCreateParams({
+            const params = ProcessContractParameters.fromParams({
                 mode: this.mode,
                 envelopeType: this.envelopeType,
                 metadata: this.metadata,
@@ -108,7 +108,7 @@ export default class ProcessBuilder {
                 costExponent: this.costExponent,
                 namespace: this.namespace,
                 paramsSignature: this.paramsSignature
-            })
+            }).toContractParams()
             await contractInstance.newProcess(...params)
         }
 
@@ -202,7 +202,7 @@ export default class ProcessBuilder {
     // STATIC
 
     static createDefaultProcess(contractInstance: Contract & ProcessContractMethods) {
-        const params = wrapProcessCreateParams({
+        const params = ProcessContractParameters.fromParams({
             mode: DEFAULT_PROCESS_MODE,
             envelopeType: DEFAULT_ENVELOPE_TYPE,
             metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
@@ -219,7 +219,7 @@ export default class ProcessBuilder {
             costExponent: DEFAULT_COST_EXPONENT,
             namespace: DEFAULT_NAMESPACE,
             paramsSignature: DEFAULT_PARAMS_SIGNATURE
-        })
+        }).toContractParams()
         return contractInstance.newProcess(...params).then(tx => tx.wait())
     }
 }

@@ -1,14 +1,14 @@
 import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { addCompletionHooks } from "../utils/mocha-hooks"
-import { ProcessStatus, IProcessStatus, wrapProcessCreateParams, unwrapProcessState } from "../../lib"
+import { ProcessContractParameters } from "../../lib"
 import { BigNumber } from "ethers/utils"
 
 addCompletionHooks()
 
 describe("Process contract parameter wrapper", () => {
     it("should wrap the 'create' input parameters", () => {
-        const params1 = wrapProcessCreateParams({
+        const params1 = ProcessContractParameters.fromParams({
             mode: 12,
             envelopeType: 34,
             metadata: "56",
@@ -25,7 +25,8 @@ describe("Process contract parameter wrapper", () => {
             costExponent: 88,
             namespace: 99,
             paramsSignature: "0x0100"
-        })
+        }).toContractParams()
+
         expect(params1[0][0]).to.eq(12)
         expect(params1[0][1]).to.eq(34)
         expect(params1[1][0]).to.eq("56")
@@ -43,7 +44,7 @@ describe("Process contract parameter wrapper", () => {
         expect(params1[7]).to.eq(99)
         expect(params1[8]).to.eq("0x0100")
 
-        const params2 = wrapProcessCreateParams({
+        const params2 = ProcessContractParameters.fromParams({
             mode: 21,
             envelopeType: 43,
             metadata: "65",
@@ -60,7 +61,8 @@ describe("Process contract parameter wrapper", () => {
             costExponent: 888,
             namespace: 999,
             paramsSignature: "0x1000"
-        })
+        }).toContractParams()
+
         expect(params2[0][0]).to.eq(21)
         expect(params2[0][1]).to.eq(43)
         expect(params2[1][0]).to.eq("65")
@@ -80,7 +82,7 @@ describe("Process contract parameter wrapper", () => {
     })
 
     it("should unwrap the 'get' response values", () => {
-        const json1 = unwrapProcessState([
+        const json1 = ProcessContractParameters.fromContract([
             [1, 2],
             "0x3",
             ["0x4", "0x5", "0x6"],
@@ -92,15 +94,15 @@ describe("Process contract parameter wrapper", () => {
             [16, 17, 18]
         ])
 
-        expect(json1.mode).to.eq(1)
-        expect(json1.envelopeType).to.eq(2)
+        expect(json1.mode.value).to.eq(1)
+        expect(json1.envelopeType.value).to.eq(2)
         expect(json1.entityAddress).to.eq("0x3")
         expect(json1.metadata).to.eq("0x4")
         expect(json1.censusMerkleRoot).to.eq("0x5")
         expect(json1.censusMerkleTree).to.eq("0x6")
-        expect(json1.startBlock.toNumber()).to.eq(7)
+        expect(json1.startBlock).to.eq(7)
         expect(json1.blockCount).to.eq(8)
-        expect(json1.status).to.eq(0)
+        expect(json1.status.value).to.eq(0)
         expect(json1.questionIndex).to.eq(11)
         expect(json1.questionCount).to.eq(12)
         expect(json1.maxCount).to.eq(13)
@@ -111,7 +113,7 @@ describe("Process contract parameter wrapper", () => {
         expect(json1.costExponent).to.eq(17)
         expect(json1.namespace).to.eq(18)
 
-        const json2 = unwrapProcessState([
+        const json2 = ProcessContractParameters.fromContract([
             [10, 20],
             "0x30",
             ["0x40", "0x50", "0x60"],
@@ -123,15 +125,15 @@ describe("Process contract parameter wrapper", () => {
             [160, 170, 180]
         ])
 
-        expect(json2.mode).to.eq(10)
-        expect(json2.envelopeType).to.eq(20)
+        expect(json2.mode.value).to.eq(10)
+        expect(json2.envelopeType.value).to.eq(20)
         expect(json2.entityAddress).to.eq("0x30")
         expect(json2.metadata).to.eq("0x40")
         expect(json2.censusMerkleRoot).to.eq("0x50")
         expect(json2.censusMerkleTree).to.eq("0x60")
-        expect(json2.startBlock.toNumber()).to.eq(70)
+        expect(json2.startBlock).to.eq(70)
         expect(json2.blockCount).to.eq(80)
-        expect(json2.status).to.eq(1)
+        expect(json2.status.value).to.eq(1)
         expect(json2.questionIndex).to.eq(110)
         expect(json2.questionCount).to.eq(120)
         expect(json2.maxCount).to.eq(130)

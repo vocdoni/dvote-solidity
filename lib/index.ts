@@ -103,6 +103,7 @@ export class ProcessMode {
         if (processMode > allFlags) throw new Error("Invalid process mode")
         this._mode = processMode
     }
+    get value() { return this._mode }
 
     /** By default, the process is started on demand (PAUSED). If set, the process will sIf set, the process will work like `status=PAUSED` before `startBlock` and like `status=ENDED` after `startBlock + blockCount`. The process works on demand, by default.tart as READY and the Vochain will allow incoming votes after `startBlock` */
     public static AUTO_START: IProcessMode = 1 << 0
@@ -148,6 +149,7 @@ export class ProcessEnvelopeType {
         if (envelopeType > allFlags) throw new Error("Invalid envelope type")
         this._type = envelopeType
     }
+    get value() { return this._type }
 
     /** By default, all votes are sent within a single envelope. When set, the process questions are voted one by one (enables `questionIndex`). */
     public static SERIAL: IProcessEnvelopeType = 1 << 0
@@ -180,6 +182,7 @@ export class ProcessStatus {
         if (!processStatusValues.includes(processStatus)) throw new Error("Invalid status")
         this._status = processStatus
     }
+    get value() { return this._status }
 
     /** The process is ready to accept votes, according to `AUTO_START`, `startBlock` and `blockCount`. */
     public static READY: IProcessStatus = 0
@@ -208,7 +211,7 @@ export const processStatusValues = [
     ProcessStatus.RESULTS
 ]
 
-type WrappedProcessCreateParams = [
+type IProcessCreateParamsTuple = [
     number[], // mode_envelopeType
     string[], // metadata_censusMerkleRoot_censusMerkleTree
     number | BigNumber, // startBlock
@@ -219,7 +222,7 @@ type WrappedProcessCreateParams = [
     number, // namespace
     string // paramsSignature
 ]
-type WrappedProcessState = [
+type IProcessStateTuple = [
     number[], // mode_envelopeType
     string, // entityAddress
     string[], // metadata_censusMerkleRoot_censusMerkleTree
@@ -273,7 +276,7 @@ export interface ProcessContractMethods {
         paramsSignature: string
      * ]```
      */
-    get(processId: string): Promise<WrappedProcessState>,
+    get(processId: string): Promise<IProcessStateTuple>,
     /** Retrieve the available results for the given process */
     getParamsSignature(processId: string): Promise<{ paramsSignature: string }>
     /** Retrieve the available results for the given process */
@@ -308,7 +311,7 @@ export interface ProcessContractMethods {
         paramsSignature: string 
      * ]```
      * */
-    newProcess(...args: WrappedProcessCreateParams): Promise<ContractTransaction>,
+    newProcess(...args: IProcessCreateParamsTuple): Promise<ContractTransaction>,
     /** Update the process status that corresponds to the given ID */
     setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
     /** Increments the index of the current question (only when INCREMENTAL mode is set) */
@@ -348,9 +351,9 @@ export interface NamespaceContractMethods {
 
 // HELPERS
 
-type JsonProcessCreateParams = {
-    mode: number,
-    envelopeType: number,
+type IProcessCreateParams = {
+    mode: ProcessMode | number,
+    envelopeType: ProcessEnvelopeType | number,
     metadata: string,
     censusMerkleRoot: string,
     censusMerkleTree: string,
@@ -366,64 +369,161 @@ type JsonProcessCreateParams = {
     namespace: number,
     paramsSignature: string
 }
-type JsonProcessState = {
-    mode: number,
-    envelopeType: number,
-    entityAddress: string,
-    metadata: string,
-    censusMerkleRoot: string,
-    censusMerkleTree: string,
-    startBlock: BigNumber,
-    blockCount: number,
-    status: IProcessStatus,
-    questionIndex: number,
-    questionCount: number,
-    maxCount: number,
-    maxValue: number,
-    maxVoteOverwrites: number,
-    uniqueValues: boolean,
-    maxTotalCost: number,
-    costExponent: number,
-    namespace: number
-}
 
-/** Arrange the JSON object into the parameters for `create()` */
-export function wrapProcessCreateParams(input: JsonProcessCreateParams): WrappedProcessCreateParams {
-    return [
-        [input.mode, input.envelopeType], // mode_envelopeType: number
-        [input.metadata, input.censusMerkleRoot, input.censusMerkleTree], // metadata_censusMerkleRoot_censusMerkleTree: string
-        input.startBlock, // number | startBlock: BigNumber
-        input.blockCount,   // blockCount: number
-        [input.questionCount, input.maxCount, input.maxValue, input.maxVoteOverwrites], // questionCount_maxCount_maxValue_maxVoteOverwrites: number
-        input.uniqueValues,            // uniqueValues: boolean
-        [input.maxTotalCost, input.costExponent], // maxTotalCost_costExponent: number
-        input.namespace, // namespace: number
-        input.paramsSignature // paramsSignature: string
-    ]
-}
+/** Wraps and unwraps the parameters sent to `Process.newProcess()` and obtained from `Process.get()` for convenience */
+export class ProcessContractParameters {
+    mode: ProcessMode;
+    envelopeType: ProcessEnvelopeType;
+    entityAddress?: string;
+    metadata: string;
+    censusMerkleRoot: string;
+    censusMerkleTree: string;
+    startBlock: number;
+    blockCount: number;
+    status?: ProcessStatus;
+    questionIndex?: number;
+    questionCount: number;
+    maxCount: number;
+    maxValue: number;
+    maxVoteOverwrites: number;
+    uniqueValues: boolean;
+    maxTotalCost: number;
+    costExponent: number;
+    namespace: number;
+    paramsSignature?: string;
+    results?: string;
 
-/** Convert the output data from `get()` into a JSON object */
-export function unwrapProcessState(output: WrappedProcessState): JsonProcessState {
-    if (!Array.isArray(output)) throw new Error("Invalid process output")
+    /** Parse a plain parameters object  */
+    static fromParams(params: IProcessCreateParams): ProcessContractParameters {
+        // Integrity checks
+        if (params.metadata.length == 0)
+            throw new Error("Invalid metadata")
+        else if (params.censusMerkleRoot.length == 0)
+            throw new Error("Invalid censusMerkleRoot")
+        else if (params.censusMerkleTree.length == 0)
+            throw new Error("Invalid censusMerkleTree")
+        else if (params.questionCount < 1 || params.questionCount > 255)
+            throw new Error("Invalid questionCount")
+        else if (params.maxCount < 1 || params.maxCount > 255)
+            throw new Error("Invalid maxCount")
+        else if (params.maxValue < 1 || params.maxValue > 255)
+            throw new Error("Invalid maxValue")
+        else if (params.maxVoteOverwrites < 0 || params.maxVoteOverwrites > 255)
+            throw new Error("Invalid maxVoteOverwrites")
+        // uniqueValues is either falsy or truthy
+        else if (params.maxTotalCost < 0 || params.maxTotalCost > 65355)
+            throw new Error("Invalid maxTotalCost")
+        else if (params.costExponent < 0 || params.costExponent > 65355)
+            throw new Error("Invalid costExponent")
+        else if (params.namespace < 0 || params.namespace > 65355)
+            throw new Error("Invalid namespace")
+        else if (params.paramsSignature.length == 0)
+            throw new Error("Invalid paramsSignature")
 
-    return {
-        mode: output[0][0],
-        envelopeType: output[0][1],
-        entityAddress: output[1],
-        metadata: output[2][0],
-        censusMerkleRoot: output[2][1],
-        censusMerkleTree: output[2][2],
-        startBlock: output[3],
-        blockCount: output[4],
-        status: output[5],
-        questionIndex: output[6][0],
-        questionCount: output[6][1],
-        maxCount: output[6][2],
-        maxValue: output[6][3],
-        maxVoteOverwrites: output[6][4],
-        uniqueValues: output[7],
-        maxTotalCost: output[8][0],
-        costExponent: output[8][1],
-        namespace: output[8][2]
+        const result = new ProcessContractParameters()
+
+        // Direct assignations
+        if (typeof params.mode == "number") result.mode = new ProcessMode(params.mode) // Fail on error
+        else result.mode = params.mode
+
+        if (typeof params.envelopeType == "number") result.envelopeType = new ProcessEnvelopeType(params.envelopeType) // Fail on error
+        else result.envelopeType = params.envelopeType
+
+        result.metadata = params.metadata
+        result.censusMerkleRoot = params.censusMerkleRoot
+        result.censusMerkleTree = params.censusMerkleTree
+        result.startBlock = typeof params.startBlock == "number" ? params.startBlock : params.startBlock.toNumber()
+        result.blockCount = params.blockCount
+        result.questionCount = params.questionCount
+        result.maxCount = params.maxCount
+        result.maxValue = params.maxValue
+        result.maxVoteOverwrites = params.maxVoteOverwrites
+        result.uniqueValues = !!params.uniqueValues
+        result.maxTotalCost = params.maxTotalCost
+        result.costExponent = params.costExponent
+        result.namespace = params.namespace
+        result.paramsSignature = params.paramsSignature
+
+        return result
+    }
+
+    /** Convert the output data from `get()` into a JSON object */
+    static fromContract(params: IProcessStateTuple): ProcessContractParameters {
+        const result = new ProcessContractParameters()
+
+        if (!Array.isArray(params) || params.length != 9)
+            throw new Error("Invalid parameters list")
+        else if (!Array.isArray(params[0]) ||
+            params[0].length != 2 ||
+            params[0].some((item) => typeof item != "number"))
+            throw new Error("Invalid parameters mode_envelopeType list")
+
+        result.mode = new ProcessMode(params[0][0])
+        result.envelopeType = new ProcessEnvelopeType(params[0][1])
+
+        if (typeof params[1] != "string") throw new Error("Invalid entityAddress")
+        result.entityAddress = params[1]
+
+        if (!Array.isArray(params[2]) || params[2].length != 3 || params[2].some((item) => typeof item != "string"))
+            throw new Error("Invalid parameters metadata_censusMerkleRoot_censusMerkleTree list")
+
+        result.metadata = params[2][0]
+        result.censusMerkleRoot = params[2][1]
+        result.censusMerkleTree = params[2][2]
+
+        if (!(params[3] instanceof BigNumber || typeof params[3] == "number"))
+            throw new Error("Invalid startBlock")
+
+        result.startBlock = params[3].toNumber()
+
+        if (typeof params[4] != "number") throw new Error("Invalid blockCount")
+        result.blockCount = params[4]
+
+        if (typeof params[5] != "number") throw new Error("Invalid status")
+        result.status = new ProcessStatus(params[5])
+
+        if (!Array.isArray(params[6]) || params[6].length != 5 || params[6].some((item) => typeof item != "number"))
+            throw new Error("Invalid parameters questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites list")
+        result.questionIndex = params[6][0]
+        result.questionCount = params[6][1]
+        result.maxCount = params[6][2]
+        result.maxValue = params[6][3]
+        result.maxVoteOverwrites = params[6][4]
+
+        if (typeof params[7] != "boolean") throw new Error("Invalid uniqueParams")
+        result.uniqueValues = params[7]
+
+        if (!Array.isArray(params[8]) || params[8].length != 3 || params[8].some((item) => typeof item != "number"))
+            throw new Error("Invalid parameters maxTotalCost_costExponent_namespace list")
+
+        result.maxTotalCost = params[8][0]
+        result.costExponent = params[8][1]
+        result.namespace = params[8][2]
+
+        return result
+    }
+
+    /** Arrange the JSON object into the parameters for `newProcess()` */
+    toContractParams(): IProcessCreateParamsTuple {
+        return [
+            [this.mode.value, this.envelopeType.value], // int mode_envelopeType
+            [
+                this.metadata,
+                this.censusMerkleRoot,
+                this.censusMerkleTree
+            ], // String metadata_censusMerkleRoot_censusMerkleTree
+            this.startBlock, // BigNumber startBlock
+            this.blockCount, // int blockCount
+            [
+                this.questionCount,
+                this.maxCount,
+                this.maxValue,
+                this.maxVoteOverwrites
+            ], // int questionCount_maxCount_maxValue_maxVoteOverwrites
+            this.uniqueValues, // bool uniqueValues
+            [this.maxTotalCost, this.costExponent], // int maxTotalCost_costExponent
+            this.namespace, // int namespace
+            this.paramsSignature // String paramsSignature
+        ];
     }
 }
