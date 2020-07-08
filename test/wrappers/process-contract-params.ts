@@ -10,7 +10,7 @@ describe("Process contract parameter wrapper", () => {
     it("should wrap the 'create' input parameters", () => {
         const params1 = ProcessContractParameters.fromParams({
             mode: 12,
-            envelopeType: 34,
+            envelopeType: 3,
             metadata: "56",
             censusMerkleRoot: "78",
             censusMerkleTree: "90",
@@ -28,7 +28,7 @@ describe("Process contract parameter wrapper", () => {
         }).toContractParams()
 
         expect(params1[0][0]).to.eq(12)
-        expect(params1[0][1]).to.eq(34)
+        expect(params1[0][1]).to.eq(3)
         expect(params1[1][0]).to.eq("56")
         expect(params1[1][1]).to.eq("78")
         expect(params1[1][2]).to.eq("90")
@@ -46,16 +46,16 @@ describe("Process contract parameter wrapper", () => {
 
         const params2 = ProcessContractParameters.fromParams({
             mode: 21,
-            envelopeType: 43,
+            envelopeType: 4,
             metadata: "65",
             censusMerkleRoot: "87",
             censusMerkleTree: "09",
             startBlock: 111,
             blockCount: 222,
-            questionCount: 333,
-            maxCount: 444,
-            maxValue: 555,
-            maxVoteOverwrites: 666,
+            questionCount: 34,
+            maxCount: 45,
+            maxValue: 56,
+            maxVoteOverwrites: 67,
             uniqueValues: false,
             maxTotalCost: 777,
             costExponent: 888,
@@ -64,16 +64,16 @@ describe("Process contract parameter wrapper", () => {
         }).toContractParams()
 
         expect(params2[0][0]).to.eq(21)
-        expect(params2[0][1]).to.eq(43)
+        expect(params2[0][1]).to.eq(4)
         expect(params2[1][0]).to.eq("65")
         expect(params2[1][1]).to.eq("87")
         expect(params2[1][2]).to.eq("09")
         expect(params2[2]).to.eq(111)
         expect(params2[3]).to.eq(222)
-        expect(params2[4][0]).to.eq(333)
-        expect(params2[4][1]).to.eq(444)
-        expect(params2[4][2]).to.eq(555)
-        expect(params2[4][3]).to.eq(666)
+        expect(params2[4][0]).to.eq(34)
+        expect(params2[4][1]).to.eq(45)
+        expect(params2[4][2]).to.eq(56)
+        expect(params2[4][3]).to.eq(67)
         expect(params2[5]).to.eq(false)
         expect(params2[6][0]).to.eq(777)
         expect(params2[6][1]).to.eq(888)
@@ -114,19 +114,19 @@ describe("Process contract parameter wrapper", () => {
         expect(json1.namespace).to.eq(18)
 
         const json2 = ProcessContractParameters.fromContract([
-            [10, 20],
+            [10, 3],
             "0x30",
             ["0x40", "0x50", "0x60"],
             new BigNumber(70),
             80,
             1,
-            [110, 120, 130, 140, 150],
+            [110, 120, 99, 140, 150],
             false,
             [160, 170, 180]
         ])
 
         expect(json2.mode.value).to.eq(10)
-        expect(json2.envelopeType.value).to.eq(20)
+        expect(json2.envelopeType.value).to.eq(3)
         expect(json2.entityAddress).to.eq("0x30")
         expect(json2.metadata).to.eq("0x40")
         expect(json2.censusMerkleRoot).to.eq("0x50")
@@ -136,7 +136,7 @@ describe("Process contract parameter wrapper", () => {
         expect(json2.status.value).to.eq(1)
         expect(json2.questionIndex).to.eq(110)
         expect(json2.questionCount).to.eq(120)
-        expect(json2.maxCount).to.eq(130)
+        expect(json2.maxCount).to.eq(99)
         expect(json2.maxValue).to.eq(140)
         expect(json2.maxVoteOverwrites).to.eq(150)
         expect(json2.uniqueValues).to.eq(false)
