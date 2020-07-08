@@ -53,8 +53,7 @@ async function deploy() {
 
     // Use
     const address = await wallet.getAddress()
-    const entityId = await resolverInstance2.getEntityId(address)
-    console.log("ENTITY ID", entityId)
+    const entityNode = await ensHashAddress(address)
 
     const namespace0 = await namespaceInstance2.getNamespace(0)
     console.log("NAMESPACE 0", namespace0)

@@ -23,13 +23,13 @@ async function setEntity() {
     const resolverInstance = new Contract(resolverAddress, entityResolverAbi, wallet)
 
     // Use
-    const entityId = await resolverInstance.getEntityId(wallet.address)
+    const entityNode = await ensHashAddress(wallet.address)
 
-    const tx = await resolverInstance.setText(entityId, "vnd.vocdoni.boot-nodes", "https://bootnodes.vocdoni.net/gateways.json")
+    const tx = await resolverInstance.setText(entityNode, "vnd.vocdoni.boot-nodes", "https://bootnodes.vocdoni.net/gateways.json")
     await tx.wait()
 
-    const value = await resolverInstance.text(entityId, "vnd.vocdoni.boot-nodes")
-    console.log("Bootnodes of", entityId, "set to", value)
+    const value = await resolverInstance.text(entityNode, "vnd.vocdoni.boot-nodes")
+    console.log("Bootnodes of", entityNode, "set to", value)
 }
 
 setEntity().catch(err => console.error(err))

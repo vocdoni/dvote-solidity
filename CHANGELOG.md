@@ -1,5 +1,14 @@
 # DVote Solidity Changelog
 
+## 0.10.0
+
+- Removing `getEntityId` from the contract (no longer needed, since entityId == entityAddress)
+- Adding `ensHashAddress` as a reference hash function to interact with the ENS nodes
+
+## 0.9.1
+
+- Exposing `IProcessCreateParams`
+
 ## 0.9.0
 
 - Adding `ProcessContractParameters` to wrap and upwrap the params tuples submitted and retrieved from the Smart Contract

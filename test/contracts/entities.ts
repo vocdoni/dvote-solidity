@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { Contract, ContractFactory, utils, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
-import { EntityResolverContractMethods } from "../../lib"
+import { EntityResolverContractMethods, ensHashAddress } from "../../lib"
 import EntityResolverBuilder from "../builders/entities"
 import { BigNumber } from "ethers/utils"
 
@@ -62,10 +62,8 @@ describe('Entity Resolver', function () {
         ]
 
         await Promise.all(data.map(entity => {
-            return contractInstance.getEntityId(entity.address)
-                .then(entityId => {
-                    expect(entityId).to.eq(entity.id)
-                })
+            const hashedAddress = ensHashAddress(entity.address)
+            expect(hashedAddress).to.eq(entity.id)
         }))
     })
 
