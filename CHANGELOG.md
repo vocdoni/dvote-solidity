@@ -23,7 +23,7 @@ Substantial Voting contract refactor to support a wide range of participatory pr
     - Status (ready, ended, canceled, paused, results)
     - Providing TypeScript wrappers to work with them
 - Adding `questionIndex` and `questionCount` for serial voting
-- Adding `maxValue`, `uniqueValues`, `maxTotalCost`, `costExponent`, `maxVotesOverwrite` and `paramsSignature` to parameterize processes
+- Adding `maxCount`, `maxValue`, `uniqueValues`, `maxTotalCost`, `costExponent`, `maxVotesOverwrite` and `paramsSignature` to parameterize processes
 - Introducing namespaces
   - Chain ID, genesis data, validators and oracles now belong to a namespace
   - Global getters are replaced by `getNamespace()`
