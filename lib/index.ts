@@ -211,6 +211,25 @@ export const processStatusValues = [
     ProcessStatus.RESULTS
 ]
 
+export type IProcessCreateParams = {
+    mode: ProcessMode | number,
+    envelopeType: ProcessEnvelopeType | number,
+    metadata: string,
+    censusMerkleRoot: string,
+    censusMerkleTree: string,
+    startBlock: number | BigNumber,
+    blockCount: number,
+    questionCount: number,
+    maxCount: number,
+    maxValue: number,
+    maxVoteOverwrites: number,
+    uniqueValues: boolean,
+    maxTotalCost: number,
+    costExponent: number,
+    namespace: number,
+    paramsSignature: string
+}
+
 type IProcessCreateParamsTuple = [
     number[], // mode_envelopeType
     string[], // metadata_censusMerkleRoot_censusMerkleTree
@@ -350,25 +369,6 @@ export interface NamespaceContractMethods {
 }
 
 // HELPERS
-
-type IProcessCreateParams = {
-    mode: ProcessMode | number,
-    envelopeType: ProcessEnvelopeType | number,
-    metadata: string,
-    censusMerkleRoot: string,
-    censusMerkleTree: string,
-    startBlock: number | BigNumber,
-    blockCount: number,
-    questionCount: number,
-    maxCount: number,
-    maxValue: number,
-    maxVoteOverwrites: number,
-    uniqueValues: boolean,
-    maxTotalCost: number,
-    costExponent: number,
-    namespace: number,
-    paramsSignature: string
-}
 
 /** Wraps and unwraps the parameters sent to `Process.newProcess()` and obtained from `Process.get()` for convenience */
 export class ProcessContractParameters {
