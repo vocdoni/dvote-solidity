@@ -95,7 +95,7 @@ export function ensHashAddress(address: string): string {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// VOTING PROCESS FLAGS
+// PROCESS TYPES AND WRAPPERS
 ///////////////////////////////////////////////////////////////////////////////
 
 export type IProcessMode = number
@@ -346,35 +346,6 @@ export interface ProcessContractMethods {
     setResults(processId: string, results: string): Promise<ContractTransaction>,
 }
 
-/** Smart Contract operations for a Namespace */
-export interface NamespaceContractMethods {
-    // GETTERS
-
-    /** Retrieve all the fields of the given namespace: `[ chainId: string, genesis: string,validators: string[],oracles: string[] ]` */
-    getNamespace(namespace: number): Promise<[string, string, string[], string[]]>,
-    /** Checks whether the given public key is registered as a validator in the given namespace */
-    isValidator(namespace: number, validatorPublicKey: string): Promise<boolean>,
-    /** Checks whether the given address is registered as an oracle in the given namespace */
-    isOracle(namespace: number, oracleAddress: string): Promise<boolean>,
-
-    // SETTERS
-    setNamespace(namespace: number, chainId: string, genesis: string, validators: string[], oracles: string[]): Promise<ContractTransaction>,
-    /** Update the Chain ID of the given namespace */
-    setChainId(namespace: number, chainId: string): Promise<ContractTransaction>,
-    /** Update the genesis of the given namespace */
-    setGenesis(namespace: number, genesisData: string): Promise<ContractTransaction>,
-    /** Registers the public key of a new validator */
-    addValidator(namespace: number, validatorPublicKey: string): Promise<ContractTransaction>,
-    /** Removes the public key at the given index for a validator */
-    removeValidator(namespace: number, idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
-    /** Registers the address of a new oracle */
-    addOracle(namespace: number, oracleAddr: string): Promise<ContractTransaction>,
-    /** Removes the address at the given index for an oracle */
-    removeOracle(namespace: number, idx: number, oracleAddr: string): Promise<ContractTransaction>,
-}
-
-// HELPERS
-
 /** Wraps and unwraps the parameters sent to `Process.newProcess()` and obtained from `Process.get()` for convenience */
 export class ProcessContractParameters {
     mode: ProcessMode;
@@ -531,4 +502,35 @@ export class ProcessContractParameters {
             this.paramsSignature // String paramsSignature
         ];
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// NAMESPACE TYPES
+///////////////////////////////////////////////////////////////////////////////
+
+/** Smart Contract operations for a Namespace */
+export interface NamespaceContractMethods {
+    // GETTERS
+
+    /** Retrieve all the fields of the given namespace: `[ chainId: string, genesis: string,validators: string[],oracles: string[] ]` */
+    getNamespace(namespace: number): Promise<[string, string, string[], string[]]>,
+    /** Checks whether the given public key is registered as a validator in the given namespace */
+    isValidator(namespace: number, validatorPublicKey: string): Promise<boolean>,
+    /** Checks whether the given address is registered as an oracle in the given namespace */
+    isOracle(namespace: number, oracleAddress: string): Promise<boolean>,
+
+    // SETTERS
+    setNamespace(namespace: number, chainId: string, genesis: string, validators: string[], oracles: string[]): Promise<ContractTransaction>,
+    /** Update the Chain ID of the given namespace */
+    setChainId(namespace: number, chainId: string): Promise<ContractTransaction>,
+    /** Update the genesis of the given namespace */
+    setGenesis(namespace: number, genesisData: string): Promise<ContractTransaction>,
+    /** Registers the public key of a new validator */
+    addValidator(namespace: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    /** Removes the public key at the given index for a validator */
+    removeValidator(namespace: number, idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    /** Registers the address of a new oracle */
+    addOracle(namespace: number, oracleAddr: string): Promise<ContractTransaction>,
+    /** Removes the address at the given index for an oracle */
+    removeOracle(namespace: number, idx: number, oracleAddr: string): Promise<ContractTransaction>,
 }
