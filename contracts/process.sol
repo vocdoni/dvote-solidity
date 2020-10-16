@@ -56,8 +56,8 @@ contract ProcessBeta7 is IProcessStore {
     // DATA STRUCTS
 
     struct Process {
-        uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/components/process
-        uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/components/process
+        uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
+        uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         address entityAddress; // The Ethereum address of the Entity
         uint64 startBlock; // Tendermint block number on which the voting process starts
         uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
