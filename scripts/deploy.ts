@@ -4,14 +4,14 @@ import { EnsPublicResolverContractMethods, EnsRegistryContractMethods, Namespace
 const utils = require('web3-utils');
 const namehash = require('eth-ens-namehash');
 
-require("dotenv").config()
+require("dotenv").config({ path: __dirname + "/.env" })
 
 const ENDPOINT = process.env.ENDPOINT
 const MNEMONIC = process.env.MNEMONIC
+const PATH = process.env.PATH || "m/44'/60'/0'/0/0"
+const CHAIN_ID = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 100
+const NETWORK_ID = process.env.NETWORK_ID || "xdai"
 
-const PATH = "m/44'/60'/0'/0/0"
-const CHAIN_ID = 100
-const NETWORK_ID = "xdai"
 
 const { abi: ENSRegistryAbi, bytecode: ENSRegistryBytecode } = require("../build/ens-registry.json")
 const { abi: ENSPublicResolverAbi, bytecode: ENSPublicResolverBytecode } = require("../build/ens-public-resolver.json")
@@ -23,6 +23,8 @@ const transactionOptions = { gasPrice: utils2.parseUnits("1", "gwei") }
 
 async function deploy() {
     const provider = new providers.JsonRpcProvider(ENDPOINT, { chainId: CHAIN_ID, name: NETWORK_ID, ensAddress: "0x0000000000000000000000000000000000000000" })
+
+    // From mnemonic
     const wallet = Wallet.fromMnemonic(MNEMONIC, PATH).connect(provider)
 
     // Deploy
