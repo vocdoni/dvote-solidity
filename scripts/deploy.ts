@@ -1,5 +1,5 @@
-import { assert } from "console";
 import { Wallet, providers, Contract, ContractFactory, ethers, utils as utils2 } from "ethers"
+import { EnsPublicResolverContractMethods, EnsRegistryContractMethods, NamespaceContractMethods, ProcessContractMethods } from "../lib"
 
 const utils = require('web3-utils');
 const namehash = require('eth-ens-namehash');
@@ -10,16 +10,19 @@ const ENDPOINT = process.env.ENDPOINT
 const MNEMONIC = process.env.MNEMONIC
 
 const PATH = "m/44'/60'/0'/0/0"
+const CHAIN_ID = 100
+const NETWORK_ID = "xdai"
 
 const { abi: ENSRegistryAbi, bytecode: ENSRegistryBytecode } = require("../build/ens-registry.json")
 const { abi: ENSPublicResolverAbi, bytecode: ENSPublicResolverBytecode } = require("../build/ens-public-resolver.json")
 const { abi: VotingProcessAbi, bytecode: VotingProcessBytecode } = require("../build/voting-process.json")
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../build/namespace.json")
 
+// Overriding the gas price for xDAI and Sokol networks
 const transactionOptions = { gasPrice: utils2.parseUnits("1", "gwei") }
 
 async function deploy() {
-    const provider = new providers.JsonRpcProvider(ENDPOINT, { chainId: 100, name: "xdai", ensAddress: "0x0000000000000000000000000000000000000000" })
+    const provider = new providers.JsonRpcProvider(ENDPOINT, { chainId: CHAIN_ID, name: NETWORK_ID, ensAddress: "0x0000000000000000000000000000000000000000" })
     const wallet = Wallet.fromMnemonic(MNEMONIC, PATH).connect(provider)
 
     // Deploy
@@ -28,26 +31,26 @@ async function deploy() {
     // ENS Registry
     const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
     const ensRegistryContract = await ensRegistryFactory.deploy(transactionOptions)
-    const ensRegistryInstance = await ensRegistryContract.deployed()
+    const ensRegistryInstance = await ensRegistryContract.deployed() as Contract & EnsRegistryContractMethods
     console.log("ENS Registry deployed at", ensRegistryInstance.address)
 
     // ENS Public resolver
     const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
     const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistryContract.address, transactionOptions)
-    const ensPublicResolverInstance = await ensPublicResolverContract.deployed()
+    const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
     console.log("ENS Public Resolver deployed at", ensPublicResolverInstance.address)
 
     // Namespace
     const namespaceFactory = new ContractFactory(namespaceAbi, namespaceByteCode, wallet)
     const namespaceContract = await namespaceFactory.deploy(transactionOptions)
-    const namespaceInstance = await namespaceContract.deployed()
+    const namespaceInstance = await namespaceContract.deployed() as Contract & ProcessContractMethods
     console.log("Namespace deployed at", namespaceInstance.address)
 
     // Process
     const predecessorAddress = "0x0000000000000000000000000000000000000000"  // no predecessor
     const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
     const processContract = await processFactory.deploy(predecessorAddress, namespaceInstance.address, transactionOptions)
-    const processInstance = await processContract.deployed()
+    const processInstance = await processContract.deployed() as Contract & NamespaceContractMethods
     console.log("Process deployed at", processInstance.address)
     console.log(" - Predecessor:", predecessorAddress)
     console.log(" - Namespace:", processInstance.address)
@@ -136,9 +139,16 @@ async function deploy() {
     await tx9.wait()
     console.log("'processes.vocdoni.eth' address", await ensPublicResolverInstance.addr(entitiesVocdoniEthNode))
 
+    // set the bootnode URL on the entity of Vocdoni
+    const BOOTNODES_KEY = "vnd.vocdoni.boot-nodes"
+    const entityId = utils2.keccak256(wallet.address)
+    const tx10 = await ensPublicResolverInstance.setText(entityId, BOOTNODES_KEY, "https://bootnodes.vocdoni.net/gateways.json", transactionOptions)
+    await tx10.wait()
+
+    console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY))
+
     // done
-    console.log()
-    console.log("Done")
+    console.log("\nDone")
 }
 
 deploy().catch(err => console.log(err))

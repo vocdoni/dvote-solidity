@@ -15,19 +15,28 @@ export { EnsPublicResolver }
 export { Process }
 export { Namespace }
 
+export type IMethodOverrides = {
+    gasLimit?: number
+    gasPrice?: utils.BigNumber
+    nonce?: number
+    value?: utils.BigNumber
+    chainId?: number
+}
+export declare const defaultMethodOverrides: IMethodOverrides
+
 ///////////////////////////////////////////////////////////////////////////////
 // ENTITY RESOLVER TYPES
 ///////////////////////////////////////////////////////////////////////////////
 
 /** Custom Smart Contract operations for an ENS Registry contract */
 export type EnsRegistryContractMethods = {
-    setRecord(node: string, owner: string, resolver: string, ttl: BigNumber): Promise<ContractTransaction>,
-    setSubnodeRecord(node: string, label: string, owner: string, resolver: string, ttl: BigNumber): Promise<ContractTransaction>,
-    setOwner(node: string, owner: string): Promise<ContractTransaction>,
-    setSubnodeOwner(node: string, label: string, owner: string): Promise<ContractTransaction>,
-    setResolver(node: string, resolver: string): Promise<ContractTransaction>,
-    setTTL(node: string, ttl: BigNumber): Promise<ContractTransaction>,
-    setApprovalForAll(operator: string, approved: Boolean): Promise<ContractTransaction>,
+    setRecord(node: string, owner: string, resolver: string, ttl: BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setSubnodeRecord(node: string, label: string, owner: string, resolver: string, ttl: BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setOwner(node: string, owner: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setSubnodeOwner(node: string, label: string, owner: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setResolver(node: string, resolver: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setTTL(node: string, ttl: BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setApprovalForAll(operator: string, approved: Boolean, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     owner(node: string): Promise<string>,
     resolver(node: string): Promise<string>,
     ttl(node: string): Promise<BigNumber>,
@@ -43,7 +52,7 @@ export type EnsPublicResolverContractMethods = {
     /** Get the address associated with the given node */
     addr(node: string): Promise<string>
     /** Sets the address for the given node */
-    setAddr(node: string, address: string): Promise<ContractTransaction>
+    setAddr(node: string, address: string, overrides?: IMethodOverrides): Promise<ContractTransaction>
 
     /**
      * Returns the text associated with an ENS node and key.
@@ -59,7 +68,7 @@ export type EnsPublicResolverContractMethods = {
      * @param key The key to modify.
      * @param value The text to store.
      */
-    setText(hashedEntityAddress: string, key: string, value: string): Promise<ContractTransaction>
+    setText(hashedEntityAddress: string, key: string, value: string, overrides?: IMethodOverrides): Promise<ContractTransaction>
 }
 
 /**
@@ -220,7 +229,8 @@ type IProcessCreateParamsTuple = [
     boolean, // uniqueValues
     number[], // maxTotalCost_costExponent
     number, // namespace
-    string // paramsSignature
+    string, // paramsSignature
+    IMethodOverrides? // Optional transaction overrides
 ]
 type IProcessStateTuple = [
     number[], // mode_envelopeType
@@ -288,11 +298,11 @@ export interface ProcessContractMethods {
     // GLOBAL METHODS
 
     /** Sets the current instance as active, if not already */
-    activate(): Promise<ContractTransaction>,
+    activate(overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Sets the target instance as the successor and deactivates the current one */
-    activateSuccessor(successor: string): Promise<ContractTransaction>,
+    activateSuccessor(successor: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Updates the address of the contract holding the details of the active namespaces */
-    setNamespaceAddress(namespaceAddr: string): Promise<ContractTransaction>,
+    setNamespaceAddress(namespaceAddr: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 
     // PER-PROCESS METHODS
 
@@ -313,13 +323,13 @@ export interface ProcessContractMethods {
      * */
     newProcess(...args: IProcessCreateParamsTuple): Promise<ContractTransaction>,
     /** Update the process status that corresponds to the given ID */
-    setStatus(processId: string, status: IProcessStatus): Promise<ContractTransaction>,
+    setStatus(processId: string, status: IProcessStatus, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Increments the index of the current question (only when INCREMENTAL mode is set) */
-    incrementQuestionIndex(processId: string): Promise<ContractTransaction>
+    incrementQuestionIndex(processId: string, overrides?: IMethodOverrides): Promise<ContractTransaction>
     /** Updates the census of the given process (only if the mode allows dynamic census) */
-    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string): Promise<ContractTransaction>,
+    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Sets the given results for the given process */
-    setResults(processId: string, results: string): Promise<ContractTransaction>,
+    setResults(processId: string, results: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 }
 
 /** Wraps and unwraps the parameters sent to `Process.newProcess()` and obtained from `Process.get()` for convenience */
@@ -496,17 +506,17 @@ export interface NamespaceContractMethods {
     isOracle(namespace: number, oracleAddress: string): Promise<boolean>,
 
     // SETTERS
-    setNamespace(namespace: number, chainId: string, genesis: string, validators: string[], oracles: string[]): Promise<ContractTransaction>,
+    setNamespace(namespace: number, chainId: string, genesis: string, validators: string[], oracles: string[], overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Update the Chain ID of the given namespace */
-    setChainId(namespace: number, chainId: string): Promise<ContractTransaction>,
+    setChainId(namespace: number, chainId: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Update the genesis of the given namespace */
-    setGenesis(namespace: number, genesisData: string): Promise<ContractTransaction>,
+    setGenesis(namespace: number, genesisData: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Registers the public key of a new validator */
-    addValidator(namespace: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    addValidator(namespace: number, validatorPublicKey: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Removes the public key at the given index for a validator */
-    removeValidator(namespace: number, idx: number, validatorPublicKey: string): Promise<ContractTransaction>,
+    removeValidator(namespace: number, idx: number, validatorPublicKey: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Registers the address of a new oracle */
-    addOracle(namespace: number, oracleAddr: string): Promise<ContractTransaction>,
+    addOracle(namespace: number, oracleAddr: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Removes the address at the given index for an oracle */
-    removeOracle(namespace: number, idx: number, oracleAddr: string): Promise<ContractTransaction>,
+    removeOracle(namespace: number, idx: number, oracleAddr: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 }
