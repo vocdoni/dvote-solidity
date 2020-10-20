@@ -1,5 +1,11 @@
 # DVote Solidity Changelog
 
+## 0.11.0
+
+- Using the ENS registry contracts from xENS and OpenZeppelin. 
+- Exporting `IMethodOverrides`
+- Using Ethers v5
+
 ## 0.10.0
 
 - Removing `getEntityId` from the contract (no longer needed, since entityId == entityAddress)
