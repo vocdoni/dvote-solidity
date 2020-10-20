@@ -2,7 +2,7 @@ import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { ProcessContractParameters } from "../../lib"
-import { BigNumber } from "ethers/utils"
+import { BigNumber } from "ethers"
 
 addCompletionHooks()
 
@@ -86,7 +86,7 @@ describe("Process contract parameter wrapper", () => {
             [1, 2],
             "0x3",
             ["0x4", "0x5", "0x6"],
-            new BigNumber(7),
+            BigNumber.from(7),
             8,
             0,
             [11, 12, 13, 14, 15],
@@ -117,7 +117,7 @@ describe("Process contract parameter wrapper", () => {
             [10, 3],
             "0x30",
             ["0x40", "0x50", "0x60"],
-            new BigNumber(70),
+            BigNumber.from(70),
             80,
             1,
             [110, 120, 99, 140, 150],

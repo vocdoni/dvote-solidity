@@ -7,7 +7,7 @@ import { getAccounts, TestAccount } from "../utils"
 import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, NamespaceContractMethods } from "../../lib"
 
 import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_UNIQUE_VALUES, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE } from "../builders/process"
-import { BigNumber } from "ethers/utils"
+import { BigNumber } from "ethers"
 import NamespaceBuilder from "../builders/namespace"
 
 import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
@@ -368,7 +368,7 @@ describe("Process contract", () => {
             let newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             let newCensusMerkleRoot = "0x00000001111122222333334444"
             let newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            let newStartBlock = new BigNumber(1111111)
+            let newStartBlock = BigNumber.from(1111111)
             let newBlockCount = 22222
             let newQuestionCount = 10
             let newMaxCount = 11
@@ -431,7 +431,7 @@ describe("Process contract", () => {
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             newCensusMerkleRoot = "0x00000001111122222333334444"
             newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            newStartBlock = new BigNumber(1111111)
+            newStartBlock = BigNumber.from(1111111)
             newBlockCount = 22222
             newQuestionCount = 15
             newMaxCount = 90
@@ -527,7 +527,7 @@ describe("Process contract", () => {
                 newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash",
                 newCensusMerkleRoot = "0x00000001111122222333334444",
                 newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there",
-                newStartBlock = new BigNumber(1111111),
+                newStartBlock = BigNumber.from(1111111),
                 newBlockCount = 22222,
                 newQuestionCount = 10,
                 newMaxCount = 11,
@@ -572,7 +572,7 @@ describe("Process contract", () => {
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             newCensusMerkleRoot = "0x00000001111122222333334444"
             newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            newStartBlock = new BigNumber(1111111)
+            newStartBlock = BigNumber.from(1111111)
             newBlockCount = 22222
             newQuestionCount = 21
             newMaxCount = 22

@@ -6,7 +6,7 @@ import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
 import { EnsPublicResolverContractMethods, ensHashAddress } from "../../lib"
 import EntityResolverBuilder from "../builders/entities"
-// import { BigNumber } from "ethers/utils"
+// import { BigNumber } from "ethers"
 
 const emptyAddress = "0x0000000000000000000000000000000000000000"
 

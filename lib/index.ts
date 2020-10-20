@@ -4,7 +4,7 @@ import * as Process from "./processes.json"
 import * as Namespace from "./namespaces.json"
 
 import { ContractTransaction, utils } from "ethers"
-import { BigNumber } from "ethers/utils"
+import { BigNumber } from "ethers"
 
 ///////////////////////////////////////////////////////////////////////////////
 // SMART CONTRACTS ABI + BYTECODE
@@ -17,9 +17,9 @@ export { Namespace }
 
 export type IMethodOverrides = {
     gasLimit?: number
-    gasPrice?: utils.BigNumber
+    gasPrice?: BigNumber
     nonce?: number
-    value?: utils.BigNumber
+    value?: BigNumber
     chainId?: number
 }
 export declare const defaultMethodOverrides: IMethodOverrides
