@@ -1,5 +1,7 @@
-const ethers = require('ethers');
+
+const ethers = require('ethers')
 const { Wallet, Contract, providers } = ethers
+const { ensHashAddress } = require("../lib")
 require("dotenv").config()
 
 const GATEWAY_URL = process.env.GATEWAY_URL

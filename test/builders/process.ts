@@ -4,8 +4,8 @@ import { getAccounts, TestAccount } from "../utils"
 import NamespaceBuilder from "./namespace"
 import { assert } from "console"
 
-const { abi: processAbi, bytecode: processByteCode } = require("../../build/process.json")
-const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../../build/namespace.json")
+import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
+import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 
 // DEFAULT VALUES
 export const DEFAULT_PREDECESSOR_INSTANCE_ADDRESS = "0x0000000000000000000000000000000000000000"

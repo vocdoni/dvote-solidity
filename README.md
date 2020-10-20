@@ -369,17 +369,6 @@ Feel free to contribute any additional test cases that you consider necessary.
       ✓ Should reject updates from extraneous accounts (1397ms)
       ✓ Should override the entity name (1363ms)
       ✓ Should emit an event (4020ms)
-    Text List records
-      ✓ Push a Text List record (1521ms)
-      ✓ Set a Text List record (2260ms)
-      ✓ Remove a Text List record (4342ms)
-      ✓ Should fail updating non-existing indexes (142ms)
-      ✓ Should fail removing non-existing indexes (2591ms)
-      ✓ Should reject pushing values from extraneous accounts (538ms)
-      ✓ Should reject setting values from extraneous accounts (1117ms)
-      ✓ Should emit events on push (447ms)
-      ✓ Should emit events on update (3458ms)
-      ✓ Should emit events on remove (3914ms)
 
   Namespace contract
     ✓ should deploy the contract (192ms)
@@ -556,7 +545,7 @@ Feel free to contribute any additional test cases that you consider necessary.
     ✓ should fail on invalid process status
 
 
-  156 passing (5m)
+  146 passing (5m)
 ```
 
 ## Deployments

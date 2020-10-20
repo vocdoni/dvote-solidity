@@ -3,7 +3,7 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../entity-resolver-base.sol";
+import "../ResolverBase.sol";
 
 
 abstract contract TextListResolver is ResolverBase {

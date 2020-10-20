@@ -2,7 +2,7 @@ import { NamespaceContractMethods } from "../../lib/index"
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 
-const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../../build/namespace.json")
+import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 
 export const DEFAULT_NAMESPACE = 1
 export const DEFAULT_CHAIN_ID = "namespace-1"

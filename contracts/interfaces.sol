@@ -3,7 +3,15 @@
 pragma solidity ^0.6.9;
 pragma experimental ABIEncoderV2;
 
-import "./lib/safe-uint8.sol";
+library SafeUint8 {
+    /// @notice Adds two uint8 integers and fails if an overflow occurs
+    function add8(uint8 a, uint8 b) internal pure returns (uint8) {
+        uint8 c = a + b;
+        require(c >= a, "overflow");
+
+        return c;
+    }
+}
 
 /// @notice The `IProcessStore` interface allows different versions of the contract to talk to each other. Not all methods in the contract need to be future proof.
 /// @notice Should operations be updated, then two versions should be kept, one for the old version and one for the new.

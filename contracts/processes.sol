@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./interfaces.sol";
 
-contract ProcessBeta7 is IProcessStore {
+contract Processes is IProcessStore {
     // CONSTANTS AND ENUMS
 
     /*

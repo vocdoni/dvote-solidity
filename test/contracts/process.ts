@@ -10,8 +10,8 @@ import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROO
 import { BigNumber } from "ethers/utils"
 import NamespaceBuilder from "../builders/namespace"
 
-const { abi: processAbi, bytecode: processByteCode } = require("../../build/process.json")
-const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../../build/namespace.json")
+import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
+import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount

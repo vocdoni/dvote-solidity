@@ -4,11 +4,13 @@ import { expect } from "chai"
 import { Contract, ContractFactory, utils, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
-import { EntityResolverContractMethods, ensHashAddress } from "../../lib"
+import { EnsPublicResolverContractMethods, ensHashAddress } from "../../lib"
 import EntityResolverBuilder from "../builders/entities"
-import { BigNumber } from "ethers/utils"
+// import { BigNumber } from "ethers/utils"
 
-const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = require("../../build/entity-resolver.json")
+const emptyAddress = "0x0000000000000000000000000000000000000000"
+
+import { abi as ensPublicResolverAbi, bytecode as ensPublicResolverByteCode } from "../../build/ens-public-resolver.json"
 
 let accounts: TestAccount[]
 let baseAccount: TestAccount
@@ -16,7 +18,7 @@ let entityAccount: TestAccount
 let randomAccount: TestAccount
 let randomAccount1: TestAccount
 let randomAccount2: TestAccount
-let contractInstance: EntityResolverContractMethods & Contract
+let contractInstance: EnsPublicResolverContractMethods & Contract
 let entityId: string
 let tx: ContractTransaction
 
@@ -24,7 +26,6 @@ addCompletionHooks()
 
 describe('Entity Resolver', function () {
     const textRecordKey1 = "vnd.vocdoni.record1"
-    const listRecordKey1 = "vnd.vocdoni.push-list"
 
     beforeEach(async () => {
         accounts = getAccounts()
@@ -40,8 +41,8 @@ describe('Entity Resolver', function () {
     })
 
     it("Should deploy the contract", async () => {
-        const resolverFactory = new ContractFactory(entityResolverAbi, entityResolverByteCode, entityAccount.wallet)
-        const localInstance = await resolverFactory.deploy()
+        const resolverFactory = new ContractFactory(ensPublicResolverAbi, ensPublicResolverByteCode, entityAccount.wallet)
+        const localInstance = await resolverFactory.deploy(emptyAddress)
 
         expect(localInstance).to.be.ok
         expect(localInstance.address.match(/^0x[0-9a-fA-F]{40}$/)).to.be.ok
@@ -142,287 +143,16 @@ describe('Entity Resolver', function () {
         it("Should emit an event", async () => {
             const inputValue = "Text record string 1"
 
-            const result: { node: string, key: string, value: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("TextChanged", (node: string, key: string, value: string) => {
-                    resolve({ node, key, value })
+            const result: { node: string, key: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("TextChanged", (node: string, keyIdx: { hash: string }, key: string) => {
+                    resolve({ node, key })
                 })
                 contractInstance.setText(entityId, textRecordKey1, inputValue).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result.node).to.equal(entityId)
             expect(result.key).to.equal(textRecordKey1)
-            expect(result.value).to.equal(inputValue)
         }).timeout(8000)
     })
 
-    describe("Text List records", () => {
-        it("Push a Text List record", async () => {
-            const inputValue1 = "List record string 1"
-            const inputValue2 = "List record string 2"
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, inputValue1)
-            await tx.wait()
-
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, inputValue2)
-            await tx.wait()
-
-            const list = await contractInstance.list(entityId, listRecordKey1)
-            expect(list).to.deep.eq([inputValue1, inputValue2], "List records should match")
-
-            const value1 = await contractInstance.listText(entityId, listRecordKey1, 0)
-            expect(value1).to.deep.eq(inputValue1, "List record should match")
-
-            const value2 = await contractInstance.listText(entityId, listRecordKey1, 1)
-            expect(value2).to.deep.eq(inputValue2, "List record should match")
-
-            try {
-                // Non existing index should be empty
-                await contractInstance.listText(entityId, listRecordKey1, 2)
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/invalid opcode/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-        })
-
-        it("Set a Text List record", async () => {
-            const text1 = "List record string 1"
-            const text2 = "List record string 2"
-
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text1)
-            await tx.wait()
-            tx = await contractInstance.setListText(entityId, listRecordKey1, 0, text2)
-            await tx.wait()
-
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text2)
-            await tx.wait()
-            tx = await contractInstance.setListText(entityId, listRecordKey1, 1, text1)
-            await tx.wait()
-
-            const list = await contractInstance.list(entityId, listRecordKey1)
-            expect(list).to.deep.eq([text2, text1], "List records should match")
-        })
-
-        it("Remove a Text List record", async () => {
-            const text1 = "List record string 1"
-            const text2 = "List record string 2"
-            const text3 = "List record string 3"
-            const text4 = "List record string 4"
-            const text5 = "List record string 5"
-
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text1)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text2)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text3)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text4)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text5)
-            await tx.wait()
-
-            const list = await contractInstance.list(entityId, listRecordKey1)
-            expect(list).to.deep.eq([text1, text2, text3, text4, text5], "List records should match")
-
-            // Remove in the middle
-            tx = await contractInstance.removeListIndex(entityId, listRecordKey1, 2)
-            await tx.wait()
-
-            const list2 = await contractInstance.list(entityId, listRecordKey1)
-            expect(list2).to.deep.eq([text1, text2, text5, text4], "List records should match")
-
-            // Remove the last
-            tx = await contractInstance.removeListIndex(entityId, listRecordKey1, 3)
-            await tx.wait()
-
-            const list3 = await contractInstance.list(entityId, listRecordKey1)
-            expect(list3).to.deep.eq([text1, text2, text5], "List records should match")
-
-            // Remove the first
-            tx = await contractInstance.removeListIndex(entityId, listRecordKey1, 0)
-            await tx.wait()
-
-            const list4 = await contractInstance.list(entityId, listRecordKey1)
-            expect(list4).to.deep.eq([text5, text2], "List records should match")
-        })
-
-        it("Should fail updating non-existing indexes", async () => {
-            const inputValue = "List record string 2"
-            try {
-                await contractInstance.setListText(entityId, listRecordKey1, 0, inputValue)
-                await tx.wait()
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/revert/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            const list = await contractInstance.list(entityId, listRecordKey1)
-            expect(list).to.deep.eq([], "List record should be empty")
-        })
-
-        it("Should fail removing non-existing indexes", async () => {
-            const text1 = "List record string 1"
-            const text2 = "List record string 2"
-            const text3 = "List record string 3"
-            const text4 = "List record string 4"
-            const text5 = "List record string 5"
-
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text1)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text2)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text3)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text4)
-            await tx.wait()
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, text5)
-            await tx.wait()
-
-            const list = await contractInstance.list(entityId, listRecordKey1)
-            expect(list).to.deep.eq([text1, text2, text3, text4, text5], "List records should match")
-
-            // Try to remove beyond the boundaries
-            try {
-                tx = await contractInstance.removeListIndex(entityId, listRecordKey1, 5)
-                await tx.wait()
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/revert/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-            try {
-                tx = await contractInstance.removeListIndex(entityId, listRecordKey1, 6)
-                await tx.wait()
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/revert/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-            try {
-                tx = await contractInstance.removeListIndex(entityId, listRecordKey1, 10)
-                await tx.wait()
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/revert/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-        })
-
-        it("Should reject pushing values from extraneous accounts", async () => {
-            contractInstance = await new EntityResolverBuilder().withEntityAccount(randomAccount1).build()
-            const inputValue = "List record string 3"
-
-            try {
-                tx = await contractInstance.pushListText(entityId, listRecordKey1, inputValue)
-                await tx.wait()
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/revert/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            const list = await contractInstance.list(entityId, listRecordKey1)
-            expect(list).to.deep.eq([], "The list should be empty")
-        })
-
-        it("Should reject setting values from extraneous accounts", async () => {
-            const text1 = "Random text"
-            const text2 = "Malicious text"
-
-            try {
-                contractInstance = contractInstance.connect(entityAccount.wallet) as any
-                tx = await contractInstance.pushListText(entityId, listRecordKey1, text1)
-                await tx.wait()
-
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.setListText(entityId, listRecordKey1, 0, text2)
-                await tx.wait()
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/revert/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            const list1 = await contractInstance.list(entityId, listRecordKey1)
-            expect(list1).to.deep.eq([text1], "List records should match")
-
-            try {
-                contractInstance = contractInstance.connect(entityAccount.wallet) as any
-                tx = await contractInstance.pushListText(entityId, listRecordKey1, text2)
-                await tx.wait()
-
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.setListText(entityId, listRecordKey1, 0, text1)
-                await tx.wait()
-
-                throw new Error("The transaction should have thrown an error")
-            }
-            catch (err) {
-                expect(err.message.match(/revert/)).to.be.ok // ("The transaction threw an unexpected error:\n" + err.message)
-            }
-
-            const list2 = await contractInstance.list(entityId, listRecordKey1)
-            expect(list2).to.deep.eq([text1, text2], "List records should match")
-        })
-
-        it("Should emit events on push", async () => {
-            const inputValue = "Text record string 1"
-
-            // 1
-            const result1: { node: string, key: string, index: BigNumber } = await new Promise((resolve, reject) => {
-                contractInstance.on("ListItemChanged", (node: string, key: string, index: BigNumber) => {
-                    resolve({ node, key, index })
-                })
-                contractInstance.pushListText(entityId, listRecordKey1, inputValue).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result1.node).to.equal(entityId)
-            expect(result1.key).to.equal(listRecordKey1)
-            expect(result1.index.toString()).to.equal("0")
-        }).timeout(8000)
-
-        it("Should emit events on update", async () => {
-            const inputValue = "Text record string 1"
-            const inputValue2 = "Text record string 2"
-
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, inputValue)
-            await tx.wait()
-
-            const result2: { node: string, key: string, index: BigNumber } = await new Promise((resolve, reject) => {
-                contractInstance.on("ListItemChanged", (node: string, key: string, index: BigNumber) => {
-                    resolve({ node, key, index })
-                })
-                contractInstance.setListText(entityId, listRecordKey1, 0, inputValue2).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result2.node).to.equal(entityId)
-            expect(result2.key).to.equal(listRecordKey1)
-            expect(result2.index.toString()).to.equal("0")
-        }).timeout(8000)
-
-        it("Should emit events on remove", async () => {
-            const inputValue = "Text record string 1"
-
-            tx = await contractInstance.pushListText(entityId, listRecordKey1, inputValue)
-            await tx.wait()
-
-            const result3: { node: string, key: string, index: BigNumber } = await new Promise((resolve, reject) => {
-                contractInstance.on("ListItemChanged", (node: string, key: string, index: BigNumber) => {
-                    resolve({ node, key, index })
-                })
-                contractInstance.removeListIndex(entityId, listRecordKey1, 0).then(tx => tx.wait()).catch(reject)
-            })
-
-            expect(result3.node).to.equal(entityId)
-            expect(result3.key).to.equal(listRecordKey1)
-            expect(result3.index.toString()).to.equal("0")
-        }).timeout(8000)
-    })
 }).timeout(4000)

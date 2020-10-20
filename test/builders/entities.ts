@@ -1,11 +1,13 @@
 import { Contract, ContractFactory, utils } from "ethers"
-import { EntityResolverContractMethods } from "../../lib/index"
+import { EnsPublicResolverContractMethods } from "../../lib/index"
 import { getAccounts, TestAccount } from "../utils"
 
-const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = require("../../build/entity-resolver.json")
+const { abi: ensPublicResolverAbi, bytecode: ensPublicResolverByteCode } = require("../../build/ens-public-resolver.json")
 
 // DEFAULT VALUES
 export const DEFAULT_NAME = "Organizer Entity Name"
+
+const emptyAddress = "0x0000000000000000000000000000000000000000"
 
 // BUILDER
 export default class EntityResolverBuilder {
@@ -19,9 +21,9 @@ export default class EntityResolverBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(): Promise<EntityResolverContractMethods & Contract> {
-        const resolverFactory = new ContractFactory(entityResolverAbi, entityResolverByteCode, this.entityAccount.wallet)
-        const contractInstance = await resolverFactory.deploy() as EntityResolverContractMethods & Contract
+    async build(): Promise<EnsPublicResolverContractMethods & Contract> {
+        const resolverFactory = new ContractFactory(ensPublicResolverAbi, ensPublicResolverByteCode, this.entityAccount.wallet)
+        const contractInstance = await resolverFactory.deploy(emptyAddress) as EnsPublicResolverContractMethods & Contract
 
         // const entityId = utils.keccak256(this.entityAccount.address)
         // await contractInstance.setText(entityId, "key-name", this.name)

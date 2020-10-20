@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./interfaces.sol";
 
-contract Namespace is INamespaceStore {
+contract Namespaces is INamespaceStore {
     // GLOBAL DATA
 
     address internal contractOwner; // See `onlyContractOwner`

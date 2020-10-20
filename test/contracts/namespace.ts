@@ -8,7 +8,7 @@ import { NamespaceContractMethods } from "../../lib"
 
 import NamespaceBuilder, { DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID, DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES } from "../builders/namespace"
 
-const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../../build/namespace.json")
+import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
