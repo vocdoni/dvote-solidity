@@ -1,4 +1,4 @@
-image: node:12.19.0-stretch
+image: node:14.14.0-stretch
 
 stages:
   - build
@@ -15,7 +15,8 @@ stages:
 dvote-solidity-build:
   stage: build
   script:
-    - apt-get install make
+    # workaround to be able to compile on CI
+    - rm package-lock.json
     - make all
     - make test
   artifacts:

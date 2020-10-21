@@ -565,3 +565,8 @@ Both networks currently feature a prior version. Expect them to be soon replaced
   - ENS: `processes.dev.vocdoni.eth`
 
 
+## Development
+
+Run `npm install` to get the dependencies
+
+On Linux, you may need to remove `package-lock.json` and try again.

@@ -491,7 +491,7 @@ export class ProcessContractParameters {
             this.namespace, // int namespace
             this.paramsSignature // String paramsSignature
         ]
-        paramsResult.push(transactionOptions)
+        if (transactionOptions) paramsResult.push(transactionOptions)
         return paramsResult
     }
 }
