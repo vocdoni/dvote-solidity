@@ -465,9 +465,13 @@ export class ProcessContractParameters {
         return result
     }
 
-    /** Arrange the JSON object into the parameters for `newProcess()` */
-    toContractParams(): IProcessCreateParamsTuple {
-        return [
+    /**
+     * Arrange the JSON object into the parameters for `newProcess()`
+     * 
+     * @param transactionOptions Optional parameters to pass to the deployment contract transaction (ethers.js)
+     */
+    toContractParams(transactionOptions?: IMethodOverrides): IProcessCreateParamsTuple {
+        const paramsResult: IProcessCreateParamsTuple = [
             [this.mode.value, this.envelopeType.value], // int mode_envelopeType
             [
                 this.metadata,
@@ -486,7 +490,9 @@ export class ProcessContractParameters {
             [this.maxTotalCost, this.costExponent], // int maxTotalCost_costExponent
             this.namespace, // int namespace
             this.paramsSignature // String paramsSignature
-        ];
+        ]
+        paramsResult.push(transactionOptions)
+        return paramsResult
     }
 }
 

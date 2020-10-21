@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 0.11.1
+
+- Allowing to pass transaction options in `ProcessContractParameters.toContractParams()`
+
 ## 0.11.0
 
 - Using the ENS registry contracts from xENS and OpenZeppelin. 

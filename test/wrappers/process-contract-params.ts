@@ -61,7 +61,7 @@ describe("Process contract parameter wrapper", () => {
             costExponent: 888,
             namespace: 999,
             paramsSignature: "0x1000"
-        }).toContractParams()
+        }).toContractParams({ gasLimit: 100 })
 
         expect(params2[0][0]).to.eq(21)
         expect(params2[0][1]).to.eq(4)
@@ -79,6 +79,7 @@ describe("Process contract parameter wrapper", () => {
         expect(params2[6][1]).to.eq(888)
         expect(params2[7]).to.eq(999)
         expect(params2[8]).to.eq("0x1000")
+        expect(params2[9]).to.deep.eq({ gasLimit: 100 })
     })
 
     it("should unwrap the 'get' response values", () => {
