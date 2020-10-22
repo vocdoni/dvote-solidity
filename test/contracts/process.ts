@@ -4,9 +4,9 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, NamespaceContractMethods } from "../../lib"
+import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_UNIQUE_VALUES, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE } from "../builders/process"
+import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_UNIQUE_VALUES, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT } from "../builders/process"
 import { BigNumber } from "ethers"
 import NamespaceBuilder from "../builders/namespace"
 
@@ -19,12 +19,14 @@ let entityAccount: TestAccount
 let randomAccount1: TestAccount
 let randomAccount2: TestAccount
 let authorizedOracleAccount1: TestAccount
+let authorizedOracleAccount1Signature: string
 let authorizedOracleAccount2: TestAccount
 let processId: string
 let contractInstance: ProcessContractMethods & Contract
 let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
+const emptyArray: Array<number> = [] 
 
 addCompletionHooks()
 
@@ -48,7 +50,6 @@ describe("Process contract", () => {
         const namespaceInstance1 = await new NamespaceBuilder().build()
         const namespaceInstance2 = await new NamespaceBuilder().build()
         const somePredecessorAddr = (await new ProcessBuilder().build()).address
-
         const contractFactory1 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
         const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address) as Contract & ProcessContractMethods
 
@@ -1937,6 +1938,9 @@ describe("Process contract", () => {
             })
 
             describe("from results", () => {
+                //authorizedOracleAccount1.wallet.signMessage(JSON.stringify({tally: DEFAULT_RESULTS_TALLY, height: DEFAULT_RESULTS_HEIGHT}))
+                //.then((sig) => { authorizedOracleAccount1Signature = sig })
+
                 it("should never allow the status to be updated [creator]", async () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
@@ -1949,9 +1953,8 @@ describe("Process contract", () => {
 
                     // Set it to RESULTS (oracle)
                     contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                    tx = await contractInstance.setResults(processId1, "1234")
+                    tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                     await tx.wait()
-
                     const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
                     expect(processData1.mode.value).to.eq(mode)
                     expect(processData1.entityAddress).to.eq(entityAccount.address)
@@ -2015,7 +2018,7 @@ describe("Process contract", () => {
                     const processData5 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
                     expect(processData5.entityAddress).to.eq(entityAccount.address)
                     expect(processData5.status.value).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
-                })
+            })
 
                 it("should never allow the status to be updated [other account]", async () => {
                     const namespaceAddress = await contractInstance.namespaceAddress()
@@ -2033,7 +2036,7 @@ describe("Process contract", () => {
 
                         // Set it to RESULTS (oracle)
                         contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                        tx = await contractInstance.setResults(processId1, "1234")
+                        tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                         await tx.wait()
 
                         const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2124,7 +2127,7 @@ describe("Process contract", () => {
 
                         // Try to set the results (fail)
                         try {
-                            tx = await contractInstance.setResults(processId1, "1234")
+                            tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
                         }
@@ -2142,7 +2145,7 @@ describe("Process contract", () => {
                         await tx.wait()
 
                         contractInstance = contractInstance.connect(account.wallet) as any
-                        tx = await contractInstance.setResults(processId1, "1234")
+                        tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                         await tx.wait()
 
                         const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2347,7 +2350,7 @@ describe("Process contract", () => {
 
             // set some results
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.setResults(processId, "random-data")
+            tx = await contractInstance.setResults(processId, [[9, 8], [7, 6], [5, 4], [3, 2], [1, 0]], 10)
             await tx.wait()
 
             contractInstance = contractInstance.connect(entityAccount.wallet) as any
@@ -2655,7 +2658,7 @@ describe("Process contract", () => {
             expect(processData4.status.value).to.eq(ProcessStatus.PAUSED, "The process should be paused")
 
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.setResults(processId, "{}")
+            tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
             await tx.wait()
 
             contractInstance = contractInstance.connect(entityAccount.wallet) as any
@@ -2698,7 +2701,8 @@ describe("Process contract", () => {
     })
 
     describe("Process Results", () => {
-        const results = '{"results":{"A":1234,"B":2345,"C":3456}}'
+        //authorizedOracleAccount1.wallet.signMessage(JSON.stringify({tally: DEFAULT_RESULTS_TALLY, height: DEFAULT_RESULTS_HEIGHT}))
+        //        .then((sig) => { authorizedOracleAccount1Signature = sig })
 
         it("getting the results of a non-existent process should fail", async () => {
             for (let i = 0; i < 5; i++) {
@@ -2723,7 +2727,7 @@ describe("Process contract", () => {
                 const randomProcessId = "0x" + (Math.random().toString().substr(2) + Math.random().toString().substr(2) + Math.random().toString().substr(2) + Math.random().toString().substr(2) + Math.random().toString().substr(2)).substr(-64)
 
                 try {
-                    await contractInstance.setResults(randomProcessId, results)
+                    await contractInstance.setResults(randomProcessId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                     throw new Error("The transaction should have thrown an error but didn't")
                 }
                 catch (err) {
@@ -2743,7 +2747,7 @@ describe("Process contract", () => {
             // Attempt to publish the results by someone else
             try {
                 contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.setResults(processId, results)
+                tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -2752,7 +2756,8 @@ describe("Process contract", () => {
 
             // Get results
             const result2 = await contractInstance.getResults(processId)
-            expect(result2).to.eq("", "There should be no results")
+            expect(result2.tally).to.deep.eq(emptyArray, "There should be no results")
+            expect(result2.height).to.eq(0, "There should be no votes")
 
             // Register an oracle
             const namespaceInstance = new Contract(namespaceAddress, namespaceAbi, deployAccount.wallet) as Contract & NamespaceContractMethods
@@ -2761,11 +2766,12 @@ describe("Process contract", () => {
 
             // Publish the results
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.setResults(processId, results)
+            tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
 
             // Get results
             const result4 = await contractInstance.getResults(processId)
-            expect(result4).to.eq(results, "The results should match")
+            expect(result4.tally).to.deep.eq(DEFAULT_RESULTS_TALLY, "The results should match")
+            expect(result4.height).to.eq(DEFAULT_RESULTS_HEIGHT, "The results should match")
         }).timeout(6000)
 
         it("should be accepted when the processId exists", async () => {
@@ -2777,7 +2783,7 @@ describe("Process contract", () => {
             try {
                 // Try to publish
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.setResults(nonExistingProcessId1, results)
+                tx = await contractInstance.setResults(nonExistingProcessId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -2788,7 +2794,7 @@ describe("Process contract", () => {
             try {
                 // Try to publish
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.setResults(nonExistingProcessId2, results)
+                tx = await contractInstance.setResults(nonExistingProcessId2, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -2810,7 +2816,7 @@ describe("Process contract", () => {
             // Attempt to publish the results after canceling
             try {
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.setResults(processId, results)
+                tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -2819,7 +2825,8 @@ describe("Process contract", () => {
 
             // Get results
             const result4 = await contractInstance.getResults(processId)
-            expect(result4).to.eq("", "There should be no results")
+            expect(result4.tally).to.deep.eq(emptyArray, "There should be no results")
+            expect(result4.height).to.eq(0, "There should be no votes")
         }).timeout(5000)
 
         it("should retrieve the submited results", async () => {
@@ -2831,11 +2838,12 @@ describe("Process contract", () => {
 
             // Publish the results
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.setResults(processId, results)
+            tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
 
             // Get results
             const result3 = await contractInstance.getResults(processId)
-            expect(result3).to.eq(results, "The results should match")
+            expect(result3.tally).to.deep.eq(DEFAULT_RESULTS_TALLY, "The tally of the results should match")
+            expect(result3.height).to.eq(DEFAULT_RESULTS_HEIGHT, "The height of the results should match")
 
         }).timeout(5000)
 
@@ -2854,7 +2862,7 @@ describe("Process contract", () => {
 
                 // Try to set the results (fail)
                 try {
-                    tx = await contractInstance.setResults(processId1, "1234")
+                    tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
                 }
@@ -2872,7 +2880,7 @@ describe("Process contract", () => {
                 await tx.wait()
 
                 contractInstance = contractInstance.connect(account.wallet) as any
-                tx = await contractInstance.setResults(processId1, "1234")
+                tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                 await tx.wait()
 
                 const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2885,18 +2893,18 @@ describe("Process contract", () => {
         it("should prevent publishing twice", async () => {
             contractInstance = await new ProcessBuilder().withOracle(authorizedOracleAccount1.address).build()
 
-            const originalResults = "SOMETHING_DIFFERENT_HERE"
             const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
 
             // One is already created by the builder
 
             // publish results
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-            tx = await contractInstance.setResults(processId, originalResults)
+            tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
 
             // Get results
             const result3 = await contractInstance.getResults(processId)
-            expect(result3).to.eq(originalResults, "The results should match")
+            expect(result3.tally).to.deep.eq(DEFAULT_RESULTS_TALLY, "The tally of the results should match")
+            expect(result3.height).to.eq(DEFAULT_RESULTS_HEIGHT, "The height of the results should match")
 
             const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
             expect(processData1.entityAddress).to.eq(entityAccount.address)
@@ -2905,7 +2913,7 @@ describe("Process contract", () => {
             // Try update the results
             try {
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.setResults(processId, results)
+                tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -2914,7 +2922,8 @@ describe("Process contract", () => {
 
             // Get results
             const result4 = await contractInstance.getResults(processId)
-            expect(result4).to.eq(originalResults, "The results should stay the same")
+            expect(result4.tally).to.deep.eq(DEFAULT_RESULTS_TALLY, "The tally of the results should match")
+            expect(result4.height).to.eq(DEFAULT_RESULTS_HEIGHT, "The height of the results should match")
 
             const processData2 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
             expect(processData2.entityAddress).to.eq(entityAccount.address)
@@ -2931,7 +2940,7 @@ describe("Process contract", () => {
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
             const result: { processId: string } = await new Promise((resolve, reject) => {
                 contractInstance.on("ResultsAvailable", (processId: string) => resolve({ processId }))
-                contractInstance.setResults(processId1, results).then(tx => tx.wait()).catch(reject)
+                contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
@@ -3013,7 +3022,7 @@ describe("Process contract", () => {
             // Try to publish results
             try {
                 contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-                tx = await contractInstance.setResults(processId, "random-results-here")
+                tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT)
                 throw new Error("The transaction should have thrown an error but didn't")
             }
             catch (err) {
@@ -3022,7 +3031,7 @@ describe("Process contract", () => {
 
             // Get results
             const result2 = await contractInstance.getResults(processId)
-            expect(result2).to.eq("", "There should be no results")
+            expect(result2.tally).to.deep.eq(emptyArray, "There should be no results")
 
             // Get status
             const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -3468,10 +3477,10 @@ describe("Process contract", () => {
             tx = await processInstanceOld.incrementQuestionIndex(processId) // should work fine
             await tx.wait()
             // connect just now as the oracle1
-            tx = await processInstanceOld.connect(authorizedOracleAccount1.wallet).setResults(processId, "results-here") // should work fine
+            tx = await processInstanceOld.connect(authorizedOracleAccount1.wallet).setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT) // should work fine
             await tx.wait()
 
-            expect(await processInstanceOld.getResults(processId)).to.eq("results-here")
+            expect(await (await processInstanceOld.getResults(processId)).tally).to.deep.eq(DEFAULT_RESULTS_TALLY)
         })
 
         it("only the predecessor should be able to activate a new contract", async () => {
@@ -3677,5 +3686,5 @@ describe("Process contract", () => {
             expect(await processInstanceNew.predecessorAddress()).to.eq(callerInstance.address)
             expect((await processInstanceNew.activationBlock()).toNumber()).to.be.gt(0)
         }).timeout(7000)
-    })
+     })
 }).timeout(4000)

@@ -201,6 +201,30 @@ export const processStatusValues = [
     ProcessStatus.RESULTS
 ]
 
+export class ProcessResults {
+    private _results: IProcessResults
+    constructor(tally: number[][], height: number) {
+        if (typeof tally === "undefined" || tally.length < 1) throw new Error("Invalid tally")
+        if (typeof height === "undefined" || height < 1) throw new Error("Invalid height")
+        this._results.tally = tally
+        this._results.height = height
+        
+    }
+
+    get value(): IProcessResults { return this._results }
+
+    get tally(): number[][] { return this._results.tally }
+    get height(): number { return this._results.height }
+
+    set tally(tally: number[][]) { this._results.tally = tally }
+    set height(height: number) { this._results.height = height }
+}
+
+export type IProcessResults = {
+    tally: number[][],
+    height: number,
+}
+
 export type IProcessCreateParams = {
     mode: ProcessMode | number,
     envelopeType: ProcessEnvelopeType | number,
@@ -290,7 +314,7 @@ export interface ProcessContractMethods {
     /** Retrieve the available results for the given process */
     getParamsSignature(processId: string): Promise<{ paramsSignature: string }>
     /** Retrieve the available results for the given process */
-    getResults(processId: string): Promise<{ results: string }>
+    getResults(processId: string): Promise<IProcessResults>
     /** Gets the address of the process instance where the given processId was originally created. 
      * This allows to know where to send update transactions, after a fork has occurred. */
     getCreationInstance(processId): Promise<string>,
@@ -329,7 +353,11 @@ export interface ProcessContractMethods {
     /** Updates the census of the given process (only if the mode allows dynamic census) */
     setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Sets the given results for the given process */
-    setResults(processId: string, results: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setResults(processId: string, tally: number[][], height: number, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    /** Adds the given signature to the given process results */
+    addResultsSignature(processId: string, signature: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    /** Adds the given proof to the given process results */
+    addResultsProof(processId: string, proof: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 }
 
 /** Wraps and unwraps the parameters sent to `Process.newProcess()` and obtained from `Process.get()` for convenience */
@@ -353,7 +381,7 @@ export class ProcessContractParameters {
     costExponent: number;
     namespace: number;
     paramsSignature?: string;
-    results?: string;
+    results?: ProcessResults;
 
     /** Parse a plain parameters object  */
     static fromParams(params: IProcessCreateParams): ProcessContractParameters {

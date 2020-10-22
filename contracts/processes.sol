@@ -54,6 +54,10 @@ contract Processes is IProcessStore {
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
 
     // DATA STRUCTS
+    struct ProcessResults {
+        uint32[][] tally;     // apperence count for every question and option value
+        uint32 height;        // total number of votes of the process
+    }
 
     struct Process {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
@@ -94,7 +98,7 @@ contract Processes is IProcessStore {
         // Indirectly, it will also determine the Vochain that hosts this process.
         uint16 namespace;
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
-        string results; // string containing the results
+        ProcessResults results; // results wraps the tally, the total number of votes, a list of signatures and a list of proofs
     }
 
     /// @notice An entry for each process created by an Entity.
@@ -122,6 +126,17 @@ contract Processes is IProcessStore {
         require(
             activationBlock > 0 && successorAddress == address(0),
             "Inactive"
+        );
+        _;
+    }
+
+    /// @notice Fails if the msg.sender is not an authorired oracle
+    modifier onlyOracle(bytes32 processId) override {
+         // Only an Oracle within the process' namespace is valid
+        INamespaceStore namespace = INamespaceStore(namespaceAddress);
+        require(
+            namespace.isOracle(processes[processId].namespace, msg.sender),
+            "Not oracle"
         );
         _;
     }
@@ -325,7 +340,7 @@ contract Processes is IProcessStore {
         public
         override
         view
-        returns (string memory)
+        returns (uint32[][] memory tally, uint32 height)
     {
         if (processes[processId].entityAddress == address(0x0)) {
             // Not found locally
@@ -336,9 +351,9 @@ contract Processes is IProcessStore {
             IProcessStore predecessor = IProcessStore(predecessorAddress);
             return predecessor.getResults(processId);
         }
-
         // Found locally
-        return processes[processId].results;
+        ProcessResults storage results = processes[processId].results;
+        return (results.tally, results.height);
     }
 
     /// @notice Gets the address of the process instance where the given processId was originally created.
@@ -458,8 +473,7 @@ contract Processes is IProcessStore {
         processData.costExponent = maxTotalCost_costExponent[1];
         processData.namespace = namespace;
         processData.paramsSignature = paramsSignature;
-        // newProcess.results = "";
-
+        
         emit NewProcess(processId, namespace);
     }
 
@@ -601,11 +615,12 @@ contract Processes is IProcessStore {
         emit CensusUpdated(processId, processes[processId].namespace);
     }
 
-    function setResults(bytes32 processId, string memory results)
+    function setResults(bytes32 processId, uint32[][] memory tally, uint32 height)
         public
         override
+        onlyOracle(processId)
     {
-        require(bytes(results).length > 0, "No results");
+        require(height > 0, "No votes");
 
         if (processes[processId].entityAddress == address(0x0)) {
             // Not found locally
@@ -613,12 +628,8 @@ contract Processes is IProcessStore {
             revert("Not found: Try on predecessor");
         }
 
-        // Only an Oracle within the process' namespace can set any results
-        INamespaceStore namespace = INamespaceStore(namespaceAddress);
-        require(
-            namespace.isOracle(processes[processId].namespace, msg.sender),
-            "Not oracle"
-        );
+        require(tally.length == processes[processId].questionCount, "Invalid tally");
+
         // cannot publish results on a canceled process or on a process
         // that already has results
         require(
@@ -626,8 +637,9 @@ contract Processes is IProcessStore {
                 processes[processId].status != Status.RESULTS,
             "Canceled or already set"
         );
-
-        processes[processId].results = results;
+       
+        processes[processId].results.tally = tally;
+        processes[processId].results.height = height;
         processes[processId].status = Status.RESULTS;
 
         emit ResultsAvailable(processId);
