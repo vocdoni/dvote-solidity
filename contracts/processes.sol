@@ -10,21 +10,36 @@ contract Processes is IProcessStore {
 
     /*
     Process Mode flags
-    The process mode defines how the process behaves externally. It affects both the Vochain, the contract itself and even the metadata.
+    The process mode defines how the process behaves externally. It affects both the Vochain, the contract itself, the metadata and the census origin.
 
-    0x00011111
-         |||||
-         ||||`- autoStart
-         |||`-- interruptible
-         ||`--- dynamicCensus
-         |`---- allowVoteOverwrite
-         `----- encryptedMetadata
+    Available census origins:
+    - Custom  (000) 
+    - ERC20   (001) // ERC20 and the following requires dynamic census activated
+    - ERC721  (010)
+    - ERC1155 (011)
+    - ERC777  (100)
+    - MiniMe  (101)
+
+    0x11111111
+      ||||||||
+      |||||||`- autoStart
+      ||||||`-- interruptible
+      |||||`--- dynamicCensus
+      ||||`---- allowVoteOverwrite
+      |||`----- encryptedMetadata
+      ||`------ censusOrigin 0
+      |`------- censusOrigin 1
+      `-------- censusOrigin 2
     */
     uint8 internal constant MODE_AUTO_START = 1 << 0;
     uint8 internal constant MODE_INTERRUPTIBLE = 1 << 1;
     uint8 internal constant MODE_DYNAMIC_CENSUS = 1 << 2;
     uint8 internal constant MODE_ALLOW_VOTE_OVERWRITE = 1 << 3;
     uint8 internal constant MODE_ENCRYPTED_METADATA = 1 << 4;
+    uint8 internal constant MODE_CENSUS_ORIGIN_0 = 1 << 5;
+    uint8 internal constant MODE_CENSUS_ORIGIN_1 = 1 << 6;
+    uint8 internal constant MODE_CENSUS_ORIGIN_2 = 1 << 7;
+
 
     /*
     Envelope Type flags
@@ -40,6 +55,8 @@ contract Processes is IProcessStore {
     uint8 internal constant ENV_TYPE_ANONYMOUS = 1 << 1;
     uint8 internal constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2;
 
+    // Compatible contract functions signatures
+    bytes4 private constant FUNC_BALANCE_OF = bytes4(keccak256("balanceOf(address)"));
     // EVENTS
 
     event NamespaceAddressUpdated(address namespaceAddr);
@@ -196,6 +213,25 @@ contract Processes is IProcessStore {
             size := extcodesize(_targetAddress)
         }
         return size > 0;
+    }
+
+    function isContractCompatible(address _targetAddress, bytes32 _functionSignature) internal view returns(bool) {
+        bool success;
+        bytes memory data = abi.encodeWithSelector(_functionSignature, _address);
+
+        assembly {
+            success := call(
+                gas,            // gas remaining
+                _targetAddress,         // destination address
+                0,              // no ether
+                add(data, 32),  // input buffer (starts after the first 32 bytes in the `data` array)
+                mload(data),    // input length (loaded from the first 32 bytes in the `data` array)
+                0,              // output buffer
+                0               // output length
+            )
+        }
+
+        return success;
     }
 
     // GLOBAL METHODS
@@ -382,7 +418,7 @@ contract Processes is IProcessStore {
 
     function newProcess(
         uint8[2] memory mode_envelopeType, // [mode, envelopeType]
-        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
+        string[4] memory metadata_merkleRoot_merkleTree_entityAddress, //  [metadata, merkleRoot, merkleTree, entityAddress]
         uint64 startBlock,
         uint32 blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
@@ -391,6 +427,7 @@ contract Processes is IProcessStore {
         uint16 namespace,
         bytes32 paramsSignature
     ) public override onlyIfActive {
+        address entityAddress; 
         uint8 mode = mode_envelopeType[0];
         if (mode & MODE_AUTO_START != 0) {
             require(startBlock > 0, "Auto start requires a start block");
@@ -398,16 +435,40 @@ contract Processes is IProcessStore {
         if (mode & MODE_INTERRUPTIBLE == 0) {
             require(blockCount > 0, "Uninterruptible needs blockCount");
         }
+        // if EVM census, should allow dynamic
+        if ((mode & MODE_CENSUS_ORIGIN_0 == 0) && (mode & MODE_CENSUS_ORIGIN_1 == 0) && (mode & MODE_CENSUS_ORIGIN_2 == 0)) {
+            require(mode & MODE_DYNAMIC_CENSUS != 0, "EVM based census must allow dynamic census");
+            require(
+                bytes(metadata_merkleRoot_merkleTree_entityAddress[3]).length > 0,
+                "EntityAddress must be provided"
+            );
+            entityAddress = metadata_merkleRoot_merkleTree_entityAddress[3].parseAddr();
+            // check entity address is contract
+            require (
+                isContract(entityAddress),
+                "Not a contract"    
+            );
+            require 
+
+        } else {
+            entityAddress = msg.sender;
+        }
+        // 110 && 111 not implemented
+        require (
+            (!(mode & MODE_CENSUS_ORIGIN_0 != 0) && (mode & MODE_CENSUS_ORIGIN_1 != 0) && (mode & MODE_CENSUS_ORIGIN_2 == 0)) ||
+            (!(mode & MODE_CENSUS_ORIGIN_0 != 0) && (mode & MODE_CENSUS_ORIGIN_1 != 0) && (mode & MODE_CENSUS_ORIGIN_2 != 0)),
+            "Census origin not supported"
+        );
         require(
-            bytes(metadata_merkleRoot_merkleTree[0]).length > 0,
+            bytes(metadata_merkleRoot_merkleTree_entityAddress[0]).length > 0,
             "No metadata"
         );
         require(
-            bytes(metadata_merkleRoot_merkleTree[1]).length > 0,
+            bytes(metadata_merkleRoot_merkleTree_entityAddress[1]).length > 0,
             "No merkleRoot"
         );
         require(
-            bytes(metadata_merkleRoot_merkleTree[2]).length > 0,
+            bytes(metadata_merkleRoot_merkleTree_entityAddress[2]).length > 0,
             "No merkleTree"
         );
         require(
@@ -431,11 +492,11 @@ contract Processes is IProcessStore {
         }
 
         // Index the process for the entity
-        uint256 prevCount = getEntityProcessCount(msg.sender);
+        uint256 prevCount = getEntityProcessCount(entityAddress);
 
-        entityCheckpoints[msg.sender].push();
+        entityCheckpoints[entityAddress].push();
         ProcessCheckpoint storage checkpoint = entityCheckpoints[msg
-            .sender][entityCheckpoints[msg.sender].length - 1];
+            .sender][entityCheckpoints[entityAddress].length - 1];
         checkpoint.index = prevCount;
 
         // By default, processes start PAUSED (auto start disabled)
@@ -447,17 +508,17 @@ contract Processes is IProcessStore {
         }
 
         // Store the new process
-        bytes32 processId = getProcessId(msg.sender, prevCount, namespace);
+        bytes32 processId = getProcessId(entityAddress, prevCount, namespace);
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType[0];
         processData.envelopeType = mode_envelopeType[1];
-        processData.entityAddress = msg.sender;
+        processData.entityAddress = entityAddress;
         processData.startBlock = startBlock;
         processData.blockCount = blockCount;
-        processData.metadata = metadata_merkleRoot_merkleTree[0];
-        processData.censusMerkleRoot = metadata_merkleRoot_merkleTree[1];
-        processData.censusMerkleTree = metadata_merkleRoot_merkleTree[2];
+        processData.metadata = metadata_merkleRoot_merkleTree_entityAddress[0];
+        processData.censusMerkleRoot = metadata_merkleRoot_merkleTree_entityAddress[1];
+        processData.censusMerkleTree = metadata_merkleRoot_merkleTree_entityAddress[2];
         processData.status = status;
         // processData.questionIndex = 0;
         processData
