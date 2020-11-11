@@ -3,22 +3,15 @@
 pragma solidity ^0.6.9;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces.sol";
+import "./base.sol"; // Base contracts (Chained, Owned)
+import "./interfaces.sol"; // Common interface for retro compatibility
 
-contract Processes is IProcessStore {
+contract Processes is IProcessStore, Chained {
     // CONSTANTS AND ENUMS
 
     /*
     Process Mode flags
     The process mode defines how the process behaves externally. It affects both the Vochain, the contract itself, the metadata and the census origin.
-
-    Available census origins:
-    - Custom  (000) 
-    - ERC20   (001) // ERC20 and the following requires dynamic census activated
-    - ERC721  (010)
-    - ERC1155 (011)
-    - ERC777  (100)
-    - MiniMe  (101)
 
     0x11111111
       ||||||||
@@ -27,19 +20,16 @@ contract Processes is IProcessStore {
       |||||`--- dynamicCensus
       ||||`---- allowVoteOverwrite
       |||`----- encryptedMetadata
-      ||`------ censusOrigin 0
-      |`------- censusOrigin 1
-      `-------- censusOrigin 2
+      ```------ censusOrigin enum
     */
     uint8 internal constant MODE_AUTO_START = 1 << 0;
     uint8 internal constant MODE_INTERRUPTIBLE = 1 << 1;
     uint8 internal constant MODE_DYNAMIC_CENSUS = 1 << 2;
     uint8 internal constant MODE_ALLOW_VOTE_OVERWRITE = 1 << 3;
     uint8 internal constant MODE_ENCRYPTED_METADATA = 1 << 4;
-    uint8 internal constant MODE_CENSUS_ORIGIN_0 = 1 << 5;
-    uint8 internal constant MODE_CENSUS_ORIGIN_1 = 1 << 6;
-    uint8 internal constant MODE_CENSUS_ORIGIN_2 = 1 << 7;
-
+    uint8 internal constant MODE_CENSUS_ORIGIN_0 = 1 << 5; // See `IProcessStore` > CensusOrigin
+    uint8 internal constant MODE_CENSUS_ORIGIN_1 = 1 << 6; // See `IProcessStore` > CensusOrigin
+    uint8 internal constant MODE_CENSUS_ORIGIN_2 = 1 << 7; // See `IProcessStore` > CensusOrigin
 
     /*
     Envelope Type flags
@@ -56,24 +46,21 @@ contract Processes is IProcessStore {
     uint8 internal constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2;
 
     // Compatible contract functions signatures
-    bytes4 private constant FUNC_BALANCE_OF = bytes4(keccak256("balanceOf(address)"));
+    bytes4 private constant FUNC_BALANCE_OF = bytes4(
+        keccak256("balanceOf(address)")
+    );
     // EVENTS
 
     event NamespaceAddressUpdated(address namespaceAddr);
 
     // GLOBAL DATA
 
-    address internal contractOwner; // See `onlyContractOwner`
-    address public predecessorAddress; // Instance that we forked
-    address public successorAddress; // Instance that forked from us (only when activated)
-    uint256 public activationBlock; // Block after which the contract operates. Zero means still inactive.
-
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
 
     // DATA STRUCTS
     struct ProcessResults {
-        uint32[][] tally;     // apperence count for every question and option value
-        uint32 height;        // total number of votes of the process
+        uint32[][] tally; // The tally for every question, option and value
+        uint32 height; // The amount of valid envelopes registered
     }
 
     struct Process {
@@ -132,24 +119,9 @@ contract Processes is IProcessStore {
 
     // MODIFIERS
 
-    /// @notice Fails if the sender is not the contract owner
-    modifier onlyContractOwner override {
-        require(msg.sender == contractOwner, "onlyContractOwner");
-        _;
-    }
-
-    /// @notice Fails if the contract is not yet active or if a successor has been activated
-    modifier onlyIfActive override {
-        require(
-            activationBlock > 0 && successorAddress == address(0),
-            "Inactive"
-        );
-        _;
-    }
-
     /// @notice Fails if the msg.sender is not an authorired oracle
     modifier onlyOracle(bytes32 processId) override {
-         // Only an Oracle within the process' namespace is valid
+        // Only an Oracle within the process' namespace is valid
         INamespaceStore namespace = INamespaceStore(namespaceAddress);
         require(
             namespace.isOracle(processes[processId].namespace, msg.sender),
@@ -206,86 +178,14 @@ contract Processes is IProcessStore {
             );
     }
 
-    function isContract(address _targetAddress) internal view returns (bool) {
-        uint256 size;
-        if (_targetAddress == address(0)) return false;
-        assembly {
-            size := extcodesize(_targetAddress)
-        }
-        return size > 0;
-    }
-
-    function isContractCompatible(address _targetAddress, bytes32 _functionSignature) internal view returns(bool) {
-        bool success;
-        bytes memory data = abi.encodeWithSelector(_functionSignature, _address);
-
-        assembly {
-            success := call(
-                gas,            // gas remaining
-                _targetAddress,         // destination address
-                0,              // no ether
-                add(data, 32),  // input buffer (starts after the first 32 bytes in the `data` array)
-                mload(data),    // input length (loaded from the first 32 bytes in the `data` array)
-                0,              // output buffer
-                0               // output length
-            )
-        }
-
-        return success;
-    }
-
     // GLOBAL METHODS
 
-    /// @notice Creates a new instance of the contract and sets the contract owner.
-    /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor.
+    /// @notice Creates a new instance of the contract and sets the contract owner (see Owned).
+    /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor (see Chained).
     constructor(address predecessor, address namespace) public {
-        if (predecessor != address(0)) {
-            require(predecessor != address(this), "Can't be itself");
-            require(isContract(predecessor), "Invalid predecessor");
-        }
+        Chained.setPredecessor(predecessor);
 
-        require(isContract(namespace), "Invalid namespace");
-        // `namespace` should also be checked for `!= address(this)`
-        // However, since setting this value is not irreversible, we opt to save some gas.
-
-        contractOwner = msg.sender;
         namespaceAddress = namespace;
-        if (predecessor != address(0)) {
-            // Set the predecessor instance and leave ourselves inactive
-            predecessorAddress = predecessor;
-        } else {
-            // Set no predecessor and activate ourselves now
-            activationBlock = block.number;
-        }
-    }
-
-    /// @notice Sets the activation block of the instance, so that it can start operating
-    function activate() public override {
-        require(msg.sender == predecessorAddress, "Unauthorized");
-        require(activationBlock == 0, "Already active");
-
-        activationBlock = block.number;
-
-        emit Activated(block.number);
-    }
-
-    /// @notice invokes `activate()` on the successor contract and deactivates itself
-    function activateSuccessor(address successor)
-        public
-        override
-        onlyContractOwner
-    {
-        require(activationBlock > 0, "Must be active"); // we can't activate someone else before being active ourselves
-        require(successorAddress == address(0), "Already inactive"); // we can't do it twice
-        require(successor != address(this), "Can't be itself");
-        require(isContract(successor), "Not a contract"); // we can't activate a non-contract
-
-        // Attach to the instance that will become active
-        IProcessStore succInstance = IProcessStore(successor);
-        succInstance.activate();
-        successorAddress = successor;
-
-        emit ActivatedSuccessor(block.number, successor);
     }
 
     function setNamespaceAddress(address namespace) public onlyContractOwner {
@@ -427,7 +327,7 @@ contract Processes is IProcessStore {
         uint16 namespace,
         bytes32 paramsSignature
     ) public override onlyIfActive {
-        address entityAddress; 
+        address entityAddress;
         uint8 mode = mode_envelopeType[0];
         if (mode & MODE_AUTO_START != 0) {
             require(startBlock > 0, "Auto start requires a start block");
@@ -436,29 +336,42 @@ contract Processes is IProcessStore {
             require(blockCount > 0, "Uninterruptible needs blockCount");
         }
         // if EVM census, should allow dynamic
-        if ((mode & MODE_CENSUS_ORIGIN_0 == 0) && (mode & MODE_CENSUS_ORIGIN_1 == 0) && (mode & MODE_CENSUS_ORIGIN_2 == 0)) {
-            require(mode & MODE_DYNAMIC_CENSUS != 0, "EVM based census must allow dynamic census");
+
+        uint8 censusOrigin = mode &
+            (MODE_CENSUS_ORIGIN_0 |
+                MODE_CENSUS_ORIGIN_1 |
+                MODE_CENSUS_ORIGIN_2);
+        censusOrigin = censusOrigin >> 5;
+
+        if (censusOrigin == CensusOrigin.EXPLICIT) {
+            entityAddress = msg.sender;
+        } else {
             require(
-                bytes(metadata_merkleRoot_merkleTree_entityAddress[3]).length > 0,
+                censusOrigin <= CensusOrigin.MINI_ME,
+                "Invalid census origin"
+            );
+            require(
+                mode & MODE_DYNAMIC_CENSUS != 0,
+                "EVM based census must allow dynamic census"
+            );
+            require(
+                bytes(metadata_merkleRoot_merkleTree_entityAddress[3]).length >
+                    0,
                 "EntityAddress must be provided"
             );
-            entityAddress = metadata_merkleRoot_merkleTree_entityAddress[3].parseAddr();
-            // check entity address is contract
-            require (
-                isContract(entityAddress),
-                "Not a contract"    
-            );
-            require 
 
-        } else {
-            entityAddress = msg.sender;
+            // TODO: Address should be a parameter?
+            entityAddress = metadata_merkleRoot_merkleTree_entityAddress[3]
+                .parseAddr();
+
+            // check entity address is contract
+            require(isContract(entityAddress), "Not a contract");
+            require(
+                isContractCompatible(entityAddress, FUNC_BALANCE_OF),
+                "Not a contract"
+            );
         }
-        // 110 && 111 not implemented
-        require (
-            (!(mode & MODE_CENSUS_ORIGIN_0 != 0) && (mode & MODE_CENSUS_ORIGIN_1 != 0) && (mode & MODE_CENSUS_ORIGIN_2 == 0)) ||
-            (!(mode & MODE_CENSUS_ORIGIN_0 != 0) && (mode & MODE_CENSUS_ORIGIN_1 != 0) && (mode & MODE_CENSUS_ORIGIN_2 != 0)),
-            "Census origin not supported"
-        );
+
         require(
             bytes(metadata_merkleRoot_merkleTree_entityAddress[0]).length > 0,
             "No metadata"
@@ -517,8 +430,10 @@ contract Processes is IProcessStore {
         processData.startBlock = startBlock;
         processData.blockCount = blockCount;
         processData.metadata = metadata_merkleRoot_merkleTree_entityAddress[0];
-        processData.censusMerkleRoot = metadata_merkleRoot_merkleTree_entityAddress[1];
-        processData.censusMerkleTree = metadata_merkleRoot_merkleTree_entityAddress[2];
+        processData
+            .censusMerkleRoot = metadata_merkleRoot_merkleTree_entityAddress[1];
+        processData
+            .censusMerkleTree = metadata_merkleRoot_merkleTree_entityAddress[2];
         processData.status = status;
         // processData.questionIndex = 0;
         processData
@@ -534,7 +449,7 @@ contract Processes is IProcessStore {
         processData.costExponent = maxTotalCost_costExponent[1];
         processData.namespace = namespace;
         processData.paramsSignature = paramsSignature;
-        
+
         emit NewProcess(processId, namespace);
     }
 
@@ -676,11 +591,11 @@ contract Processes is IProcessStore {
         emit CensusUpdated(processId, processes[processId].namespace);
     }
 
-    function setResults(bytes32 processId, uint32[][] memory tally, uint32 height)
-        public
-        override
-        onlyOracle(processId)
-    {
+    function setResults(
+        bytes32 processId,
+        uint32[][] memory tally,
+        uint32 height
+    ) public override onlyOracle(processId) {
         require(height > 0, "No votes");
 
         if (processes[processId].entityAddress == address(0x0)) {
@@ -689,7 +604,10 @@ contract Processes is IProcessStore {
             revert("Not found: Try on predecessor");
         }
 
-        require(tally.length == processes[processId].questionCount, "Invalid tally");
+        require(
+            tally.length == processes[processId].questionCount,
+            "Invalid tally"
+        );
 
         // cannot publish results on a canceled process or on a process
         // that already has results
@@ -698,7 +616,7 @@ contract Processes is IProcessStore {
                 processes[processId].status != Status.RESULTS,
             "Canceled or already set"
         );
-       
+
         processes[processId].results.tally = tally;
         processes[processId].results.height = height;
         processes[processId].status = Status.RESULTS;
