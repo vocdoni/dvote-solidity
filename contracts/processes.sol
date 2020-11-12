@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.6.9;
+pragma solidity >=0.6.0 <0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./base.sol"; // Base contracts (Chained, Owned)
@@ -9,7 +9,6 @@ import "./lib.sol"; // Helpers
 
 contract Processes is IProcessStore, Chained {
     using SafeUint8 for uint8;
-    using ERCSupport for address;
 
     // CONSTANTS AND ENUMS
 
@@ -18,18 +17,19 @@ contract Processes is IProcessStore, Chained {
     The process mode defines how the process behaves externally. It affects both the Vochain, the contract itself, the metadata and the census origin.
 
     0x11101111
-      ||| ||||
-      ||| |||`- autoStart
-      ||| ||`-- interruptible
-      ||| |`--- dynamicCensus
-      ||| `---- encryptedMetadata
+      ||||||||
+      |||||||`- autoStart
+      ||||||`-- interruptible
+      |||||`--- dynamicCensus
+      ||||`---- encryptedMetadata
+      |||`----- (unused)
       ```------ censusOrigin enum
     */
     uint8 internal constant MODE_AUTO_START = 1 << 0;
     uint8 internal constant MODE_INTERRUPTIBLE = 1 << 1;
     uint8 internal constant MODE_DYNAMIC_CENSUS = 1 << 2;
     uint8 internal constant MODE_ENCRYPTED_METADATA = 1 << 3;
-    // Index #4 is not used
+    // (index #4 unused)
     uint8 internal constant MODE_CENSUS_ORIGIN = (1 << 7) | (1 << 6) | (1 << 5); // See `IProcessStore` > CensusOrigin
 
     /*
@@ -186,7 +186,7 @@ contract Processes is IProcessStore, Chained {
     }
 
     function setNamespaceAddress(address namespace) public onlyContractOwner {
-        require(isContract(namespace), "Invalid namespace");
+        require(ContractSupport.isContract(namespace), "Invalid namespace");
         namespaceAddress = namespace;
 
         emit NamespaceAddressUpdated(namespace);
@@ -363,8 +363,14 @@ contract Processes is IProcessStore, Chained {
             );
 
             // check entity address is contract
-            require(isContract(tokenContractAddress), "Not a contract");
-            require(tokenContractAddress.supportsBalanceOf(), "Not a contract");
+            require(
+                ContractSupport.isContract(tokenContractAddress),
+                "Not a contract"
+            );
+            require(
+                ContractSupport.supportsBalanceOf(tokenContractAddress),
+                "Not a contract"
+            );
         }
 
         require(

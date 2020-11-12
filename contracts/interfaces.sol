@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.6.9;
+pragma solidity >=0.6.0 <0.7.0;
 pragma experimental ABIEncoderV2;
 
 /// @notice The `IProcessStore` interface allows different versions of the contract to talk to each other. Not all methods in the contract need to be future proof.

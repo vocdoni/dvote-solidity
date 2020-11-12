@@ -9,6 +9,7 @@ ENS_REGISTRY_ARTIFACT_NAME=contracts_registry_ENSRegistry_sol_ENSRegistry
 ENS_PUBLIC_RESOLVER_ARTIFACT_NAME=contracts_resolver_PublicResolver_sol_PublicResolver
 PROCESS_ARTIFACT_NAME=contracts_processes_sol_Processes
 NAMESPACE_ARTIFACT_NAME=contracts_namespaces_sol_Namespaces
+STORAGE_PROOF_ARTIFACT_NAME=contracts_storage-proof_sol_Erc20StorageProof
 
 ###############################################################################
 ## HELP
@@ -44,7 +45,7 @@ package-lock.json:
 	@touch $@
 
 js-output: build/index.js
-contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json
+contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json build/storage-proof.json
 
 build:
 	@mkdir -p build
@@ -71,6 +72,10 @@ build/namespaces.json: build/solc/$(NAMESPACE_ARTIFACT_NAME).abi build/solc/$(NA
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).bin)\"}" > $@
 
+build/storage-proof.json: build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin
+	@echo "Building $@"
+	echo "{\"abi\":$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin)\"}" > $@
+
 build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi: build/solc
 build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin: build/solc
 build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).abi: build/solc
@@ -79,6 +84,8 @@ build/solc/$(PROCESS_ARTIFACT_NAME).abi: build/solc
 build/solc/$(PROCESS_ARTIFACT_NAME).bin: build/solc
 build/solc/$(NAMESPACE_ARTIFACT_NAME).abi: build/solc
 build/solc/$(NAMESPACE_ARTIFACT_NAME).bin: build/solc
+build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi: build/solc
+build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin: build/solc
 
 # Get openzeppelin contracts
 contracts/openzeppelin: node_modules

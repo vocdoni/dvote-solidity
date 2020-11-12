@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.6.9;
+pragma solidity >=0.6.0 <0.7.0;
 
 library SafeUint8 {
     /// @notice Adds two uint8 integers and fails if an overflow occurs
@@ -12,13 +12,22 @@ library SafeUint8 {
     }
 }
 
-library ERCSupport {
+library ContractSupport {
     // Compatible contract functions signatures
     bytes4 private constant BALANCE_OF_ADDR = bytes4(
         keccak256("balanceOf(address)")
     );
 
-    function isSupporting(address _targetAddress, bytes memory data)
+    function isContract(address targetAddress) internal view returns (bool) {
+        uint256 size;
+        if (targetAddress == address(0)) return false;
+        assembly {
+            size := extcodesize(targetAddress)
+        }
+        return size > 0;
+    }
+
+    function isSupporting(address targetAddress, bytes memory data)
         private
         returns (bool)
     {
@@ -26,7 +35,7 @@ library ERCSupport {
         assembly {
             success := call(
                 gas(), // gas remaining
-                _targetAddress, // destination address
+                targetAddress, // destination address
                 0, // no ether
                 add(data, 32), // input buffer (starts after the first 32 bytes in the `data` array)
                 mload(data), // input length (loaded from the first 32 bytes in the `data` array)
@@ -37,11 +46,11 @@ library ERCSupport {
         return success;
     }
 
-    function supportsBalanceOf(address _targetAddress) internal returns (bool) {
+    function supportsBalanceOf(address targetAddress) internal returns (bool) {
         bytes memory data = abi.encodeWithSelector(
             BALANCE_OF_ADDR,
             address(0x0)
         );
-        return isSupporting(_targetAddress, data);
+        return isSupporting(targetAddress, data);
     }
 }

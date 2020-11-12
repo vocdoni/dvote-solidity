@@ -2,6 +2,8 @@
 
 pragma solidity >=0.6.0 <0.7.0;
 
+import "./lib.sol";
+
 contract Owned {
     address internal contractOwner;
 
@@ -34,21 +36,15 @@ contract Chained is Owned {
         _;
     }
 
-    function isContract(address _targetAddress) internal view returns (bool) {
-        uint256 size;
-        if (_targetAddress == address(0)) return false;
-        assembly {
-            size := extcodesize(_targetAddress)
-        }
-        return size > 0;
-    }
-
     /// @notice Creates a new instance of the contract and sets the contract owner.
     /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor.
     function setPredecessor(address predecessor) internal onlyContractOwner {
         if (predecessor != address(0)) {
             require(predecessor != address(this), "Can't be itself");
-            require(isContract(predecessor), "Invalid predecessor");
+            require(
+                ContractSupport.isContract(predecessor),
+                "Invalid predecessor"
+            );
         }
 
         if (predecessor != address(0)) {
@@ -75,7 +71,7 @@ contract Chained is Owned {
         require(activationBlock > 0, "Must be active"); // we can't activate someone else before being active ourselves
         require(successorAddress == address(0), "Already inactive"); // we can't do it twice
         require(successor != address(this), "Can't be itself");
-        require(isContract(successor), "Not a contract"); // we can't activate a non-contract
+        require(ContractSupport.isContract(successor), "Not a contract"); // we can't activate a non-contract
 
         // Attach to the instance that will become active
         Chained succInstance = Chained(successor);
