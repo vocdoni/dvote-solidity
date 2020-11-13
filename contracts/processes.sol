@@ -65,7 +65,7 @@ contract Processes is IProcessStore, Chained {
     struct Process {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
-        address entityAddress; // The address of the Entity (or contract) holding the process
+        address entity; // The address of the Entity (or contract) holding the process
         uint64 startBlock; // Tendermint block number on which the voting process starts
         uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
@@ -180,7 +180,7 @@ contract Processes is IProcessStore, Chained {
     /// @notice Creates a new instance of the contract and sets the contract owner (see Owned).
     /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor (see Chained).
     constructor(address predecessor, address namespace) public {
-        Chained.setPredecessor(predecessor);
+        Chained.setUp(predecessor);
 
         namespaceAddress = namespace;
     }
@@ -211,7 +211,7 @@ contract Processes is IProcessStore, Chained {
             uint16[3] memory maxTotalCost_costExponent_namespace
         )
     {
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
 
@@ -223,7 +223,7 @@ contract Processes is IProcessStore, Chained {
 
         Process storage proc = processes[processId];
         mode_envelopeType = [proc.mode, proc.envelopeType];
-        entityAddress = proc.entityAddress;
+        entityAddress = proc.entity;
         metadata_censusMerkleRoot_censusMerkleTree = [
             proc.metadata,
             proc.censusMerkleRoot,
@@ -253,7 +253,7 @@ contract Processes is IProcessStore, Chained {
         view
         returns (bytes32)
     {
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
 
@@ -273,7 +273,7 @@ contract Processes is IProcessStore, Chained {
         view
         returns (uint32[][] memory tally, uint32 height)
     {
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
 
@@ -295,7 +295,7 @@ contract Processes is IProcessStore, Chained {
         view
         returns (address)
     {
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
 
@@ -315,68 +315,195 @@ contract Processes is IProcessStore, Chained {
         uint8[2] memory mode_envelopeType, // [mode, envelopeType]
         string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         address tokenContractAddress,
-        uint64 startBlock,
-        uint32 blockCount,
+        uint64[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         uint16 namespace,
         bytes32 paramsSignature
     ) public override onlyIfActive {
+        CensusOrigin censusOrigin = CensusOrigin(
+            (mode_envelopeType[0] & MODE_CENSUS_ORIGIN) >> 5
+        );
+
+        if (censusOrigin == CensusOrigin.OFF_CHAIN) {
+            newStandardProcess(
+                mode_envelopeType,
+                metadata_merkleRoot_merkleTree,
+                startBlock_blockCount,
+                questionCount_maxCount_maxValue_maxVoteOverwrites,
+                maxTotalCost_costExponent,
+                namespace,
+                paramsSignature
+            );
+        } else {
+            newEvmProcess(
+                mode_envelopeType,
+                metadata_merkleRoot_merkleTree[0],
+                tokenContractAddress,
+                startBlock_blockCount,
+                questionCount_maxCount_maxValue_maxVoteOverwrites,
+                maxTotalCost_costExponent,
+                namespace,
+                paramsSignature
+            );
+        }
+    }
+
+    // Creates a new process using an external census
+    function newStandardProcess(
+        uint8[2] memory mode_envelopeType, // [mode, envelopeType]
+        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
+        uint64[2] memory startBlock_blockCount,
+        uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
+        uint16 namespace,
+        bytes32 paramsSignature
+    ) internal {
         uint8 mode = mode_envelopeType[0];
 
         // Sanity checks
 
         if (mode & MODE_AUTO_START != 0) {
-            require(startBlock > 0, "Auto start requires a start block");
+            require(
+                startBlock_blockCount[0] > 0,
+                "Auto start requires a start block"
+            );
         }
         if (mode & MODE_INTERRUPTIBLE == 0) {
-            require(blockCount > 0, "Uninterruptible needs blockCount");
-        }
-
-        if (
-            CensusOrigin((mode & MODE_CENSUS_ORIGIN) >> 5) ==
-            CensusOrigin.EXPLICIT
-        ) {
-            // Explicit census
             require(
-                bytes(metadata_merkleRoot_merkleTree[1]).length > 0,
-                "No merkleRoot"
-            );
-            require(
-                bytes(metadata_merkleRoot_merkleTree[2]).length > 0,
-                "No merkleTree"
-            );
-        } else {
-            // EVM based census
-            require(
-                CensusOrigin((mode & MODE_CENSUS_ORIGIN) >> 5) <=
-                    CensusOrigin.MINI_ME,
-                "Invalid census origin value"
-            );
-            require(
-                mode & MODE_DYNAMIC_CENSUS != 0,
-                "EVM based censuses need dynamic census enabled"
-            );
-            require(
-                tokenContractAddress != address(0x0),
-                "Token contract address must be provided"
-            );
-
-            // check entity address is contract
-            require(
-                ContractSupport.isContract(tokenContractAddress),
-                "Not a contract"
-            );
-            require(
-                ContractSupport.supportsBalanceOf(tokenContractAddress),
-                "Not a contract"
+                startBlock_blockCount[1] > 0,
+                "Uninterruptible needs blockCount"
             );
         }
-
         require(
             bytes(metadata_merkleRoot_merkleTree[0]).length > 0,
             "No metadata"
         );
+        require(
+            bytes(metadata_merkleRoot_merkleTree[1]).length > 0,
+            "No merkleRoot"
+        );
+        require(
+            bytes(metadata_merkleRoot_merkleTree[2]).length > 0,
+            "No merkleTree"
+        );
+        require(
+            questionCount_maxCount_maxValue_maxVoteOverwrites[0] > 0,
+            "No questionCount"
+        );
+        require(
+            questionCount_maxCount_maxValue_maxVoteOverwrites[1] > 0 &&
+                questionCount_maxCount_maxValue_maxVoteOverwrites[1] <= 100,
+            "Invalid maxCount"
+        );
+        require(
+            questionCount_maxCount_maxValue_maxVoteOverwrites[2] > 0,
+            "No maxValue"
+        );
+
+        // Process creation
+
+        // Index the process for the entity
+        uint256 prevCount = getEntityProcessCount(msg.sender);
+
+        entityCheckpoints[msg.sender].push();
+        uint256 cIdx = entityCheckpoints[msg.sender].length - 1;
+        ProcessCheckpoint storage checkpoint;
+        checkpoint = entityCheckpoints[msg.sender][cIdx];
+        checkpoint.index = prevCount;
+
+        Status status;
+        if (mode & MODE_AUTO_START != 0) {
+            // Auto-start enabled processes start in READY state
+            status = Status.READY;
+        } else {
+            // By default, processes start PAUSED (auto start disabled)
+            status = Status.PAUSED;
+        }
+
+        // Store the new process
+        bytes32 processId = getProcessId(msg.sender, prevCount, namespace);
+        Process storage processData = processes[processId];
+
+        processData.mode = mode_envelopeType[0];
+        processData.envelopeType = mode_envelopeType[1];
+
+        processData.entity = msg.sender;
+        processData.startBlock = startBlock_blockCount[0];
+        processData.blockCount = uint32(startBlock_blockCount[1]);
+        processData.metadata = metadata_merkleRoot_merkleTree[0];
+
+        processData.censusMerkleRoot = metadata_merkleRoot_merkleTree[1];
+        processData.censusMerkleTree = metadata_merkleRoot_merkleTree[2];
+
+        processData.status = status;
+        // processData.questionIndex = 0;
+        processData
+            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
+        processData
+            .maxCount = questionCount_maxCount_maxValue_maxVoteOverwrites[1];
+        processData
+            .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
+        processData
+            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
+        processData.maxTotalCost = maxTotalCost_costExponent[0];
+        processData.costExponent = maxTotalCost_costExponent[1];
+        processData.namespace = namespace;
+        processData.paramsSignature = paramsSignature;
+
+        emit NewProcess(processId, namespace);
+    }
+
+    function newEvmProcess(
+        uint8[2] memory mode_envelopeType, // [mode, envelopeType]
+        string memory metadata,
+        address tokenContractAddress,
+        uint64[2] memory startBlock_blockCount,
+        uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
+        uint16 namespace,
+        bytes32 paramsSignature
+    ) internal {
+        uint8 mode = mode_envelopeType[0];
+
+        // Sanity checks
+
+        require(
+            mode & MODE_AUTO_START == 0,
+            "Auto start not allowed on EVM processes"
+        );
+        require(
+            mode & MODE_INTERRUPTIBLE == 0,
+            "Interruptible not allowed on EVM processes"
+        );
+        require(startBlock_blockCount[0] > 0, "Invalid start block");
+        require(startBlock_blockCount[1] > 0, "Invalid blockCount");
+
+        require(
+            CensusOrigin((mode & MODE_CENSUS_ORIGIN) >> 5) <=
+                CensusOrigin.MINI_ME,
+            "Invalid census origin value"
+        );
+        require(
+            mode & MODE_DYNAMIC_CENSUS != 0,
+            "EVM based censuses need dynamic census enabled"
+        );
+        require(
+            tokenContractAddress != address(0x0),
+            "Token contract address must be provided"
+        );
+
+        // check entity address is contract
+        require(
+            ContractSupport.isContract(tokenContractAddress),
+            "Not a contract"
+        );
+        require(
+            ContractSupport.supportsBalanceOf(tokenContractAddress),
+            "Not a contract"
+        );
+
+        require(bytes(metadata).length > 0, "No metadata");
         require(
             questionCount_maxCount_maxValue_maxVoteOverwrites[0] > 0,
             "No questionCount"
@@ -402,15 +529,6 @@ contract Processes is IProcessStore, Chained {
         checkpoint = entityCheckpoints[tokenContractAddress][cIdx];
         checkpoint.index = prevCount;
 
-        Status status;
-        if (mode & MODE_AUTO_START != 0) {
-            // Auto-start enabled processes start in READY state
-            status = Status.READY;
-        } else {
-            // By default, processes start PAUSED (auto start disabled)
-            status = Status.PAUSED;
-        }
-
         // Store the new process
         bytes32 processId = getProcessId(
             tokenContractAddress,
@@ -422,24 +540,14 @@ contract Processes is IProcessStore, Chained {
         processData.mode = mode_envelopeType[0];
         processData.envelopeType = mode_envelopeType[1];
 
-        processData.startBlock = startBlock;
-        processData.blockCount = blockCount;
-        processData.metadata = metadata_merkleRoot_merkleTree[0];
+        processData.entity = tokenContractAddress;
+        processData.startBlock = startBlock_blockCount[0];
+        processData.blockCount = uint32(startBlock_blockCount[1]);
+        processData.metadata = metadata;
 
-        if (
-            CensusOrigin((mode & MODE_CENSUS_ORIGIN) >> 5) ==
-            CensusOrigin.EXPLICIT
-        ) {
-            processData.entityAddress = msg.sender;
-            processData.censusMerkleRoot = metadata_merkleRoot_merkleTree[1];
-            processData.censusMerkleTree = metadata_merkleRoot_merkleTree[2];
-        } else {
-            processData.entityAddress = tokenContractAddress;
+        // TODO: store block number?
 
-            // TODO: store block number?
-        }
-
-        processData.status = status;
+        processData.status = Status.READY;
         // processData.questionIndex = 0;
         processData
             .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
@@ -463,17 +571,14 @@ contract Processes is IProcessStore, Chained {
             "Invalid status code"
         );
 
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
             revert("Not found: Try on predecessor");
         }
 
         // Only the process creator
-        require(
-            processes[processId].entityAddress == msg.sender,
-            "Invalid entity"
-        );
+        require(processes[processId].entity == msg.sender, "Invalid entity");
 
         Status currentStatus = processes[processId].status;
         if (currentStatus != Status.READY && currentStatus != Status.PAUSED) {
@@ -513,17 +618,14 @@ contract Processes is IProcessStore, Chained {
     }
 
     function incrementQuestionIndex(bytes32 processId) public override {
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
             revert("Not found: Try on predecessor");
         }
 
         // Only the process creator
-        require(
-            processes[processId].entityAddress == msg.sender,
-            "Invalid entity"
-        );
+        require(processes[processId].entity == msg.sender, "Invalid entity");
         // Only if READY
         require(
             processes[processId].status == Status.READY,
@@ -566,17 +668,14 @@ contract Processes is IProcessStore, Chained {
         require(bytes(censusMerkleRoot).length > 0, "No Merkle Root");
         require(bytes(censusMerkleTree).length > 0, "No Merkle Tree");
 
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
             revert("Not found: Try on predecessor");
         }
 
         // Only the process creator
-        require(
-            processes[processId].entityAddress == msg.sender,
-            "Invalid entity"
-        );
+        require(processes[processId].entity == msg.sender, "Invalid entity");
         // Only if active
         require(
             processes[processId].status == Status.READY ||
@@ -602,7 +701,7 @@ contract Processes is IProcessStore, Chained {
     ) public override onlyOracle(processId) {
         require(height > 0, "No votes");
 
-        if (processes[processId].entityAddress == address(0x0)) {
+        if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
             revert("Not found: Try on predecessor");

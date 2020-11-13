@@ -7,7 +7,7 @@ pragma experimental ABIEncoderV2;
 /// @notice Should operations be updated, then two versions should be kept, one for the old version and one for the new.
 interface IProcessStore {
     enum Status {READY, ENDED, CANCELED, PAUSED, RESULTS}
-    enum CensusOrigin {EXPLICIT, ERC20, ERC721, ERC1155, ERC777, MINI_ME} // 8 items max
+    enum CensusOrigin {OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME} // 8 items max
 
     modifier onlyOracle(bytes32 processId) virtual;
 
@@ -34,8 +34,7 @@ interface IProcessStore {
         uint8[2] memory mode_envelopeType,
         string[3] memory metadata_merkleRoot_merkleTree,
         address tokenContractAddress,
-        uint64 startBlock,
-        uint32 blockCount,
+        uint64[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[2] memory maxTotalCost_costExponent,
         uint16 namespace,

@@ -36,18 +36,22 @@ contract Chained is Owned {
         _;
     }
 
-    /// @notice Creates a new instance of the contract and sets the contract owner.
+    /// @notice When the contract is created, sets the predecessor (if any). Otherwise, sets the contract as active.
     /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor.
-    function setPredecessor(address predecessor) internal onlyContractOwner {
+    function setUp(address predecessor) internal onlyContractOwner {
+        require(
+            predecessorAddress == address(0x0),
+            "Already has a predecessor"
+        );
+        require(activationBlock == 0, "Already activated");
+
         if (predecessor != address(0)) {
             require(predecessor != address(this), "Can't be itself");
             require(
                 ContractSupport.isContract(predecessor),
                 "Invalid predecessor"
             );
-        }
 
-        if (predecessor != address(0)) {
             // Set the predecessor instance and leave ourselves inactive
             predecessorAddress = predecessor;
         } else {
