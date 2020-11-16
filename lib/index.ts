@@ -84,13 +84,15 @@ export function ensHashAddress(address: string): string {
 ///////////////////////////////////////////////////////////////////////////////
 
 export type IProcessMode = number
+export type IProcessCensusOrigin = 0 | 1 | 2 | 3 | 4 | 5
 
 /** Wrapper class to enumerate and handle valid values of a process mode */
 export class ProcessMode {
     private _mode: IProcessMode
     constructor(processMode: IProcessMode) {
-        const allFlags = ProcessMode.AUTO_START | ProcessMode.INTERRUPTIBLE | ProcessMode.DYNAMIC_CENSUS | ProcessMode.ALLOW_VOTE_OVERWRITE | ProcessMode.ENCRYPTED_METADATA
-        if (processMode > allFlags) throw new Error("Invalid process mode")
+        const allFlags = ProcessMode.AUTO_START | ProcessMode.INTERRUPTIBLE | ProcessMode.DYNAMIC_CENSUS | ProcessMode.ENCRYPTED_METADATA | ProcessMode.CENSUS_ORIGIN
+        if (processMode & (~allFlags)) throw new Error("Invalid process mode")
+
         this._mode = processMode
     }
     get value() { return this._mode }
@@ -101,20 +103,43 @@ export class ProcessMode {
     public static INTERRUPTIBLE: IProcessMode = 1 << 1
     /** By default, the census is immutable. When set, the creator can update the census while the process remains `READY` or `PAUSED`. */
     public static DYNAMIC_CENSUS: IProcessMode = 1 << 2
-    /** By default, the first valid vote is final. If set, users will be allowed to vote up to `maxVoteOverwrites` times and the last valid vote will be counted. */
-    public static ALLOW_VOTE_OVERWRITE: IProcessMode = 1 << 3
     /** By default, the metadata is not encrypted. If set, clients should fetch the decryption key before trying to display the metadata. */
-    public static ENCRYPTED_METADATA: IProcessMode = 1 << 4
+    public static ENCRYPTED_METADATA: IProcessMode = 1 << 3
+    /* Unused index: 1 << 4 */
+    /** Census enumeration bitmask */
+    private static CENSUS_ORIGIN: IProcessMode = (1 << 5) | (1 << 6) | (1 << 7)
+
+    public static CENSUS_ORIGIN_OFF_CHAIN: IProcessCensusOrigin = 0
+    public static CENSUS_ORIGIN_ERC20: IProcessCensusOrigin = 1
+    public static CENSUS_ORIGIN_ERC721: IProcessCensusOrigin = 2
+    public static CENSUS_ORIGIN_ERC1155: IProcessCensusOrigin = 3
+    public static CENSUS_ORIGIN_ERC777: IProcessCensusOrigin = 4
+    public static CENSUS_ORIGIN_MINI_ME: IProcessCensusOrigin = 5
 
     /** Returns the value that represents the given process mode */
-    public static make(flags: { autoStart?: boolean, interruptible?: boolean, dynamicCensus?: boolean, allowVoteOverwrite?: boolean, encryptedMetadata?: boolean } = {}): IProcessMode {
+    public static make(flags: { autoStart?: boolean, interruptible?: boolean, dynamicCensus?: boolean, encryptedMetadata?: boolean, censusOrigin?: IProcessCensusOrigin } = {}): IProcessMode {
         let result = 0
         result |= flags.autoStart ? ProcessMode.AUTO_START : 0
         result |= flags.interruptible ? ProcessMode.INTERRUPTIBLE : 0
         result |= flags.dynamicCensus ? ProcessMode.DYNAMIC_CENSUS : 0
-        result |= flags.allowVoteOverwrite ? ProcessMode.ALLOW_VOTE_OVERWRITE : 0
         result |= flags.encryptedMetadata ? ProcessMode.ENCRYPTED_METADATA : 0
+        result |= flags.censusOrigin ? ((flags.censusOrigin & ProcessMode.CENSUS_ORIGIN) << 5) : 0
         return result
+    }
+
+    public static getCensusOrigin(processMode: IProcessMode): IProcessCensusOrigin {
+        const origin = (processMode & ProcessMode.CENSUS_ORIGIN) >> 5 as IProcessCensusOrigin
+        switch (origin) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+                return origin
+            default:
+                throw new Error("Invalid")
+        }
     }
 
     /** Returns true if the Vochain will not allow votes until `startBlock`. */
@@ -123,10 +148,10 @@ export class ProcessMode {
     get isInterruptible(): boolean { return (this._mode & ProcessMode.INTERRUPTIBLE) != 0 }
     /** Returns true if the census can be updated by the creator. */
     get hasDynamicCensus(): boolean { return (this._mode & ProcessMode.DYNAMIC_CENSUS) != 0 }
-    /** Returns true if voters can overwrite their last vote. */
-    get allowsVoteOverwrite(): boolean { return (this._mode & ProcessMode.ALLOW_VOTE_OVERWRITE) != 0 }
     /** Returns true if the process metadata is expected to be encrypted. */
     get hasEncryptedMetadata(): boolean { return (this._mode & ProcessMode.ENCRYPTED_METADATA) != 0 }
+    /** Returns the index of the census origin enumeration. */
+    get censusOrigin(): IProcessCensusOrigin { return ProcessMode.getCensusOrigin(this._mode) }
 }
 
 export type IProcessEnvelopeType = number
@@ -147,13 +172,16 @@ export class ProcessEnvelopeType {
     public static ANONYMOUS: IProcessEnvelopeType = 1 << 1
     /** By default, votes are sent unencrypted. When the flag is set, votes are sent encrypted and become public when the process ends. */
     public static ENCRYPTED_VOTES: IProcessEnvelopeType = 1 << 2
+    /** Whether choices for a question can only appear once or not. */
+    public static UNIQUE_VALUES: IProcessEnvelopeType = 1 << 3
 
     /** Returns the value that represents the given envelope type */
-    public static make(flags: { serial?: boolean, anonymousVoters?: boolean, encryptedVotes?: boolean } = {}): IProcessEnvelopeType {
+    public static make(flags: { serial?: boolean, anonymousVoters?: boolean, encryptedVotes?: boolean, uniqueValues?: boolean } = {}): IProcessEnvelopeType {
         let result = 0
         result |= flags.serial ? ProcessEnvelopeType.SERIAL : 0
         result |= flags.anonymousVoters ? ProcessEnvelopeType.ANONYMOUS : 0
         result |= flags.encryptedVotes ? ProcessEnvelopeType.ENCRYPTED_VOTES : 0
+        result |= flags.uniqueValues ? ProcessEnvelopeType.UNIQUE_VALUES : 0
         return result
     }
 
@@ -163,6 +191,8 @@ export class ProcessEnvelopeType {
     get hasAnonymousVoters(): boolean { return (this._type & ProcessEnvelopeType.ANONYMOUS) != 0 }
     /** Returns true if envelopes are to be sent encrypted. */
     get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
+    /** Returns true if choices must be unique per question. */
+    get hasUniqueValues(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
 }
 
 /** Wrapper class to enumerate and handle valid values of a process status */
@@ -204,11 +234,10 @@ export const processStatusValues = [
 export class ProcessResults {
     private _results: IProcessResults
     constructor(tally: number[][], height: number) {
-        if (typeof tally === "undefined" || tally.length < 1) throw new Error("Invalid tally")
-        if (typeof height === "undefined" || height < 1) throw new Error("Invalid height")
-        this._results.tally = tally
-        this._results.height = height
-        
+        if (!Array.isArray(tally) || tally.length < 1) throw new Error("Invalid tally")
+        else if (typeof height === "undefined" || height < 1) throw new Error("Invalid height")
+
+        this._results = { tally, height }
     }
 
     get value(): IProcessResults { return this._results }
@@ -228,16 +257,16 @@ export type IProcessResults = {
 export type IProcessCreateParams = {
     mode: ProcessMode | number,
     envelopeType: ProcessEnvelopeType | number,
+    tokenAddress?: string,
     metadata: string,
-    censusMerkleRoot: string,
-    censusMerkleTree: string,
+    censusMerkleRoot?: string,
+    censusMerkleTree?: string,
     startBlock: number | BigNumber,
     blockCount: number,
     questionCount: number,
     maxCount: number,
     maxValue: number,
     maxVoteOverwrites: number,
-    uniqueValues: boolean,
     maxTotalCost: number,
     costExponent: number,
     namespace: number,
@@ -247,24 +276,20 @@ export type IProcessCreateParams = {
 type IProcessCreateParamsTuple = [
     number[], // mode_envelopeType
     string[], // metadata_censusMerkleRoot_censusMerkleTree
-    number | BigNumber, // startBlock
-    number, // blockCount
+    string,   // tokenContractAddress
+    number[], // startBlock_blockCount
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
-    boolean, // uniqueValues
-    number[], // maxTotalCost_costExponent
-    number, // namespace
+    number[], // maxTotalCost_costExponent_namespace
     string, // paramsSignature
-    IMethodOverrides? // Optional transaction overrides
+    IMethodOverrides? // (Optional) Ethereum transaction overrides
 ]
 type IProcessStateTuple = [
     number[], // mode_envelopeType
-    string, // entityAddress
+    string,   // entityAddress
     string[], // metadata_censusMerkleRoot_censusMerkleTree
-    BigNumber, // startBlock
-    number, // blockCount
+    number[], // startBlock_blockCount
     IProcessStatus, // status
     number[], // questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites
-    boolean, // uniqueValues
     number[] // maxTotalCost_costExponent_namespace
 ]
 
@@ -298,16 +323,12 @@ export interface ProcessContractMethods {
      * 
      * ```[
         mode_envelopeType: number[],
-        entityAddress: string,
-        startBlock: BigNumber,
-        blockCount: number,
+        entityAddress: string,  
         metadata_censusMerkleRoot_censusMerkleTree: string[],
+        startBlock_blockCount: number[],
         status: IProcessStatus,
         questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites: number[],
-        uniqueValues: boolean,
-        maxTotalCost_costExponent: number[],
-        namespace: number,
-        paramsSignature: string
+        maxTotalCost_costExponent_namespace: number[]
      * ]```
      */
     get(processId: string): Promise<IProcessStateTuple>,
@@ -334,15 +355,14 @@ export interface ProcessContractMethods {
      * Publish a new voting process using the given parameters
      * 
      * ```[
-        mode_envelopeType: number[], 
-        metadata_censusMerkleRoot_censusMerkleTree: string[], 
-        startBlock: number | BigNumber, 
-        blockCount: number, 
-        questionCount_maxCount_maxValue_maxVoteOverwrites: number[], 
-        uniqueValues: boolean, 
-        maxTotalCost_costExponent: number[], 
-        namespace: number, 
-        paramsSignature: string 
+        mode_envelopeType: number[],
+        metadata_censusMerkleRoot_censusMerkleTree: string[],
+        tokenContractAddress: string,  
+        startBlock_blockCount: number[],
+        questionCount_maxCount_maxValue_maxVoteOverwrites: number[],
+        maxTotalCost_costExponent_namespace: number[],
+        paramsSignature: string,
+        overrides?: IMethodOverrides?
      * ]```
      * */
     newProcess(...args: IProcessCreateParamsTuple): Promise<ContractTransaction>,
@@ -376,12 +396,10 @@ export class ProcessContractParameters {
     maxCount: number;
     maxValue: number;
     maxVoteOverwrites: number;
-    uniqueValues: boolean;
     maxTotalCost: number;
     costExponent: number;
     namespace: number;
     paramsSignature?: string;
-    results?: ProcessResults;
 
     /** Parse a plain parameters object  */
     static fromParams(params: IProcessCreateParams): ProcessContractParameters {
@@ -419,6 +437,7 @@ export class ProcessContractParameters {
         if (typeof params.envelopeType == "number") result.envelopeType = new ProcessEnvelopeType(params.envelopeType) // Fail on error
         else result.envelopeType = params.envelopeType
 
+        result.entityAddress = params.tokenAddress || "0x0"
         result.metadata = params.metadata
         result.censusMerkleRoot = params.censusMerkleRoot
         result.censusMerkleTree = params.censusMerkleTree
@@ -428,7 +447,6 @@ export class ProcessContractParameters {
         result.maxCount = params.maxCount
         result.maxValue = params.maxValue
         result.maxVoteOverwrites = params.maxVoteOverwrites
-        result.uniqueValues = !!params.uniqueValues
         result.maxTotalCost = params.maxTotalCost
         result.costExponent = params.costExponent
         result.namespace = params.namespace
@@ -441,7 +459,7 @@ export class ProcessContractParameters {
     static fromContract(params: IProcessStateTuple): ProcessContractParameters {
         const result = new ProcessContractParameters()
 
-        if (!Array.isArray(params) || params.length != 9)
+        if (!Array.isArray(params) || params.length != 7)
             throw new Error("Invalid parameters list")
         else if (!Array.isArray(params[0]) ||
             params[0].length != 2 ||
@@ -461,34 +479,31 @@ export class ProcessContractParameters {
         result.censusMerkleRoot = params[2][1]
         result.censusMerkleTree = params[2][2]
 
-        if (!(params[3] instanceof BigNumber || typeof params[3] == "number"))
+        if (!Array.isArray(params[3]) || typeof params[3][0] == "number")
             throw new Error("Invalid startBlock")
 
-        result.startBlock = params[3].toNumber()
+        result.startBlock = params[3][0]
 
-        if (typeof params[4] != "number") throw new Error("Invalid blockCount")
-        result.blockCount = params[4]
+        if (typeof params[3][1] != "number") throw new Error("Invalid blockCount")
+        result.blockCount = params[3][1]
 
-        if (typeof params[5] != "number") throw new Error("Invalid status")
-        result.status = new ProcessStatus(params[5])
+        if (typeof params[4] != "number") throw new Error("Invalid status")
+        result.status = new ProcessStatus(params[4])
 
-        if (!Array.isArray(params[6]) || params[6].length != 5 || params[6].some((item) => typeof item != "number"))
+        if (!Array.isArray(params[5]) || params[5].length != 5 || params[5].some((item) => typeof item != "number"))
             throw new Error("Invalid parameters questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites list")
-        result.questionIndex = params[6][0]
-        result.questionCount = params[6][1]
-        result.maxCount = params[6][2]
-        result.maxValue = params[6][3]
-        result.maxVoteOverwrites = params[6][4]
+        result.questionIndex = params[5][0]
+        result.questionCount = params[5][1]
+        result.maxCount = params[5][2]
+        result.maxValue = params[5][3]
+        result.maxVoteOverwrites = params[5][4]
 
-        if (typeof params[7] != "boolean") throw new Error("Invalid uniqueParams")
-        result.uniqueValues = params[7]
-
-        if (!Array.isArray(params[8]) || params[8].length != 3 || params[8].some((item) => typeof item != "number"))
+        if (!Array.isArray(params[6]) || params[6].length != 3 || params[6].some((item) => typeof item != "number"))
             throw new Error("Invalid parameters maxTotalCost_costExponent_namespace list")
 
-        result.maxTotalCost = params[8][0]
-        result.costExponent = params[8][1]
-        result.namespace = params[8][2]
+        result.maxTotalCost = params[6][0]
+        result.costExponent = params[6][1]
+        result.namespace = params[6][2]
 
         return result
     }
@@ -506,17 +521,15 @@ export class ProcessContractParameters {
                 this.censusMerkleRoot,
                 this.censusMerkleTree
             ], // String metadata_censusMerkleRoot_censusMerkleTree
-            this.startBlock, // BigNumber startBlock
-            this.blockCount, // int blockCount
+            this.entityAddress,
+            [this.startBlock, this.blockCount], // int startBlock_blockCount
             [
                 this.questionCount,
                 this.maxCount,
                 this.maxValue,
                 this.maxVoteOverwrites
             ], // int questionCount_maxCount_maxValue_maxVoteOverwrites
-            this.uniqueValues, // bool uniqueValues
-            [this.maxTotalCost, this.costExponent], // int maxTotalCost_costExponent
-            this.namespace, // int namespace
+            [this.maxTotalCost, this.costExponent, this.namespace], // int maxTotalCost_costExponent_namespace
             this.paramsSignature // String paramsSignature
         ]
         if (transactionOptions) paramsResult.push(transactionOptions)

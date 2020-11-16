@@ -30,7 +30,7 @@ contract Processes is IProcessStore, Chained {
     uint8 internal constant MODE_DYNAMIC_CENSUS = 1 << 2;
     uint8 internal constant MODE_ENCRYPTED_METADATA = 1 << 3;
     // (index #4 unused)
-    uint8 internal constant MODE_CENSUS_ORIGIN = (1 << 7) | (1 << 6) | (1 << 5); // See `IProcessStore` > CensusOrigin
+    uint8 internal constant MODE_CENSUS_ORIGIN = (1 << 5) | (1 << 6) | (1 << 7); // See `IProcessStore` > CensusOrigin
 
     /*
     Envelope Type flags
@@ -66,7 +66,7 @@ contract Processes is IProcessStore, Chained {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         address entity; // The address of the Entity (or contract) holding the process
-        uint64 startBlock; // Tendermint block number on which the voting process starts
+        uint32 startBlock; // Tendermint block number on which the voting process starts
         uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
@@ -203,8 +203,7 @@ contract Processes is IProcessStore, Chained {
             uint8[2] memory mode_envelopeType, // [mode, envelopeType]
             address entityAddress,
             string[3] memory metadata_censusMerkleRoot_censusMerkleTree, // [metadata, censusMerkleRoot, censusMerkleTree]
-            uint64 startBlock, // startBlock
-            uint32 blockCount, // blockCount
+            uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
             Status status, // status
             uint8[5]
                 memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
@@ -229,8 +228,7 @@ contract Processes is IProcessStore, Chained {
             proc.censusMerkleRoot,
             proc.censusMerkleTree
         ];
-        startBlock = proc.startBlock;
-        blockCount = proc.blockCount;
+        startBlock_blockCount = [proc.startBlock, proc.blockCount];
         status = proc.status;
         questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites = [
             proc.questionIndex,
@@ -315,10 +313,9 @@ contract Processes is IProcessStore, Chained {
         uint8[2] memory mode_envelopeType, // [mode, envelopeType]
         string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         address tokenContractAddress,
-        uint64[2] memory startBlock_blockCount,
+        uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
-        uint16 namespace,
+        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         bytes32 paramsSignature
     ) public override onlyIfActive {
         CensusOrigin censusOrigin = CensusOrigin(
@@ -331,8 +328,7 @@ contract Processes is IProcessStore, Chained {
                 metadata_merkleRoot_merkleTree,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent,
-                namespace,
+                maxTotalCost_costExponent_namespace,
                 paramsSignature
             );
         } else {
@@ -342,8 +338,7 @@ contract Processes is IProcessStore, Chained {
                 tokenContractAddress,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent,
-                namespace,
+                maxTotalCost_costExponent_namespace,
                 paramsSignature
             );
         }
@@ -353,10 +348,9 @@ contract Processes is IProcessStore, Chained {
     function newStandardProcess(
         uint8[2] memory mode_envelopeType, // [mode, envelopeType]
         string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
-        uint64[2] memory startBlock_blockCount,
+        uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
-        uint16 namespace,
+        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         bytes32 paramsSignature
     ) internal {
         uint8 mode = mode_envelopeType[0];
@@ -422,7 +416,11 @@ contract Processes is IProcessStore, Chained {
         }
 
         // Store the new process
-        bytes32 processId = getProcessId(msg.sender, prevCount, namespace);
+        bytes32 processId = getProcessId(
+            msg.sender,
+            prevCount,
+            maxTotalCost_costExponent_namespace[2]
+        );
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType[0];
@@ -430,7 +428,7 @@ contract Processes is IProcessStore, Chained {
 
         processData.entity = msg.sender;
         processData.startBlock = startBlock_blockCount[0];
-        processData.blockCount = uint32(startBlock_blockCount[1]);
+        processData.blockCount = startBlock_blockCount[1];
         processData.metadata = metadata_merkleRoot_merkleTree[0];
 
         processData.censusMerkleRoot = metadata_merkleRoot_merkleTree[1];
@@ -446,22 +444,21 @@ contract Processes is IProcessStore, Chained {
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
             .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
-        processData.maxTotalCost = maxTotalCost_costExponent[0];
-        processData.costExponent = maxTotalCost_costExponent[1];
-        processData.namespace = namespace;
+        processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
+        processData.costExponent = maxTotalCost_costExponent_namespace[1];
+        processData.namespace = maxTotalCost_costExponent_namespace[2];
         processData.paramsSignature = paramsSignature;
 
-        emit NewProcess(processId, namespace);
+        emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
     }
 
     function newEvmProcess(
         uint8[2] memory mode_envelopeType, // [mode, envelopeType]
         string memory metadata,
         address tokenContractAddress,
-        uint64[2] memory startBlock_blockCount,
+        uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
-        uint16 namespace,
+        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         bytes32 paramsSignature
     ) internal {
         uint8 mode = mode_envelopeType[0];
@@ -533,7 +530,7 @@ contract Processes is IProcessStore, Chained {
         bytes32 processId = getProcessId(
             tokenContractAddress,
             prevCount,
-            namespace
+            maxTotalCost_costExponent_namespace[2]
         );
         Process storage processData = processes[processId];
 
@@ -542,7 +539,7 @@ contract Processes is IProcessStore, Chained {
 
         processData.entity = tokenContractAddress;
         processData.startBlock = startBlock_blockCount[0];
-        processData.blockCount = uint32(startBlock_blockCount[1]);
+        processData.blockCount = startBlock_blockCount[1];
         processData.metadata = metadata;
 
         // TODO: store block number?
@@ -557,12 +554,12 @@ contract Processes is IProcessStore, Chained {
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
             .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
-        processData.maxTotalCost = maxTotalCost_costExponent[0];
-        processData.costExponent = maxTotalCost_costExponent[1];
-        processData.namespace = namespace;
+        processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
+        processData.costExponent = maxTotalCost_costExponent_namespace[1];
+        processData.namespace = maxTotalCost_costExponent_namespace[2];
         processData.paramsSignature = paramsSignature;
 
-        emit NewProcess(processId, namespace);
+        emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
     }
 
     function setStatus(bytes32 processId, Status newStatus) public override {

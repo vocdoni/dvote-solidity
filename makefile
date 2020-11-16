@@ -1,5 +1,6 @@
 PATH  := node_modules/.bin:$(PATH)
 SHELL := /bin/bash
+PROJECT_NAME=$(shell basename "$(PWD)")
 
 .DEFAULT_GOAL := help
 SOLC=./node_modules/.bin/solcjs
@@ -11,27 +12,33 @@ PROCESS_ARTIFACT_NAME=contracts_processes_sol_Processes
 NAMESPACE_ARTIFACT_NAME=contracts_namespaces_sol_Namespaces
 STORAGE_PROOF_ARTIFACT_NAME=contracts_storage-proof_sol_Erc20StorageProof
 
-###############################################################################
-## HELP
-###############################################################################
+#-----------------------------------------------------------------------
+# HELP
+#-----------------------------------------------------------------------
+
+## help: Display this message
 
 .PHONY: help
 help:
-	@echo "Available targets:"
 	@echo
-	@echo "  $$ make         Runs 'make help' by default"
-	@echo "  $$ make help    Shows this text"
+	@echo " Available targets on "$(PROJECT_NAME)":"
 	@echo
-	@echo "  $$ make all     Compile the smart contracts and types into 'build'"
-	@echo "  $$ make test    Compile and test the contracts"
-	@echo "  $$ make clean   Cleanup the build folder"
+	@sed -n 's/^##//p' Makefile | column -t -s ':' |  sed -e 's/^/ /'
 	@echo
 
-###############################################################################
-## RECIPES
-###############################################################################
+#-----------------------------------------------------------------------
+# RECIPES
+#-----------------------------------------------------------------------
 
-all: node_modules js-output contract-output
+## all: Compile the contract artifacts and generate the TypeScript type definitions
+
+all: node_modules js contract-output
+
+## :
+
+## init: Install the dependencies
+
+init: node_modules
 
 node_modules: package.json package-lock.json
 	@echo Updating Node packages
@@ -44,7 +51,7 @@ node_modules: package.json package-lock.json
 package-lock.json:
 	@touch $@
 
-js-output: build/index.js
+js: build/index.js
 contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json build/storage-proof.json
 
 build:
@@ -100,8 +107,12 @@ build/solc: $(CONTRACT_SOURCES) contracts/openzeppelin
 	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD}/contracts $(CONTRACT_SOURCES)
 	@touch $@
 
+## test: Compile and test the contracts
+
 test: clean all
 	npm run test
+
+## clean: Cleanup the build folder
 
 clean: 
 	rm -Rf ./build

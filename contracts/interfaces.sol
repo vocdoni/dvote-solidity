@@ -19,8 +19,7 @@ interface IProcessStore {
         uint8[2] memory mode_envelopeType,
         address entityAddress,
         string[3] memory metadata_censusMerkleRoot_censusMerkleTree,
-        uint64 startBlock,
-        uint32 blockCount,
+        uint32[2] memory startBlock_blockCount,
         Status status,
         uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[3] memory maxTotalCost_costExponent_namespace
@@ -34,10 +33,9 @@ interface IProcessStore {
         uint8[2] memory mode_envelopeType,
         string[3] memory metadata_merkleRoot_merkleTree,
         address tokenContractAddress,
-        uint64[2] memory startBlock_blockCount,
+        uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
-        uint16[2] memory maxTotalCost_costExponent,
-        uint16 namespace,
+        uint16[3] memory maxTotalCost_costExponent_namespace,
         bytes32 paramsSignature
     ) external;
     function setStatus(bytes32 processId, Status newStatus) external;
