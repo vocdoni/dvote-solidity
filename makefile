@@ -96,9 +96,8 @@ build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin: build/solc
 
 # Get openzeppelin contracts
 contracts/openzeppelin: node_modules
-	mkdir -p $@
-	cp -a ./node_modules/@openzeppelin/contracts/* $@
-	touch $@
+	rm -f $@
+	ln -s ../node_modules/@openzeppelin/contracts $@
 
 # Intermediate solidity compiled artifacts
 build/solc: $(CONTRACT_SOURCES) contracts/openzeppelin
@@ -116,4 +115,4 @@ test: clean all
 
 clean: 
 	rm -Rf ./build
-	rm -Rf ./contracts/openzeppelin/*
+	rm -Rf ./contracts/openzeppelin

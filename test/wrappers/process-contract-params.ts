@@ -11,6 +11,7 @@ describe("Process contract parameter wrapper", () => {
         const params1 = ProcessContractParameters.fromParams({
             mode: 12,
             envelopeType: 3,
+            tokenAddress: "4",
             metadata: "56",
             censusMerkleRoot: "78",
             censusMerkleTree: "90",
@@ -20,7 +21,6 @@ describe("Process contract parameter wrapper", () => {
             maxCount: 44,
             maxValue: 55,
             maxVoteOverwrites: 66,
-            uniqueValues: true,
             maxTotalCost: 77,
             costExponent: 88,
             namespace: 99,
@@ -29,23 +29,23 @@ describe("Process contract parameter wrapper", () => {
 
         expect(params1[0][0]).to.eq(12)
         expect(params1[0][1]).to.eq(3)
-        expect(params1[1][0]).to.eq("56")
-        expect(params1[1][1]).to.eq("78")
-        expect(params1[1][2]).to.eq("90")
-        expect(params1[2]).to.eq(11)
-        expect(params1[3]).to.eq(22)
+        expect(params1[1]).to.eq("4")
+        expect(params1[2][0]).to.eq("56")
+        expect(params1[2][1]).to.eq("78")
+        expect(params1[2][2]).to.eq("90")
+        expect(params1[3][0]).to.eq(11)
+        expect(params1[3][1]).to.eq(22)
         expect(params1[4][0]).to.eq(33)
         expect(params1[4][1]).to.eq(44)
         expect(params1[4][2]).to.eq(55)
         expect(params1[4][3]).to.eq(66)
-        expect(params1[5]).to.eq(true)
-        expect(params1[6][0]).to.eq(77)
-        expect(params1[6][1]).to.eq(88)
-        expect(params1[7]).to.eq(99)
-        expect(params1[8]).to.eq("0x0100")
+        expect(params1[5][0]).to.eq(77)
+        expect(params1[5][1]).to.eq(88)
+        expect(params1[5][2]).to.eq(99)
+        expect(params1[6]).to.eq("0x0100")
 
         const params2 = ProcessContractParameters.fromParams({
-            mode: 21,
+            mode: 230,
             envelopeType: 4,
             metadata: "65",
             censusMerkleRoot: "87",
@@ -56,30 +56,29 @@ describe("Process contract parameter wrapper", () => {
             maxCount: 45,
             maxValue: 56,
             maxVoteOverwrites: 67,
-            uniqueValues: false,
             maxTotalCost: 777,
             costExponent: 888,
             namespace: 999,
             paramsSignature: "0x1000"
         }).toContractParams({ gasLimit: 100 })
 
-        expect(params2[0][0]).to.eq(21)
+        expect(params2[0][0]).to.eq(230)
         expect(params2[0][1]).to.eq(4)
-        expect(params2[1][0]).to.eq("65")
-        expect(params2[1][1]).to.eq("87")
-        expect(params2[1][2]).to.eq("09")
-        expect(params2[2]).to.eq(111)
-        expect(params2[3]).to.eq(222)
+        expect(params2[1]).to.eq("0x0")
+        expect(params2[2][0]).to.eq("65")
+        expect(params2[2][1]).to.eq("87")
+        expect(params2[2][2]).to.eq("09")
+        expect(params2[3][0]).to.eq(111)
+        expect(params2[3][1]).to.eq(222)
         expect(params2[4][0]).to.eq(34)
         expect(params2[4][1]).to.eq(45)
         expect(params2[4][2]).to.eq(56)
         expect(params2[4][3]).to.eq(67)
-        expect(params2[5]).to.eq(false)
-        expect(params2[6][0]).to.eq(777)
-        expect(params2[6][1]).to.eq(888)
-        expect(params2[7]).to.eq(999)
-        expect(params2[8]).to.eq("0x1000")
-        expect(params2[9]).to.deep.eq({ gasLimit: 100 })
+        expect(params2[5][0]).to.eq(777)
+        expect(params2[5][1]).to.eq(888)
+        expect(params2[5][2]).to.eq(999)
+        expect(params2[6]).to.eq("0x1000")
+        expect(params2[7]).to.deep.eq({ gasLimit: 100 })
     })
 
     it("should unwrap the 'get' response values", () => {
@@ -87,11 +86,9 @@ describe("Process contract parameter wrapper", () => {
             [1, 2],
             "0x3",
             ["0x4", "0x5", "0x6"],
-            BigNumber.from(7),
-            8,
+            [7, 8],
             0,
             [11, 12, 13, 14, 15],
-            true,
             [16, 17, 18]
         ])
 
@@ -109,7 +106,6 @@ describe("Process contract parameter wrapper", () => {
         expect(json1.maxCount).to.eq(13)
         expect(json1.maxValue).to.eq(14)
         expect(json1.maxVoteOverwrites).to.eq(15)
-        expect(json1.uniqueValues).to.eq(true)
         expect(json1.maxTotalCost).to.eq(16)
         expect(json1.costExponent).to.eq(17)
         expect(json1.namespace).to.eq(18)
@@ -118,11 +114,9 @@ describe("Process contract parameter wrapper", () => {
             [10, 3],
             "0x30",
             ["0x40", "0x50", "0x60"],
-            BigNumber.from(70),
-            80,
+            [70, 80],
             1,
             [110, 120, 99, 140, 150],
-            false,
             [160, 170, 180]
         ])
 
@@ -140,7 +134,6 @@ describe("Process contract parameter wrapper", () => {
         expect(json2.maxCount).to.eq(99)
         expect(json2.maxValue).to.eq(140)
         expect(json2.maxVoteOverwrites).to.eq(150)
-        expect(json2.uniqueValues).to.eq(false)
         expect(json2.maxTotalCost).to.eq(160)
         expect(json2.costExponent).to.eq(170)
         expect(json2.namespace).to.eq(180)

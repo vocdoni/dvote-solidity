@@ -6,7 +6,7 @@ import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
 import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_UNIQUE_VALUES, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT } from "../builders/process"
+import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT } from "../builders/process"
 import { BigNumber } from "ethers"
 import NamespaceBuilder from "../builders/namespace"
 
@@ -26,7 +26,7 @@ let contractInstance: ProcessContractMethods & Contract
 let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
-const emptyArray: Array<number> = [] 
+const emptyArray: Array<number> = []
 
 addCompletionHooks()
 
@@ -168,13 +168,11 @@ describe("Process contract", () => {
 
         tx = await contractInstance.newProcess(
             [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+            "",
             [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-            DEFAULT_START_BLOCK,
-            DEFAULT_BLOCK_COUNT,
+            [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-            DEFAULT_UNIQUE_VALUES,
-            [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-            DEFAULT_NAMESPACE,
+            [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -210,13 +208,11 @@ describe("Process contract", () => {
             contractInstance = contractInstance.connect(randomAccount1.wallet) as any
             tx = await contractInstance.newProcess(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                "", // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                DEFAULT_START_BLOCK,
-                DEFAULT_BLOCK_COUNT,
+                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                DEFAULT_UNIQUE_VALUES,
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_NAMESPACE,
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -228,13 +224,11 @@ describe("Process contract", () => {
             contractInstance = contractInstance.connect(randomAccount2.wallet) as any
             tx = await contractInstance.newProcess(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                "", // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                DEFAULT_START_BLOCK,
-                DEFAULT_BLOCK_COUNT,
+                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                DEFAULT_UNIQUE_VALUES,
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_NAMESPACE,
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -267,13 +261,11 @@ describe("Process contract", () => {
                     envelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
                     tx = await contractInstance.newProcess(
                         [mode, envelopeType],
+                        "", // token/entity ID
                         [`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `0x30${idx}${namespace}`],
-                        10 + nonce,
-                        11 + nonce,
+                        [10 + nonce, 11 + nonce],
                         [12 + nonce, 13 + nonce, 14 + nonce, 15 + nonce],
-                        idx % 4 == 0,
-                        [16 + nonce, 17 + nonce],
-                        namespace,
+                        [16 + nonce, 17 + nonce, namespace],
                         DEFAULT_PARAMS_SIGNATURE
                     )
                     await tx.wait()
@@ -284,17 +276,16 @@ describe("Process contract", () => {
                     expect(params[0]).to.deep.eq([mode, envelopeType])
                     expect(params[1]).to.eq(entityAccount.address)
                     expect(params[2]).to.deep.eq([`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `0x30${idx}${namespace}`])
-                    expect(params[3].toNumber()).to.eq(10 + nonce)
-                    expect(params[4]).to.eq(11 + nonce)
-                    expect(params[6][0]).to.eq(0)
-                    expect(params[6][1]).to.eq(12 + nonce)
-                    expect(params[6][2]).to.eq(13 + nonce)
-                    expect(params[6][3]).to.eq(14 + nonce)
-                    expect(params[6][4]).to.eq(15 + nonce)
-                    expect(params[7]).to.eq(idx % 4 == 0)
-                    expect(params[8][0]).to.eq(16 + nonce)
-                    expect(params[8][1]).to.eq(17 + nonce)
-                    expect(params[8][2]).to.eq(namespace)
+                    expect(params[3][0]).to.eq(10 + nonce)
+                    expect(params[3][1]).to.eq(11 + nonce)
+                    expect(params[4][0]).to.eq(0)
+                    expect(params[5][1]).to.eq(12 + nonce)
+                    expect(params[5][2]).to.eq(13 + nonce)
+                    expect(params[5][3]).to.eq(14 + nonce)
+                    expect(params[5][4]).to.eq(15 + nonce)
+                    expect(params[6][0]).to.eq(16 + nonce)
+                    expect(params[6][1]).to.eq(17 + nonce)
+                    expect(params[6][2]).to.eq(namespace)
 
                     expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(created, "Count mismatch")
                     expect(await contractInstance.getNextProcessId(entityAccount.address, namespace)).to.not.eq(nextProcessId)
@@ -321,6 +312,7 @@ describe("Process contract", () => {
             const params1 = ProcessContractParameters.fromParams({
                 mode: ProcessMode.make({}),
                 envelopeType: ProcessEnvelopeType.make({}),
+                // tokenAddress: "",
                 metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
                 censusMerkleRoot: DEFAULT_MERKLE_ROOT,
                 censusMerkleTree: DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI,
@@ -330,7 +322,6 @@ describe("Process contract", () => {
                 maxCount: DEFAULT_MAX_COUNT,
                 maxValue: DEFAULT_MAX_VALUE,
                 maxVoteOverwrites: DEFAULT_MAX_VOTE_OVERWRITES,
-                uniqueValues: DEFAULT_UNIQUE_VALUES,
                 maxTotalCost: DEFAULT_MAX_TOTAL_COST,
                 costExponent: DEFAULT_COST_EXPONENT,
                 namespace: DEFAULT_NAMESPACE,
@@ -358,7 +349,6 @@ describe("Process contract", () => {
             expect(processData1.maxCount).to.eq(DEFAULT_MAX_COUNT)
             expect(processData1.maxValue).to.eq(DEFAULT_MAX_VALUE)
             expect(processData1.maxVoteOverwrites).to.eq(DEFAULT_MAX_VOTE_OVERWRITES)
-            expect(processData1.uniqueValues).to.eq(DEFAULT_UNIQUE_VALUES)
             expect(processData1.maxTotalCost).to.eq(DEFAULT_MAX_TOTAL_COST)
             expect(processData1.costExponent).to.eq(DEFAULT_COST_EXPONENT)
             expect(processData1.namespace).to.eq(DEFAULT_NAMESPACE)
@@ -375,7 +365,6 @@ describe("Process contract", () => {
             let newMaxCount = 11
             let newMaxValue = 12
             let newMaxVoteOverwrites = 13
-            let newUniqueValues = true
             let newMaxTotalCost = 14
             let newCostExponent = 15
             let newNamespace = 16
@@ -393,7 +382,6 @@ describe("Process contract", () => {
                 maxCount: newMaxCount,
                 maxValue: newMaxValue,
                 maxVoteOverwrites: newMaxVoteOverwrites,
-                uniqueValues: newUniqueValues,
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 namespace: newNamespace,
@@ -421,7 +409,6 @@ describe("Process contract", () => {
             expect(processData2.maxCount).to.eq(newMaxCount)
             expect(processData2.maxValue).to.eq(newMaxValue)
             expect(processData2.maxVoteOverwrites).to.eq(newMaxVoteOverwrites)
-            expect(processData2.uniqueValues).to.eq(newUniqueValues)
             expect(processData2.maxTotalCost).to.eq(newMaxTotalCost)
             expect(processData2.costExponent).to.eq(newCostExponent)
             expect(processData2.namespace).to.eq(newNamespace)
@@ -438,7 +425,6 @@ describe("Process contract", () => {
             newMaxCount = 90
             newMaxValue = 100
             newMaxVoteOverwrites = 110
-            newUniqueValues = true
             newMaxTotalCost = 120
             newCostExponent = 130
             newNamespace = 140
@@ -456,7 +442,6 @@ describe("Process contract", () => {
                 maxCount: newMaxCount,
                 maxValue: newMaxValue,
                 maxVoteOverwrites: newMaxVoteOverwrites,
-                uniqueValues: newUniqueValues,
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 namespace: newNamespace,
@@ -484,7 +469,6 @@ describe("Process contract", () => {
             expect(processData3.maxCount).to.eq(newMaxCount)
             expect(processData3.maxValue).to.eq(newMaxValue)
             expect(processData3.maxVoteOverwrites).to.eq(newMaxVoteOverwrites)
-            expect(processData3.uniqueValues).to.eq(newUniqueValues)
             expect(processData3.maxTotalCost).to.eq(newMaxTotalCost)
             expect(processData3.costExponent).to.eq(newCostExponent)
             expect(processData3.namespace).to.eq(newNamespace)
@@ -507,7 +491,6 @@ describe("Process contract", () => {
                 maxCount: DEFAULT_MAX_COUNT,
                 maxValue: DEFAULT_MAX_VALUE,
                 maxVoteOverwrites: DEFAULT_MAX_VOTE_OVERWRITES,
-                uniqueValues: DEFAULT_UNIQUE_VALUES,
                 maxTotalCost: DEFAULT_MAX_TOTAL_COST,
                 costExponent: DEFAULT_COST_EXPONENT,
                 namespace: DEFAULT_NAMESPACE,
@@ -534,7 +517,6 @@ describe("Process contract", () => {
                 newMaxCount = 11,
                 newMaxValue = 12,
                 newMaxVoteOverwrites = 13,
-                newUniqueValues = true,
                 newMaxTotalCost = 14,
                 newCostExponent = 15,
                 newNamespace = 16,
@@ -552,7 +534,6 @@ describe("Process contract", () => {
                 maxCount: newMaxCount,
                 maxValue: newMaxValue,
                 maxVoteOverwrites: newMaxVoteOverwrites,
-                uniqueValues: newUniqueValues,
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 namespace: newNamespace,
@@ -579,7 +560,6 @@ describe("Process contract", () => {
             newMaxCount = 22
             newMaxValue = 23
             newMaxVoteOverwrites = 24
-            newUniqueValues = true
             newMaxTotalCost = 25
             newCostExponent = 26
             newNamespace = 27
@@ -597,7 +577,6 @@ describe("Process contract", () => {
                 maxCount: newMaxCount,
                 maxValue: newMaxValue,
                 maxVoteOverwrites: newMaxVoteOverwrites,
-                uniqueValues: newUniqueValues,
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 namespace: newNamespace,
@@ -619,13 +598,11 @@ describe("Process contract", () => {
 
             tx = await contractInstance.newProcess(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                "", // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                DEFAULT_START_BLOCK,
-                DEFAULT_BLOCK_COUNT,
+                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                DEFAULT_UNIQUE_VALUES,
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_NAMESPACE,
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -639,13 +616,11 @@ describe("Process contract", () => {
             expect(() => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    0,
-                    DEFAULT_BLOCK_COUNT,
+                    [0, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -655,13 +630,11 @@ describe("Process contract", () => {
             expect(() => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({ interruptible: false }), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    0,
+                    [DEFAULT_START_BLOCK, 0],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -671,13 +644,11 @@ describe("Process contract", () => {
             expect(() => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     ["", DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -685,13 +656,11 @@ describe("Process contract", () => {
             expect(() => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, "", DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -699,13 +668,11 @@ describe("Process contract", () => {
             expect(() => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, ""],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -715,13 +682,11 @@ describe("Process contract", () => {
             try {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [0, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -736,13 +701,11 @@ describe("Process contract", () => {
             try {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 0, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -755,13 +718,11 @@ describe("Process contract", () => {
             try {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 101, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -776,13 +737,11 @@ describe("Process contract", () => {
             try {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, 0, DEFAULT_MAX_VOTE_OVERWRITES],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -793,27 +752,6 @@ describe("Process contract", () => {
             }
         })
 
-        it("should fail if allowVoteOverwrite is set but maxVoteOverwrites is zero", async () => {
-            try {
-                tx = await contractInstance.newProcess(
-                    [ProcessMode.make({ allowVoteOverwrite: true }), ProcessEnvelopeType.make({})],
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                    DEFAULT_START_BLOCK,
-                    DEFAULT_BLOCK_COUNT,
-                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, 0],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
-                    DEFAULT_PARAMS_SIGNATURE
-                )
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert Overwrite needs maxVoteOverwrites > 0/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-        })
-
         it("should not increment the processCount of the entity on error", async () => {
             const prev = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
             expect(prev).to.eq(1)
@@ -821,13 +759,11 @@ describe("Process contract", () => {
             try {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({})],
+                    "", // token/entity ID
                     ["", "", ""],
-                    0,
-                    0,
+                    [0, 0],
                     [0, 0, 0, 0],
-                    DEFAULT_UNIQUE_VALUES,
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_NAMESPACE,
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -855,13 +791,11 @@ describe("Process contract", () => {
                 })
                 // contractInstance.newProcess(
                 //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make()],
+                //     "", // token/entity ID
                 //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
-                //     DEFAULT_START_BLOCK,
-                //     DEFAULT_BLOCK_COUNT,
+                //     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 //     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                //     DEFAULT_UNIQUE_VALUES,
-                //     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                //     DEFAULT_NAMESPACE,
+                //     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                 //     DEFAULT_PARAMS_SIGNATURE
                 // ).then(tx => tx.wait()).catch(reject)
             })
@@ -2018,7 +1952,7 @@ describe("Process contract", () => {
                     const processData5 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
                     expect(processData5.entityAddress).to.eq(entityAccount.address)
                     expect(processData5.status.value).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
-            })
+                })
 
                 it("should never allow the status to be updated [other account]", async () => {
                     const namespaceAddress = await contractInstance.namespaceAddress()
@@ -3686,5 +3620,5 @@ describe("Process contract", () => {
             expect(await processInstanceNew.predecessorAddress()).to.eq(callerInstance.address)
             expect((await processInstanceNew.activationBlock()).toNumber()).to.be.gt(0)
         }).timeout(7000)
-     })
+    })
 }).timeout(4000)

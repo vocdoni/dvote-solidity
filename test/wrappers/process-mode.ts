@@ -10,41 +10,24 @@ describe("Process Mode wrapper", () => {
         expect(ProcessMode.AUTO_START).to.eq(1)
         expect(ProcessMode.INTERRUPTIBLE).to.eq(2)
         expect(ProcessMode.DYNAMIC_CENSUS).to.eq(4)
-        expect(ProcessMode.ALLOW_VOTE_OVERWRITE).to.eq(8)
-        expect(ProcessMode.ENCRYPTED_METADATA).to.eq(16)
+        expect(ProcessMode.ENCRYPTED_METADATA).to.eq(8)
 
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: false, interruptible: false, autoStart: false })).to.eq(0)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: false, interruptible: false, autoStart: true })).to.eq(1)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: false, interruptible: true, autoStart: false })).to.eq(2)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: false, interruptible: true, autoStart: true })).to.eq(3)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: true, interruptible: false, autoStart: false })).to.eq(4)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: true, interruptible: false, autoStart: true })).to.eq(5)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: true, interruptible: true, autoStart: false })).to.eq(6)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: false, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(7)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: false, interruptible: false, autoStart: false })).to.eq(8)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: false, interruptible: false, autoStart: true })).to.eq(9)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: false, interruptible: true, autoStart: false })).to.eq(10)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: false, interruptible: true, autoStart: true })).to.eq(11)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: true, interruptible: false, autoStart: false })).to.eq(12)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: true, interruptible: false, autoStart: true })).to.eq(13)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: true, interruptible: true, autoStart: false })).to.eq(14)
-        expect(ProcessMode.make({ encryptedMetadata: false, allowVoteOverwrite: true, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(15)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: false, interruptible: false, autoStart: false })).to.eq(16)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: false, interruptible: false, autoStart: true })).to.eq(17)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: false, interruptible: true, autoStart: false })).to.eq(18)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: false, interruptible: true, autoStart: true })).to.eq(19)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: true, interruptible: false, autoStart: false })).to.eq(20)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: true, interruptible: false, autoStart: true })).to.eq(21)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: true, interruptible: true, autoStart: false })).to.eq(22)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: false, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(23)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: false, interruptible: false, autoStart: false })).to.eq(24)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: false, interruptible: false, autoStart: true })).to.eq(25)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: false, interruptible: true, autoStart: false })).to.eq(26)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: false, interruptible: true, autoStart: true })).to.eq(27)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true, interruptible: false, autoStart: false })).to.eq(28)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true, interruptible: false, autoStart: true })).to.eq(29)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true, interruptible: true, autoStart: false })).to.eq(30)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(31)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: false, interruptible: false, autoStart: false })).to.eq(0)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: false, interruptible: false, autoStart: true })).to.eq(1)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: false, interruptible: true, autoStart: false })).to.eq(2)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: false, interruptible: true, autoStart: true })).to.eq(3)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: true, interruptible: false, autoStart: false })).to.eq(4)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: true, interruptible: false, autoStart: true })).to.eq(5)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: true, interruptible: true, autoStart: false })).to.eq(6)
+        expect(ProcessMode.make({ encryptedMetadata: false, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(7)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: false, interruptible: false, autoStart: false })).to.eq(8)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: false, interruptible: false, autoStart: true })).to.eq(9)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: false, interruptible: true, autoStart: false })).to.eq(10)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: false, interruptible: true, autoStart: true })).to.eq(11)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: false, autoStart: false })).to.eq(12)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: false, autoStart: true })).to.eq(13)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: true, autoStart: false })).to.eq(14)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(15)
 
         expect(ProcessMode.make({})).to.eq(0)
         expect(ProcessMode.make({ autoStart: true })).to.eq(1)
@@ -54,35 +37,19 @@ describe("Process Mode wrapper", () => {
         expect(ProcessMode.make({ dynamicCensus: true, autoStart: true })).to.eq(5)
         expect(ProcessMode.make({ dynamicCensus: true, interruptible: true })).to.eq(6)
         expect(ProcessMode.make({ dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(7)
-        expect(ProcessMode.make({ allowVoteOverwrite: true })).to.eq(8)
-        expect(ProcessMode.make({ allowVoteOverwrite: true, autoStart: true })).to.eq(9)
-        expect(ProcessMode.make({ allowVoteOverwrite: true, interruptible: true })).to.eq(10)
-        expect(ProcessMode.make({ allowVoteOverwrite: true, interruptible: true, autoStart: true })).to.eq(11)
-        expect(ProcessMode.make({ allowVoteOverwrite: true, dynamicCensus: true })).to.eq(12)
-        expect(ProcessMode.make({ allowVoteOverwrite: true, dynamicCensus: true, autoStart: true })).to.eq(13)
-        expect(ProcessMode.make({ allowVoteOverwrite: true, dynamicCensus: true, interruptible: true })).to.eq(14)
-        expect(ProcessMode.make({ allowVoteOverwrite: true, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(15)
-        expect(ProcessMode.make({ encryptedMetadata: true })).to.eq(16)
-        expect(ProcessMode.make({ encryptedMetadata: true, autoStart: true })).to.eq(17)
-        expect(ProcessMode.make({ encryptedMetadata: true, interruptible: true })).to.eq(18)
-        expect(ProcessMode.make({ encryptedMetadata: true, interruptible: true, autoStart: true })).to.eq(19)
-        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true })).to.eq(20)
-        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, autoStart: true })).to.eq(21)
-        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: true })).to.eq(22)
-        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(23)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true })).to.eq(24)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, autoStart: true })).to.eq(25)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, interruptible: true })).to.eq(26)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, interruptible: true, autoStart: true })).to.eq(27)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true })).to.eq(28)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true, autoStart: true })).to.eq(29)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true, interruptible: true })).to.eq(30)
-        expect(ProcessMode.make({ encryptedMetadata: true, allowVoteOverwrite: true, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(31)
+        expect(ProcessMode.make({ encryptedMetadata: true })).to.eq(8)
+        expect(ProcessMode.make({ encryptedMetadata: true, autoStart: true })).to.eq(9)
+        expect(ProcessMode.make({ encryptedMetadata: true, interruptible: true })).to.eq(10)
+        expect(ProcessMode.make({ encryptedMetadata: true, interruptible: true, autoStart: true })).to.eq(11)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true })).to.eq(12)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, autoStart: true })).to.eq(13)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: true })).to.eq(14)
+        expect(ProcessMode.make({ encryptedMetadata: true, dynamicCensus: true, interruptible: true, autoStart: true })).to.eq(15)
 
         expect(ProcessMode.make()).to.eq(0)
     })
 
-    it("Should identity the appropriate flags", () => {
+    it("Should identify the appropriate flags", () => {
         expect(new ProcessMode(0).isAutoStart).to.be.false
         expect(new ProcessMode(ProcessMode.AUTO_START).isAutoStart).to.be.true
 
@@ -92,15 +59,23 @@ describe("Process Mode wrapper", () => {
         expect(new ProcessMode(0).hasDynamicCensus).to.be.false
         expect(new ProcessMode(ProcessMode.DYNAMIC_CENSUS).hasDynamicCensus).to.be.true
 
-        expect(new ProcessMode(0).allowsVoteOverwrite).to.be.false
-        expect(new ProcessMode(ProcessMode.ALLOW_VOTE_OVERWRITE).allowsVoteOverwrite).to.be.true
-
         expect(new ProcessMode(0).hasEncryptedMetadata).to.be.false
         expect(new ProcessMode(ProcessMode.ENCRYPTED_METADATA).hasEncryptedMetadata).to.be.true
     })
 
+    it("Should identify the appropriate census origin enum on the mode", () => {
+        expect(new ProcessMode(0).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_OFF_CHAIN)
+
+        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_OFF_CHAIN })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_OFF_CHAIN)
+        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC20 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC20)
+        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC721 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC721)
+        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC1155 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC1155)
+        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC777 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC777)
+        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_MINI_ME })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_MINI_ME)
+    })
+
     it("Should fail for invalid types", () => {
-        for (let i = 32; i < 256; i++) {
+        for (let i = 256; i < 512; i++) {
             expect(() => { new ProcessMode(i as any) }).to.throw
         }
     })

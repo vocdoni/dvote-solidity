@@ -22,7 +22,6 @@ export const DEFAULT_QUESTION_COUNT = 5
 export const DEFAULT_MAX_VOTE_OVERWRITES = 0
 export const DEFAULT_MAX_COUNT = 4
 export const DEFAULT_MAX_VALUE = 5
-export const DEFAULT_UNIQUE_VALUES = false
 export const DEFAULT_MAX_TOTAL_COST = 0
 export const DEFAULT_COST_EXPONENT = 10000
 export const DEFAULT_PARAMS_SIGNATURE = "0x1111111111111111111111111111111111111111111111111111111111111111"
@@ -47,7 +46,6 @@ export default class ProcessBuilder {
     maxVoteOverwrites: number = DEFAULT_MAX_VOTE_OVERWRITES
     maxCount: number = DEFAULT_MAX_COUNT
     maxValue: number = DEFAULT_MAX_VALUE
-    uniqueValues: boolean = DEFAULT_UNIQUE_VALUES
     maxTotalCost: number = DEFAULT_MAX_TOTAL_COST
     costExponent: number = DEFAULT_COST_EXPONENT
     namespace: number = DEFAULT_NAMESPACE
@@ -105,7 +103,6 @@ export default class ProcessBuilder {
                 maxCount: this.maxCount,
                 maxValue: this.maxValue,
                 maxVoteOverwrites: this.maxVoteOverwrites,
-                uniqueValues: this.uniqueValues,
                 maxTotalCost: this.maxTotalCost,
                 costExponent: this.costExponent,
                 namespace: this.namespace,
@@ -172,10 +169,6 @@ export default class ProcessBuilder {
         this.maxValue = maxValue
         return this
     }
-    withUniqueValues(uniqueValues: boolean) {
-        this.uniqueValues = uniqueValues
-        return this
-    }
     withMaxTotalCost(maxTotalCost: number) {
         this.maxTotalCost = maxTotalCost
         return this
@@ -216,7 +209,6 @@ export default class ProcessBuilder {
             maxCount: DEFAULT_MAX_COUNT,
             maxValue: DEFAULT_MAX_VALUE,
             maxVoteOverwrites: DEFAULT_MAX_VOTE_OVERWRITES,
-            uniqueValues: DEFAULT_UNIQUE_VALUES,
             maxTotalCost: DEFAULT_MAX_TOTAL_COST,
             costExponent: DEFAULT_COST_EXPONENT,
             namespace: DEFAULT_NAMESPACE,

@@ -7,6 +7,7 @@ import "./base.sol"; // Base contracts (Chained, Owned)
 import "./interfaces.sol"; // Common interface for retro compatibility
 import "./lib.sol"; // Helpers
 
+
 contract Processes is IProcessStore, Chained {
     using SafeUint8 for uint8;
 
@@ -205,8 +206,7 @@ contract Processes is IProcessStore, Chained {
             string[3] memory metadata_censusMerkleRoot_censusMerkleTree, // [metadata, censusMerkleRoot, censusMerkleTree]
             uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
             Status status, // status
-            uint8[5]
-                memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
+            uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
             uint16[3] memory maxTotalCost_costExponent_namespace
         )
     {
@@ -486,8 +486,9 @@ contract Processes is IProcessStore, Chained {
             "EVM based censuses need dynamic census enabled"
         );
         require(
-            tokenContractAddress != address(0x0),
-            "Token contract address must be provided"
+            tokenContractAddress != msg.sender &&
+                tokenContractAddress != address(0x0),
+            "Invalid token contract address"
         );
 
         // check entity address is contract
@@ -516,7 +517,7 @@ contract Processes is IProcessStore, Chained {
         );
 
         // TODO: Check that the token is registered
-        
+
         // TODO: Check that the sender holds tokens
 
         // Process creation
@@ -581,6 +582,9 @@ contract Processes is IProcessStore, Chained {
         // Only the process creator
         require(processes[processId].entity == msg.sender, "Invalid entity");
 
+        // Only processes managed by entities (with an off-chain census) can be updated
+        require(CensusOrigin(processes[processId].mode) == CensusOrigin.OFF_CHAIN, "Not off-chain");
+
         Status currentStatus = processes[processId].status;
         if (currentStatus != Status.READY && currentStatus != Status.PAUSED) {
             // When currentStatus is [ENDED, CANCELED, RESULTS], no update is allowed
@@ -638,6 +642,9 @@ contract Processes is IProcessStore, Chained {
             "Process not serial"
         );
 
+        // Only processes managed by entities (with an off-chain census) can be updated
+        require(CensusOrigin(processes[processId].mode) == CensusOrigin.OFF_CHAIN, "Not off-chain");
+
         uint8 nextIdx = processes[processId].questionIndex.add8(1);
 
         if (nextIdx < processes[processId].questionCount) {
@@ -677,7 +684,7 @@ contract Processes is IProcessStore, Chained {
 
         // Only the process creator
         require(processes[processId].entity == msg.sender, "Invalid entity");
-        // Only if active
+        // Only if the process is ongoing
         require(
             processes[processId].status == Status.READY ||
                 processes[processId].status == Status.PAUSED,
@@ -688,6 +695,9 @@ contract Processes is IProcessStore, Chained {
             processes[processId].mode & MODE_DYNAMIC_CENSUS != 0,
             "Read-only census"
         );
+
+        // Only processes managed by entities (with an off-chain census) can be updated
+        require(CensusOrigin(processes[processId].mode) == CensusOrigin.OFF_CHAIN, "Not off-chain");
 
         processes[processId].censusMerkleRoot = censusMerkleRoot;
         processes[processId].censusMerkleTree = censusMerkleTree;

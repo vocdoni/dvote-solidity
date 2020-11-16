@@ -123,7 +123,7 @@ export class ProcessMode {
         result |= flags.interruptible ? ProcessMode.INTERRUPTIBLE : 0
         result |= flags.dynamicCensus ? ProcessMode.DYNAMIC_CENSUS : 0
         result |= flags.encryptedMetadata ? ProcessMode.ENCRYPTED_METADATA : 0
-        result |= flags.censusOrigin ? ((flags.censusOrigin & ProcessMode.CENSUS_ORIGIN) << 5) : 0
+        result |= flags.censusOrigin ? ((flags.censusOrigin & ProcessMode.CENSUS_ORIGIN >> 5) << 5) : 0
         return result
     }
 
@@ -160,7 +160,7 @@ export type IProcessEnvelopeType = number
 export class ProcessEnvelopeType {
     private _type: IProcessEnvelopeType
     constructor(envelopeType: IProcessEnvelopeType) {
-        const allFlags = ProcessEnvelopeType.SERIAL | ProcessEnvelopeType.ANONYMOUS | ProcessEnvelopeType.ENCRYPTED_VOTES
+        const allFlags = ProcessEnvelopeType.SERIAL | ProcessEnvelopeType.ANONYMOUS | ProcessEnvelopeType.ENCRYPTED_VOTES | ProcessEnvelopeType.UNIQUE_VALUES
         if (envelopeType > allFlags) throw new Error("Invalid envelope type")
         this._type = envelopeType
     }
@@ -192,7 +192,7 @@ export class ProcessEnvelopeType {
     /** Returns true if envelopes are to be sent encrypted. */
     get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
     /** Returns true if choices must be unique per question. */
-    get hasUniqueValues(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
+    get hasUniqueValues(): boolean { return (this._type & ProcessEnvelopeType.UNIQUE_VALUES) != 0 }
 }
 
 /** Wrapper class to enumerate and handle valid values of a process status */
@@ -275,8 +275,8 @@ export type IProcessCreateParams = {
 
 type IProcessCreateParamsTuple = [
     number[], // mode_envelopeType
-    string[], // metadata_censusMerkleRoot_censusMerkleTree
     string,   // tokenContractAddress
+    string[], // metadata_censusMerkleRoot_censusMerkleTree
     number[], // startBlock_blockCount
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent_namespace
@@ -479,7 +479,7 @@ export class ProcessContractParameters {
         result.censusMerkleRoot = params[2][1]
         result.censusMerkleTree = params[2][2]
 
-        if (!Array.isArray(params[3]) || typeof params[3][0] == "number")
+        if (!Array.isArray(params[3]) || typeof params[3][0] != "number")
             throw new Error("Invalid startBlock")
 
         result.startBlock = params[3][0]
@@ -516,12 +516,12 @@ export class ProcessContractParameters {
     toContractParams(transactionOptions?: IMethodOverrides): IProcessCreateParamsTuple {
         const paramsResult: IProcessCreateParamsTuple = [
             [this.mode.value, this.envelopeType.value], // int mode_envelopeType
+            this.entityAddress,
             [
                 this.metadata,
                 this.censusMerkleRoot,
                 this.censusMerkleTree
             ], // String metadata_censusMerkleRoot_censusMerkleTree
-            this.entityAddress,
             [this.startBlock, this.blockCount], // int startBlock_blockCount
             [
                 this.questionCount,
