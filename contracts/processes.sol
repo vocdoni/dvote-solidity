@@ -515,6 +515,10 @@ contract Processes is IProcessStore, Chained {
             "No maxValue"
         );
 
+        // TODO: Check that the token is registered
+        
+        // TODO: Check that the sender holds tokens
+
         // Process creation
 
         // Index the process for the entity

@@ -1,5 +1,20 @@
 # DVote Solidity Changelog
 
+## (0.12.0)
+
+**Breaking changes**
+- Process contract
+  - Removing the redundant flag `MODE_ALLOW_VOTE_OVERWRITE` of `mode`. Use `maxVoteOverride` Instead.
+  - Moving `mode` > `MODE_ENCRYPTED_METADATA` at the position of `MODE_ALLOW_VOTE_OVERWRITE`.
+  - Moving `uniqueValues` as a flag of `envelopeType`
+  - Merging `namespace` as an argument with `maxTotalCost` and `costExponent` in `newProcess()` and `get()`
+  - Splitting `newProcess` into two internal functions for off-chain censuses and EVM based censuses
+  - Adding `enum CensusOrigin` within the process `mode` (`OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME`)
+- Adding `Chainable` and `Ownable` as base contracts of `Processes`
+- Adding the `StorageProof` contract
+- Adding the library `ContractSupport`
+- Using `IERC20` from OpenZeppelin
+
 ## 0.11.1
 
 - Allowing to pass transaction options in `ProcessContractParameters.toContractParams()`
