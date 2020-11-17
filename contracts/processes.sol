@@ -56,6 +56,7 @@ contract Processes is IProcessStore, Chained {
     // GLOBAL DATA
 
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
+    address public storageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
 
     // DATA STRUCTS
     struct ProcessResults {
@@ -180,11 +181,13 @@ contract Processes is IProcessStore, Chained {
 
     /// @notice Creates a new instance of the contract and sets the contract owner (see Owned).
     /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor (see Chained).
-    constructor(address predecessor, address namespace) public {
+    constructor(address predecessor, address namespace, address storageProof) public {
         Chained.setUp(predecessor);
 
         require(ContractSupport.isContract(namespace), "Invalid namespace");
+        require(ContractSupport.isContract(storageProof), "Invalid storageProof");
         namespaceAddress = namespace;
+        storageProofAddress = storageProof;
     }
 
     function setNamespaceAddress(address namespace) public onlyContractOwner {
@@ -492,14 +495,24 @@ contract Processes is IProcessStore, Chained {
             "Invalid token contract address"
         );
 
-        // check entity address is contract
+        // Check that the token address is valid
+
+        // Redundant code?
+        // require(
+        //     ContractSupport.isContract(tokenContractAddress),
+        //     "Not a contract"
+        // );
+        // require(
+        //     ContractSupport.supportsBalanceOf(tokenContractAddress),
+        //     "Not a contract"
+        // );
+        require(IStorageProof(storageProofAddress).isRegistered(tokenContractAddress), "Token not registered");
+
+        // Check that the sender holds tokens
+        // TODO: ADAPT CALL
         require(
-            ContractSupport.isContract(tokenContractAddress),
-            "Not a contract"
-        );
-        require(
-            ContractSupport.supportsBalanceOf(tokenContractAddress),
-            "Not a contract"
+            IStorageProof(storageProofAddress).getBalance(tokenContractAddress, msg.sender, block.number - 1, bytes(""), 0) > 0,
+            "No token balance"
         );
 
         require(bytes(metadata).length > 0, "No metadata");
@@ -516,10 +529,6 @@ contract Processes is IProcessStore, Chained {
             questionCount_maxCount_maxValue_maxVoteOverwrites[2] > 0,
             "No maxValue"
         );
-
-        // TODO: Check that the token is registered
-
-        // TODO: Check that the sender holds tokens
 
         // Process creation
 

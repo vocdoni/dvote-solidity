@@ -57,6 +57,28 @@ interface IProcessStore {
     event ResultsAvailable(bytes32 processId);
 }
 
+/// @notice The `IStorageProof` interface defines the standard methods that allow checking ERC token balances.
+interface IStorageProof {
+    /// @notice Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
+    function registerToken(
+        address tokenAddress,
+        uint256 balanceMappingPosition,
+        uint256 blockNumber,
+        bytes memory blockHeaderRLP,
+        bytes memory accountStateProof) external;
+
+    /// @notice Determines whether the given address is registered as an ERC token contract
+    function isRegistered(address ercTokenAddress) external view returns (bool);
+    
+    // TODO: Adapt
+    /// @notice Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number
+    function getProof(address ercTokenAddress, uint256 blockNumber) external view returns(bytes[] memory);
+    
+    // TODO: Adapt
+    /// @notice Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number
+    function getBalance(address token, address holder, uint256 blockNumber, bytes memory storageProof, uint256 balanceMappingPosition) external view returns (uint256);
+}
+
 /// @notice The `INamespaceStore` interface defines the standard methods that allow querying and updating the details of each namespace.
 interface INamespaceStore {
     modifier onlyContractOwner virtual;
