@@ -16,7 +16,7 @@ interface IProcessStore {
     function getNextProcessId(address entityAddress, uint16 namespace) external view returns (bytes32);
     function getProcessId(address entityAddress, uint256 processCountIndex, uint16 namespace) external pure returns (bytes32);
     function get(bytes32 processId) external view returns (
-        uint8[2] memory mode_envelopeType,
+        uint8[3] memory mode_envelopeType_censusOrigin,
         address entityAddress,
         string[3] memory metadata_censusMerkleRoot_censusMerkleTree,
         uint32[2] memory startBlock_blockCount,
@@ -30,7 +30,7 @@ interface IProcessStore {
 
     // SET
     function newProcess(
-        uint8[2] memory mode_envelopeType,
+        uint8[3] memory mode_envelopeType_censusOrigin,
         address tokenContractAddress,
         string[3] memory metadata_merkleRoot_merkleTree,
         uint32[2] memory startBlock_blockCount,

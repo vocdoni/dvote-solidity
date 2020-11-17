@@ -63,17 +63,6 @@ describe("Process Mode wrapper", () => {
         expect(new ProcessMode(ProcessMode.ENCRYPTED_METADATA).hasEncryptedMetadata).to.be.true
     })
 
-    it("Should identify the appropriate census origin enum on the mode", () => {
-        expect(new ProcessMode(0).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_OFF_CHAIN)
-
-        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_OFF_CHAIN })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_OFF_CHAIN)
-        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC20 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC20)
-        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC721 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC721)
-        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC1155 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC1155)
-        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_ERC777 })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_ERC777)
-        expect(new ProcessMode(ProcessMode.make({ censusOrigin: ProcessMode.CENSUS_ORIGIN_MINI_ME })).censusOrigin).to.eq(ProcessMode.CENSUS_ORIGIN_MINI_ME)
-    })
-
     it("Should fail for invalid types", () => {
         for (let i = 256; i < 512; i++) {
             expect(() => { new ProcessMode(i as any) }).to.throw

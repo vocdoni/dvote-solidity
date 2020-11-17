@@ -17,21 +17,17 @@ contract Processes is IProcessStore, Chained {
     Process Mode flags
     The process mode defines how the process behaves externally. It affects both the Vochain, the contract itself, the metadata and the census origin.
 
-    0x11101111
-      ||||||||
-      |||||||`- autoStart
-      ||||||`-- interruptible
-      |||||`--- dynamicCensus
-      ||||`---- encryptedMetadata
-      |||`----- (unused)
-      ```------ censusOrigin enum
+    0x00001111
+          ||||
+          |||`- autoStart
+          ||`-- interruptible
+          |`--- dynamicCensus
+          `---- encryptedMetadata
     */
     uint8 internal constant MODE_AUTO_START = 1 << 0;
     uint8 internal constant MODE_INTERRUPTIBLE = 1 << 1;
     uint8 internal constant MODE_DYNAMIC_CENSUS = 1 << 2;
     uint8 internal constant MODE_ENCRYPTED_METADATA = 1 << 3;
-    // (index #4 unused)
-    uint8 internal constant MODE_CENSUS_ORIGIN = (1 << 5) | (1 << 6) | (1 << 7); // See `IProcessStore` > CensusOrigin
 
     /*
     Envelope Type flags
@@ -67,6 +63,7 @@ contract Processes is IProcessStore, Chained {
     struct Process {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
+        CensusOrigin censusOrigin; // Where to check the census proofs against (Off-chain vs EVM Merkle Tree)
         address entity; // The address of the Entity (or contract) holding the process
         uint32 startBlock; // Tendermint block number on which the voting process starts
         uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
@@ -205,7 +202,7 @@ contract Processes is IProcessStore, Chained {
         override
         view
         returns (
-            uint8[2] memory mode_envelopeType, // [mode, envelopeType]
+            uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
             address entityAddress,
             string[3] memory metadata_censusMerkleRoot_censusMerkleTree, // [metadata, censusMerkleRoot, censusMerkleTree]
             uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
@@ -225,7 +222,7 @@ contract Processes is IProcessStore, Chained {
         }
 
         Process storage proc = processes[processId];
-        mode_envelopeType = [proc.mode, proc.envelopeType];
+        mode_envelopeType_censusOrigin = [proc.mode, proc.envelopeType, uint8(proc.censusOrigin)];
         entityAddress = proc.entity;
         metadata_censusMerkleRoot_censusMerkleTree = [
             proc.metadata,
@@ -314,7 +311,7 @@ contract Processes is IProcessStore, Chained {
     // ENTITY METHODS
 
     function newProcess(
-        uint8[2] memory mode_envelopeType, // [mode, envelopeType]
+        uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
         address tokenContractAddress,
         string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         uint32[2] memory startBlock_blockCount,
@@ -322,13 +319,9 @@ contract Processes is IProcessStore, Chained {
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         bytes32 paramsSignature
     ) public override onlyIfActive {
-        CensusOrigin censusOrigin = CensusOrigin(
-            (mode_envelopeType[0] & MODE_CENSUS_ORIGIN) >> 5
-        );
-
-        if (censusOrigin == CensusOrigin.OFF_CHAIN) {
+        if (CensusOrigin(mode_envelopeType_censusOrigin[2]) == CensusOrigin.OFF_CHAIN) {
             newStandardProcess(
-                mode_envelopeType,
+                mode_envelopeType_censusOrigin,
                 metadata_merkleRoot_merkleTree,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
@@ -337,7 +330,7 @@ contract Processes is IProcessStore, Chained {
             );
         } else {
             newEvmProcess(
-                mode_envelopeType,
+                mode_envelopeType_censusOrigin,
                 metadata_merkleRoot_merkleTree[0],
                 tokenContractAddress,
                 startBlock_blockCount,
@@ -350,14 +343,14 @@ contract Processes is IProcessStore, Chained {
 
     // Creates a new process using an external census
     function newStandardProcess(
-        uint8[2] memory mode_envelopeType, // [mode, envelopeType]
+        uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
         string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         bytes32 paramsSignature
     ) internal {
-        uint8 mode = mode_envelopeType[0];
+        uint8 mode = mode_envelopeType_censusOrigin[0];
 
         // Sanity checks
 
@@ -427,8 +420,10 @@ contract Processes is IProcessStore, Chained {
         );
         Process storage processData = processes[processId];
 
-        processData.mode = mode_envelopeType[0];
-        processData.envelopeType = mode_envelopeType[1];
+        processData.mode = mode_envelopeType_censusOrigin[0];
+        processData.envelopeType = mode_envelopeType_censusOrigin[1];
+        // Assigning censusOrigin is not really needed
+        // processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
 
         processData.entity = msg.sender;
         processData.startBlock = startBlock_blockCount[0];
@@ -457,7 +452,7 @@ contract Processes is IProcessStore, Chained {
     }
 
     function newEvmProcess(
-        uint8[2] memory mode_envelopeType, // [mode, envelopeType]
+        uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
         string memory metadata,
         address tokenContractAddress,
         uint32[2] memory startBlock_blockCount,
@@ -465,7 +460,7 @@ contract Processes is IProcessStore, Chained {
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         bytes32 paramsSignature
     ) internal {
-        uint8 mode = mode_envelopeType[0];
+        uint8 mode = mode_envelopeType_censusOrigin[0];
 
         // Sanity checks
 
@@ -481,8 +476,7 @@ contract Processes is IProcessStore, Chained {
         require(startBlock_blockCount[1] > 0, "Invalid blockCount");
 
         require(
-            CensusOrigin((mode & MODE_CENSUS_ORIGIN) >> 5) <=
-                CensusOrigin.MINI_ME,
+            mode_envelopeType_censusOrigin[2] <= uint8(CensusOrigin.MINI_ME),
             "Invalid census origin value"
         );
         require(
@@ -549,8 +543,9 @@ contract Processes is IProcessStore, Chained {
         );
         Process storage processData = processes[processId];
 
-        processData.mode = mode_envelopeType[0];
-        processData.envelopeType = mode_envelopeType[1];
+        processData.mode = mode_envelopeType_censusOrigin[0];
+        processData.envelopeType = mode_envelopeType_censusOrigin[1];
+        processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
 
         processData.entity = tokenContractAddress;
         processData.startBlock = startBlock_blockCount[0];
@@ -593,7 +588,7 @@ contract Processes is IProcessStore, Chained {
         require(processes[processId].entity == msg.sender, "Invalid entity");
 
         // Only processes managed by entities (with an off-chain census) can be updated
-        require(CensusOrigin(processes[processId].mode) == CensusOrigin.OFF_CHAIN, "Not off-chain");
+        require(processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN, "Not off-chain");
 
         Status currentStatus = processes[processId].status;
         if (currentStatus != Status.READY && currentStatus != Status.PAUSED) {
@@ -653,7 +648,7 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Only processes managed by entities (with an off-chain census) can be updated
-        require(CensusOrigin(processes[processId].mode) == CensusOrigin.OFF_CHAIN, "Not off-chain");
+        require(processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN, "Not off-chain");
 
         uint8 nextIdx = processes[processId].questionIndex.add8(1);
 
@@ -707,7 +702,7 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Only processes managed by entities (with an off-chain census) can be updated
-        require(CensusOrigin(processes[processId].mode) == CensusOrigin.OFF_CHAIN, "Not off-chain");
+        require(processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN, "Not off-chain");
 
         processes[processId].censusMerkleRoot = censusMerkleRoot;
         processes[processId].censusMerkleTree = censusMerkleTree;

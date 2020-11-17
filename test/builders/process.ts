@@ -1,4 +1,4 @@
-import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespaceContractMethods, ProcessContractParameters } from "../../lib/index"
+import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespaceContractMethods, ProcessContractParameters, IProcessCensusOrigin, ProcessCensusOrigin } from "../../lib/index"
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 import NamespaceBuilder from "./namespace"
@@ -13,6 +13,7 @@ export const DEFAULT_NAMESPACE = 0
 export const DEFAULT_CHAIN_ID = "vochain"
 export const DEFAULT_PROCESS_MODE = ProcessMode.make()
 export const DEFAULT_ENVELOPE_TYPE = ProcessEnvelopeType.make()
+export const DEFAULT_CENSUS_ORIGIN = ProcessCensusOrigin.OFF_CHAIN
 export const DEFAULT_METADATA_CONTENT_HASHED_URI = "ipfs://1234,https://server/uri!0987654321"
 export const DEFAULT_MERKLE_ROOT = "0x123456789"
 export const DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI = "ipfs://1234,https://server/uri!1234567812345678"
@@ -42,6 +43,7 @@ export default class ProcessBuilder {
     blockCount: number = DEFAULT_BLOCK_COUNT
     mode: IProcessMode = DEFAULT_PROCESS_MODE
     envelopeType: IProcessEnvelopeType = DEFAULT_ENVELOPE_TYPE
+    censusOrigin: IProcessCensusOrigin = DEFAULT_CENSUS_ORIGIN
     questionCount: number = DEFAULT_QUESTION_COUNT
     maxVoteOverwrites: number = DEFAULT_MAX_VOTE_OVERWRITES
     maxCount: number = DEFAULT_MAX_COUNT
@@ -94,6 +96,7 @@ export default class ProcessBuilder {
             const params = ProcessContractParameters.fromParams({
                 mode: this.mode,
                 envelopeType: this.envelopeType,
+                censusOrigin: this.censusOrigin,
                 metadata: this.metadata,
                 censusMerkleRoot: this.merkleRoot,
                 censusMerkleTree: this.merkleTree,
@@ -141,8 +144,12 @@ export default class ProcessBuilder {
         this.mode = mode
         return this
     }
-    withProcessEnvelopeType(envelopeType: IProcessEnvelopeType) {
+    withEnvelopeType(envelopeType: IProcessEnvelopeType) {
         this.envelopeType = envelopeType
+        return this
+    }
+    withCensusOrigin(censusOrigin: IProcessCensusOrigin) {
+        this.censusOrigin = censusOrigin
         return this
     }
     withStartBlock(startBlock: number) {
@@ -200,6 +207,7 @@ export default class ProcessBuilder {
         const params = ProcessContractParameters.fromParams({
             mode: DEFAULT_PROCESS_MODE,
             envelopeType: DEFAULT_ENVELOPE_TYPE,
+            censusOrigin: DEFAULT_CENSUS_ORIGIN,
             metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
             censusMerkleRoot: DEFAULT_MERKLE_ROOT,
             censusMerkleTree: DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI,

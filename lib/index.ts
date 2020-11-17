@@ -83,15 +83,16 @@ export function ensHashAddress(address: string): string {
 // PROCESS TYPES AND WRAPPERS
 ///////////////////////////////////////////////////////////////////////////////
 
+// PROCESS MODE
+
 export type IProcessMode = number
-export type IProcessCensusOrigin = 0 | 1 | 2 | 3 | 4 | 5
 
 /** Wrapper class to enumerate and handle valid values of a process mode */
 export class ProcessMode {
     private _mode: IProcessMode
     constructor(processMode: IProcessMode) {
-        const allFlags = ProcessMode.AUTO_START | ProcessMode.INTERRUPTIBLE | ProcessMode.DYNAMIC_CENSUS | ProcessMode.ENCRYPTED_METADATA | ProcessMode.CENSUS_ORIGIN
-        if (processMode & (~allFlags)) throw new Error("Invalid process mode")
+        const allFlags = ProcessMode.AUTO_START | ProcessMode.INTERRUPTIBLE | ProcessMode.DYNAMIC_CENSUS | ProcessMode.ENCRYPTED_METADATA
+        if (processMode > allFlags) throw new Error("Invalid process mode")
 
         this._mode = processMode
     }
@@ -105,41 +106,15 @@ export class ProcessMode {
     public static DYNAMIC_CENSUS: IProcessMode = 1 << 2
     /** By default, the metadata is not encrypted. If set, clients should fetch the decryption key before trying to display the metadata. */
     public static ENCRYPTED_METADATA: IProcessMode = 1 << 3
-    /* Unused index: 1 << 4 */
-    /** Census enumeration bitmask */
-    private static CENSUS_ORIGIN: IProcessMode = (1 << 5) | (1 << 6) | (1 << 7)
-
-    public static CENSUS_ORIGIN_OFF_CHAIN: IProcessCensusOrigin = 0
-    public static CENSUS_ORIGIN_ERC20: IProcessCensusOrigin = 1
-    public static CENSUS_ORIGIN_ERC721: IProcessCensusOrigin = 2
-    public static CENSUS_ORIGIN_ERC1155: IProcessCensusOrigin = 3
-    public static CENSUS_ORIGIN_ERC777: IProcessCensusOrigin = 4
-    public static CENSUS_ORIGIN_MINI_ME: IProcessCensusOrigin = 5
 
     /** Returns the value that represents the given process mode */
-    public static make(flags: { autoStart?: boolean, interruptible?: boolean, dynamicCensus?: boolean, encryptedMetadata?: boolean, censusOrigin?: IProcessCensusOrigin } = {}): IProcessMode {
+    public static make(flags: { autoStart?: boolean, interruptible?: boolean, dynamicCensus?: boolean, encryptedMetadata?: boolean } = {}): IProcessMode {
         let result = 0
         result |= flags.autoStart ? ProcessMode.AUTO_START : 0
         result |= flags.interruptible ? ProcessMode.INTERRUPTIBLE : 0
         result |= flags.dynamicCensus ? ProcessMode.DYNAMIC_CENSUS : 0
         result |= flags.encryptedMetadata ? ProcessMode.ENCRYPTED_METADATA : 0
-        result |= flags.censusOrigin ? ((flags.censusOrigin & ProcessMode.CENSUS_ORIGIN >> 5) << 5) : 0
         return result
-    }
-
-    public static getCensusOrigin(processMode: IProcessMode): IProcessCensusOrigin {
-        const origin = (processMode & ProcessMode.CENSUS_ORIGIN) >> 5 as IProcessCensusOrigin
-        switch (origin) {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-                return origin
-            default:
-                throw new Error("Invalid")
-        }
     }
 
     /** Returns true if the Vochain will not allow votes until `startBlock`. */
@@ -150,9 +125,9 @@ export class ProcessMode {
     get hasDynamicCensus(): boolean { return (this._mode & ProcessMode.DYNAMIC_CENSUS) != 0 }
     /** Returns true if the process metadata is expected to be encrypted. */
     get hasEncryptedMetadata(): boolean { return (this._mode & ProcessMode.ENCRYPTED_METADATA) != 0 }
-    /** Returns the index of the census origin enumeration. */
-    get censusOrigin(): IProcessCensusOrigin { return ProcessMode.getCensusOrigin(this._mode) }
 }
+
+// PROCESS ENVELOPE TYPE
 
 export type IProcessEnvelopeType = number
 
@@ -194,6 +169,50 @@ export class ProcessEnvelopeType {
     /** Returns true if choices must be unique per question. */
     get hasUniqueValues(): boolean { return (this._type & ProcessEnvelopeType.UNIQUE_VALUES) != 0 }
 }
+
+// PROCESS CENSUS ORIGIN
+
+/** Wrapper class to enumerate and handle valid values of a process census origin */
+export class ProcessCensusOrigin {
+    private _status: IProcessCensusOrigin
+    constructor(censusOrigin: IProcessCensusOrigin) {
+        if (!processCensusOriginValues.includes(censusOrigin)) throw new Error("Invalid origin")
+        this._status = censusOrigin
+    }
+    get value() { return this._status }
+
+    /** The process will allow voters from an off-chain Merkle Root */
+    public static OFF_CHAIN: IProcessCensusOrigin = 0
+    /** The process will allow voters holding assets on an ERC20 token contract */
+    public static ERC20: IProcessCensusOrigin = 1
+    /** The process will allow voters holding assets on an ERC721 token contract */
+    public static ERC721: IProcessCensusOrigin = 2
+    /** The process will allow voters holding assets on an ERC1155 token contract */
+    public static ERC1155: IProcessCensusOrigin = 3
+    /** The process will allow voters holding assets on an ERC777 token contract */
+    public static ERC777: IProcessCensusOrigin = 4
+    /** The process will allow voters holding assets on an ERC20 (MiniMe) token contract variant */
+    public static MINI_ME: IProcessCensusOrigin = 5
+
+    get isOffChain(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN }
+    get isErc20(): boolean { return this._status == ProcessCensusOrigin.ERC20 }
+    get isErc721(): boolean { return this._status == ProcessCensusOrigin.ERC721 }
+    get isErc1155(): boolean { return this._status == ProcessCensusOrigin.ERC1155 }
+    get isErc777(): boolean { return this._status == ProcessCensusOrigin.ERC777 }
+    get isMiniMe(): boolean { return this._status == ProcessCensusOrigin.MINI_ME }
+}
+
+export type IProcessCensusOrigin = 0 | 1 | 2 | 3 | 4 | 5
+export const processCensusOriginValues = [
+    ProcessCensusOrigin.OFF_CHAIN,
+    ProcessCensusOrigin.ERC20,
+    ProcessCensusOrigin.ERC721,
+    ProcessCensusOrigin.ERC1155,
+    ProcessCensusOrigin.ERC777,
+    ProcessCensusOrigin.MINI_ME
+]
+
+// PROCESS STATUS
 
 /** Wrapper class to enumerate and handle valid values of a process status */
 export class ProcessStatus {
@@ -257,11 +276,12 @@ export type IProcessResults = {
 export type IProcessCreateParams = {
     mode: ProcessMode | number,
     envelopeType: ProcessEnvelopeType | number,
+    censusOrigin: ProcessCensusOrigin | number,
     tokenAddress?: string,
     metadata: string,
     censusMerkleRoot?: string,
     censusMerkleTree?: string,
-    startBlock: number | BigNumber,
+    startBlock: number,
     blockCount: number,
     questionCount: number,
     maxCount: number,
@@ -274,7 +294,7 @@ export type IProcessCreateParams = {
 }
 
 type IProcessCreateParamsTuple = [
-    number[], // mode_envelopeType
+    number[], // mode_envelopeType_censusOrigin
     string,   // tokenContractAddress
     string[], // metadata_censusMerkleRoot_censusMerkleTree
     number[], // startBlock_blockCount
@@ -284,7 +304,7 @@ type IProcessCreateParamsTuple = [
     IMethodOverrides? // (Optional) Ethereum transaction overrides
 ]
 type IProcessStateTuple = [
-    number[], // mode_envelopeType
+    number[], // mode_envelopeType_censusOrigin
     string,   // entityAddress
     string[], // metadata_censusMerkleRoot_censusMerkleTree
     number[], // startBlock_blockCount
@@ -322,7 +342,7 @@ export interface ProcessContractMethods {
      * Retrieve the on-chain parameters for the given process:
      * 
      * ```[
-        mode_envelopeType: number[],
+        mode_envelopeType_censusOrigin: number[],
         entityAddress: string,  
         metadata_censusMerkleRoot_censusMerkleTree: string[],
         startBlock_blockCount: number[],
@@ -355,7 +375,7 @@ export interface ProcessContractMethods {
      * Publish a new voting process using the given parameters
      * 
      * ```[
-        mode_envelopeType: number[],
+        mode_envelopeType_censusOrigin: number[],
         metadata_censusMerkleRoot_censusMerkleTree: string[],
         tokenContractAddress: string,  
         startBlock_blockCount: number[],
@@ -384,6 +404,7 @@ export interface ProcessContractMethods {
 export class ProcessContractParameters {
     mode: ProcessMode;
     envelopeType: ProcessEnvelopeType;
+    censusOrigin: ProcessCensusOrigin;
     entityAddress?: string;
     metadata: string;
     censusMerkleRoot: string;
@@ -437,11 +458,14 @@ export class ProcessContractParameters {
         if (typeof params.envelopeType == "number") result.envelopeType = new ProcessEnvelopeType(params.envelopeType) // Fail on error
         else result.envelopeType = params.envelopeType
 
+        if (typeof params.censusOrigin == "number") result.censusOrigin = new ProcessCensusOrigin(params.censusOrigin as IProcessCensusOrigin) // Fail on error
+        else result.censusOrigin = params.censusOrigin
+
         result.entityAddress = params.tokenAddress || "0x0000000000000000000000000000000000000000"
         result.metadata = params.metadata
         result.censusMerkleRoot = params.censusMerkleRoot
         result.censusMerkleTree = params.censusMerkleTree
-        result.startBlock = typeof params.startBlock == "number" ? params.startBlock : params.startBlock.toNumber()
+        result.startBlock = params.startBlock
         result.blockCount = params.blockCount
         result.questionCount = params.questionCount
         result.maxCount = params.maxCount
@@ -462,12 +486,13 @@ export class ProcessContractParameters {
         if (!Array.isArray(params) || params.length != 7)
             throw new Error("Invalid parameters list")
         else if (!Array.isArray(params[0]) ||
-            params[0].length != 2 ||
+            params[0].length != 3 ||
             params[0].some((item) => typeof item != "number"))
-            throw new Error("Invalid parameters mode_envelopeType list")
+            throw new Error("Invalid parameters mode_envelopeType_censusOrigin list")
 
         result.mode = new ProcessMode(params[0][0])
         result.envelopeType = new ProcessEnvelopeType(params[0][1])
+        result.censusOrigin = new ProcessCensusOrigin(params[0][2] as IProcessCensusOrigin)
 
         if (typeof params[1] != "string") throw new Error("Invalid entityAddress")
         result.entityAddress = params[1]
@@ -515,7 +540,7 @@ export class ProcessContractParameters {
      */
     toContractParams(transactionOptions?: IMethodOverrides): IProcessCreateParamsTuple {
         const paramsResult: IProcessCreateParamsTuple = [
-            [this.mode.value, this.envelopeType.value], // int mode_envelopeType
+            [this.mode.value, this.envelopeType.value, this.censusOrigin.value], // int mode_envelopeType_censusOrigin
             this.entityAddress,
             [
                 this.metadata,

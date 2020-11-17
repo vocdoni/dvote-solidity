@@ -2,15 +2,15 @@ import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { ProcessContractParameters } from "../../lib"
-import { BigNumber } from "ethers"
 
 addCompletionHooks()
 
 describe("Process contract parameter wrapper", () => {
     it("should wrap the 'create' input parameters", () => {
         const params1 = ProcessContractParameters.fromParams({
-            mode: 12,
-            envelopeType: 3,
+            mode: 1,
+            envelopeType: 2,
+            censusOrigin: 3,
             tokenAddress: "4",
             metadata: "56",
             censusMerkleRoot: "78",
@@ -27,8 +27,9 @@ describe("Process contract parameter wrapper", () => {
             paramsSignature: "0x0100"
         }).toContractParams()
 
-        expect(params1[0][0]).to.eq(12)
-        expect(params1[0][1]).to.eq(3)
+        expect(params1[0][0]).to.eq(1)
+        expect(params1[0][1]).to.eq(2)
+        expect(params1[0][2]).to.eq(3)
         expect(params1[1]).to.eq("4")
         expect(params1[2][0]).to.eq("56")
         expect(params1[2][1]).to.eq("78")
@@ -45,8 +46,10 @@ describe("Process contract parameter wrapper", () => {
         expect(params1[6]).to.eq("0x0100")
 
         const params2 = ProcessContractParameters.fromParams({
-            mode: 230,
-            envelopeType: 4,
+            mode: 2,
+            envelopeType: 3,
+            censusOrigin: 4,
+            // tokenAddress
             metadata: "65",
             censusMerkleRoot: "87",
             censusMerkleTree: "09",
@@ -62,9 +65,10 @@ describe("Process contract parameter wrapper", () => {
             paramsSignature: "0x1000"
         }).toContractParams({ gasLimit: 100 })
 
-        expect(params2[0][0]).to.eq(230)
-        expect(params2[0][1]).to.eq(4)
-        expect(params2[1]).to.eq("0x0")
+        expect(params2[0][0]).to.eq(2)
+        expect(params2[0][1]).to.eq(3)
+        expect(params2[0][2]).to.eq(4)
+        expect(params2[1]).to.eq("0x0000000000000000000000000000000000000000")
         expect(params2[2][0]).to.eq("65")
         expect(params2[2][1]).to.eq("87")
         expect(params2[2][2]).to.eq("09")
@@ -83,7 +87,7 @@ describe("Process contract parameter wrapper", () => {
 
     it("should unwrap the 'get' response values", () => {
         const json1 = ProcessContractParameters.fromContract([
-            [1, 2],
+            [1, 2, 3],
             "0x3",
             ["0x4", "0x5", "0x6"],
             [7, 8],
@@ -94,6 +98,7 @@ describe("Process contract parameter wrapper", () => {
 
         expect(json1.mode.value).to.eq(1)
         expect(json1.envelopeType.value).to.eq(2)
+        expect(json1.censusOrigin.value).to.eq(3)
         expect(json1.entityAddress).to.eq("0x3")
         expect(json1.metadata).to.eq("0x4")
         expect(json1.censusMerkleRoot).to.eq("0x5")
@@ -111,7 +116,7 @@ describe("Process contract parameter wrapper", () => {
         expect(json1.namespace).to.eq(18)
 
         const json2 = ProcessContractParameters.fromContract([
-            [10, 3],
+            [10, 3, 2],
             "0x30",
             ["0x40", "0x50", "0x60"],
             [70, 80],
@@ -122,6 +127,7 @@ describe("Process contract parameter wrapper", () => {
 
         expect(json2.mode.value).to.eq(10)
         expect(json2.envelopeType.value).to.eq(3)
+        expect(json2.censusOrigin.value).to.eq(2)
         expect(json2.entityAddress).to.eq("0x30")
         expect(json2.metadata).to.eq("0x40")
         expect(json2.censusMerkleRoot).to.eq("0x50")

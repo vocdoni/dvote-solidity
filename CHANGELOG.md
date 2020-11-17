@@ -9,9 +9,10 @@
   - Moving `uniqueValues` as a flag of `envelopeType`
   - Merging `namespace` as an argument with `maxTotalCost` and `costExponent` in `newProcess()` and `get()`
   - Splitting `newProcess` into two internal functions for off-chain censuses and EVM based censuses
-  - Adding `enum CensusOrigin` within the process `mode` (`OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME`)
+  - Adding `censusOrigin` and `enum CensusOrigin {OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME}`
+  - Using `startBlock` and `blockCount` as `uint32`
 - Adding `Chainable` and `Ownable` as base contracts of `Processes`
-- Adding the `StorageProof` contract
+- Adding the `StorageProof` contract and `IStorageProof`
 - Adding the library `ContractSupport`
 - Using `IERC20` from OpenZeppelin
 

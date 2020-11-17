@@ -4,9 +4,9 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods } from "../../lib"
+import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT } from "../builders/process"
+import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN } from "../builders/process"
 import { BigNumber } from "ethers"
 import NamespaceBuilder from "../builders/namespace"
 
@@ -312,6 +312,7 @@ describe("Process contract", () => {
             const params1 = ProcessContractParameters.fromParams({
                 mode: ProcessMode.make({}),
                 envelopeType: ProcessEnvelopeType.make({}),
+                censusOrigin: DEFAULT_CENSUS_ORIGIN,
                 // tokenAddress: "",
                 metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
                 censusMerkleRoot: DEFAULT_MERKLE_ROOT,
@@ -356,10 +357,11 @@ describe("Process contract", () => {
             // 2
             let newMode = ProcessMode.make({ autoStart: true })
             let newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
+            let newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
             let newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             let newCensusMerkleRoot = "0x00000001111122222333334444"
             let newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            let newStartBlock = BigNumber.from(1111111)
+            let newStartBlock = 1111111
             let newBlockCount = 22222
             let newQuestionCount = 10
             let newMaxCount = 11
@@ -373,6 +375,7 @@ describe("Process contract", () => {
             const params2 = ProcessContractParameters.fromParams({
                 mode: newMode,
                 envelopeType: newEnvelopeType,
+                censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
                 censusMerkleRoot: newCensusMerkleRoot,
                 censusMerkleTree: newCensusMerkleTree,
@@ -397,11 +400,12 @@ describe("Process contract", () => {
 
             expect(processData2.mode.value).to.eq(newMode)
             expect(processData2.envelopeType.value).to.eq(newEnvelopeType)
+            expect(processData2.censusOrigin.value).to.eq(newCensusOrigin)
             expect(processData2.entityAddress).to.eq(entityAccount.address)
             expect(processData2.metadata).to.eq(newMetadata)
             expect(processData2.censusMerkleRoot).to.eq(newCensusMerkleRoot)
             expect(processData2.censusMerkleTree).to.eq(newCensusMerkleTree)
-            expect(processData2.startBlock).to.eq(newStartBlock.toNumber())
+            expect(processData2.startBlock).to.eq(newStartBlock)
             expect(processData2.blockCount).to.eq(newBlockCount)
             expect(processData2.status.value).to.eq(ProcessStatus.READY, "The process should start ready")
             expect(processData2.questionIndex).to.eq(0)
@@ -416,10 +420,11 @@ describe("Process contract", () => {
             // 3
             newMode = ProcessMode.make({ autoStart: true })
             newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
+            newCensusOrigin = ProcessCensusOrigin.MINI_ME
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             newCensusMerkleRoot = "0x00000001111122222333334444"
             newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            newStartBlock = BigNumber.from(1111111)
+            newStartBlock = 1111111
             newBlockCount = 22222
             newQuestionCount = 15
             newMaxCount = 90
@@ -433,6 +438,7 @@ describe("Process contract", () => {
             const params3 = ProcessContractParameters.fromParams({
                 mode: newMode,
                 envelopeType: newEnvelopeType,
+                censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
                 censusMerkleRoot: newCensusMerkleRoot,
                 censusMerkleTree: newCensusMerkleTree,
@@ -457,11 +463,12 @@ describe("Process contract", () => {
 
             expect(processData3.mode.value).to.eq(newMode)
             expect(processData3.envelopeType.value).to.eq(newEnvelopeType)
+            expect(processData2.censusOrigin.value).to.eq(newCensusOrigin)
             expect(processData3.entityAddress).to.eq(entityAccount.address)
             expect(processData3.metadata).to.eq(newMetadata)
             expect(processData3.censusMerkleRoot).to.eq(newCensusMerkleRoot)
             expect(processData3.censusMerkleTree).to.eq(newCensusMerkleTree)
-            expect(processData3.startBlock).to.eq(newStartBlock.toNumber())
+            expect(processData3.startBlock).to.eq(newStartBlock)
             expect(processData3.blockCount).to.eq(newBlockCount)
             expect(processData3.status.value).to.eq(ProcessStatus.READY, "The process should start ready")
             expect(processData3.questionIndex).to.eq(0)
@@ -482,6 +489,7 @@ describe("Process contract", () => {
             const params1 = ProcessContractParameters.fromParams({
                 mode: ProcessMode.make({}),
                 envelopeType: ProcessEnvelopeType.make({}),
+                censusOrigin: ProcessCensusOrigin.OFF_CHAIN,
                 metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
                 censusMerkleRoot: DEFAULT_MERKLE_ROOT,
                 censusMerkleTree: DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI,
@@ -508,10 +516,11 @@ describe("Process contract", () => {
             // 2
             let newMode = ProcessMode.make({ autoStart: true }),
                 newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true }),
+                newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN,
                 newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash",
                 newCensusMerkleRoot = "0x00000001111122222333334444",
                 newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there",
-                newStartBlock = BigNumber.from(1111111),
+                newStartBlock = 1111111,
                 newBlockCount = 22222,
                 newQuestionCount = 10,
                 newMaxCount = 11,
@@ -525,6 +534,7 @@ describe("Process contract", () => {
             const params2 = ProcessContractParameters.fromParams({
                 mode: newMode,
                 envelopeType: newEnvelopeType,
+                censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
                 censusMerkleRoot: newCensusMerkleRoot,
                 censusMerkleTree: newCensusMerkleTree,
@@ -551,10 +561,11 @@ describe("Process contract", () => {
             // 3
             newMode = ProcessMode.make({ autoStart: true })
             newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
+            newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             newCensusMerkleRoot = "0x00000001111122222333334444"
             newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
-            newStartBlock = BigNumber.from(1111111)
+            newStartBlock = 1111111
             newBlockCount = 22222
             newQuestionCount = 21
             newMaxCount = 22
@@ -568,6 +579,7 @@ describe("Process contract", () => {
             const params3 = ProcessContractParameters.fromParams({
                 mode: newMode,
                 envelopeType: newEnvelopeType,
+                censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
                 censusMerkleRoot: newCensusMerkleRoot,
                 censusMerkleTree: newCensusMerkleTree,
@@ -2137,7 +2149,7 @@ describe("Process contract", () => {
         it("The question index should be read-only by default", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true })) // status = ready
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: false }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: false }))
                 .withQuestionCount(5)
                 .build()
 
@@ -2162,7 +2174,7 @@ describe("Process contract", () => {
         it("The question index can be incremented in serial envelope mode", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true })) // status = ready
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                 .withQuestionCount(5)
                 .build()
 
@@ -2188,7 +2200,7 @@ describe("Process contract", () => {
         it("Should only allow the process creator to increment", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true })) // status = ready
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                 .withQuestionCount(5)
                 .build()
 
@@ -2217,7 +2229,7 @@ describe("Process contract", () => {
         it("Should fail if the process is paused", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true, interruptible: true }))
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                 .withQuestionCount(5)
                 .build()
 
@@ -2249,7 +2261,7 @@ describe("Process contract", () => {
             for (let status of [ProcessStatus.ENDED, ProcessStatus.CANCELED]) {
                 contractInstance = await new ProcessBuilder()
                     .withMode(ProcessMode.make({ autoStart: true, interruptible: true }))
-                    .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                    .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                     .withQuestionCount(5)
                     .build()
 
@@ -2274,7 +2286,7 @@ describe("Process contract", () => {
 
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true })) // status = ready
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                 .withQuestionCount(5)
                 .withOracle(authorizedOracleAccount1.address)
                 .build()
@@ -2307,7 +2319,7 @@ describe("Process contract", () => {
         it("Should end a process after the last question has been incremented", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true })) // status = ready
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                 .withQuestionCount(5)
                 .build()
 
@@ -2333,7 +2345,7 @@ describe("Process contract", () => {
         it("Should emit an event when the current question is incremented", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true }))
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                 .withQuestionCount(5)
                 .build()
 
@@ -2357,7 +2369,7 @@ describe("Process contract", () => {
         it("Should emit an event when question increment ends the process", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true }))
-                .withProcessEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
+                .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
                 .withQuestionCount(2)
                 .build()
 
@@ -3393,7 +3405,7 @@ describe("Process contract", () => {
             const envelopeType = ProcessEnvelopeType.SERIAL
 
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().withMode(mode).withProcessEnvelopeType(envelopeType).withOracle(authorizedOracleAccount1.address).build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().withMode(mode).withEnvelopeType(envelopeType).withOracle(authorizedOracleAccount1.address).build() as Contract & ProcessContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
