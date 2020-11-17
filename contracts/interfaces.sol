@@ -31,8 +31,8 @@ interface IProcessStore {
     // SET
     function newProcess(
         uint8[2] memory mode_envelopeType,
-        string[3] memory metadata_merkleRoot_merkleTree,
         address tokenContractAddress,
+        string[3] memory metadata_merkleRoot_merkleTree,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[3] memory maxTotalCost_costExponent_namespace,

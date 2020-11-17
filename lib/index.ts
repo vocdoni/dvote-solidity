@@ -437,7 +437,7 @@ export class ProcessContractParameters {
         if (typeof params.envelopeType == "number") result.envelopeType = new ProcessEnvelopeType(params.envelopeType) // Fail on error
         else result.envelopeType = params.envelopeType
 
-        result.entityAddress = params.tokenAddress || "0x0"
+        result.entityAddress = params.tokenAddress || "0x0000000000000000000000000000000000000000"
         result.metadata = params.metadata
         result.censusMerkleRoot = params.censusMerkleRoot
         result.censusMerkleTree = params.censusMerkleTree

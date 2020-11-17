@@ -183,6 +183,7 @@ contract Processes is IProcessStore, Chained {
     constructor(address predecessor, address namespace) public {
         Chained.setUp(predecessor);
 
+        require(ContractSupport.isContract(namespace), "Invalid namespace");
         namespaceAddress = namespace;
     }
 
@@ -311,8 +312,8 @@ contract Processes is IProcessStore, Chained {
 
     function newProcess(
         uint8[2] memory mode_envelopeType, // [mode, envelopeType]
-        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         address tokenContractAddress,
+        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
