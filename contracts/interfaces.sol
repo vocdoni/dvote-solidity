@@ -72,7 +72,7 @@ interface IStorageProof {
     
     // TODO: Adapt
     /// @notice Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number
-    function getProof(address ercTokenAddress, uint256 blockNumber) external view returns(bytes[] memory);
+    function getProof(address ercTokenAddress, uint256 blockNumber) external view returns(bytes memory);
     
     // TODO: Adapt
     /// @notice Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number

@@ -592,3 +592,26 @@ export interface NamespaceContractMethods {
     /** Removes the address at the given index for an oracle */
     removeOracle(namespace: number, idx: number, oracleAddr: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// STORAGE PROOF TYPES
+///////////////////////////////////////////////////////////////////////////////
+
+/** Smart Contract operations for Storage Proofs */
+export interface StorageProofContractMethods {
+    // GETTERS
+
+    /// Determines whether the given address is registered as an ERC token contract
+    isRegistered(ercTokenAddress: string): boolean
+
+    /// Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number
+    getProof(ercTokenAddress: string, blockNumber: number): Buffer
+
+    /// Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number
+    getBalance(token: string, holder: string, blockNumber: number, storageProof: Buffer, balanceMappingPosition: number): BigInt
+
+    // SETTERS
+
+    /// Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
+    registerToken(tokenAddress: string, balanceMappingPosition: number, blockNumber: number | BigInt, blockHeaderRLP: Buffer, accountStateProof: Buffer)
+}
