@@ -79,7 +79,7 @@ interface IStorageProof {
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof,
         bytes memory storageProof,
-        uint256 balanceMappingPosition) external view returns (uint256);
+        uint256 balanceMappingPosition) external returns (uint256);
 
     /// @notice Returns the balance mapping position of a token for users to generate proofs
     function getBalanceMappingPosition(address ercTokenAddress) external view returns (uint256);

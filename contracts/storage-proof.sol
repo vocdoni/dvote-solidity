@@ -24,7 +24,7 @@ contract Erc20StorageProof is IStorageProof {
 
     mapping(address => ERC20Token) public tokens;
 
-    function isRegistered(address ercTokenAddress) public view returns (bool) {
+    function isRegistered(address ercTokenAddress) public view override returns (bool) {
         require(ercTokenAddress != address(0x0), "Invalid address");
         return tokens[ercTokenAddress].registered;
     }
@@ -32,6 +32,7 @@ contract Erc20StorageProof is IStorageProof {
     function getBalanceMappingPosition(address ercTokenAddress)
         public
         view
+        override
         returns (uint256)
     {
         require(ercTokenAddress != address(0x0), "Invalid address");
@@ -45,7 +46,7 @@ contract Erc20StorageProof is IStorageProof {
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof,
         bytes memory storageProof
-    ) public {
+    ) public override {
         // Check that the address is a contract
         require(
             ContractSupport.isContract(tokenAddress),
@@ -78,7 +79,7 @@ contract Erc20StorageProof is IStorageProof {
         newToken.registered = true;
         newToken.balanceMappingPosition = balanceMappingPosition;
 
-        emit TokenRegistered(token, registar);
+        emit TokenRegistered(tokenAddress, msg.sender);
     }
 
     function getStorageRoot(
@@ -86,7 +87,7 @@ contract Erc20StorageProof is IStorageProof {
         uint256 blockNumber,
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof
-    ) public returns (bytes32) {
+    ) public view returns (bytes32) {
         // Slots 0...256 store the most recent 256 block hashes are available
         // Slots 256...511 store the most recent 256 blockhashes where blocknumber % 256 == 0
         // Slots 512...767 store the most recent 256 blockhashes where blocknumber % 65536 == 0
@@ -98,18 +99,19 @@ contract Erc20StorageProof is IStorageProof {
         bytes32 proofPath = keccak256(abi.encodePacked(account));
         // Get the account state from a merkle proof in the state trie. Returns an RLP encoded bytes array
         bytes memory accountRLP = TrieProofs.verify(
-            accountStatePRoof,
+            accountStateProof,
             stateRoot,
             proofPath
         ); // reverts if proof is invalid
         // Extract the storage root from the account node and convert to bytes32
         return
             bytes32(
-                accountRLP.toRLPItem().toList()[ACCOUNT_STORAGE_ROOT_INDEX]
+                accountRLP.toRlpItem().toList()[ACCOUNT_STORAGE_ROOT_INDEX]
                     .toUint()
             );
     }
 
+    // TODO: redundant parameters
     function getStorage(
         address account,
         uint256 blockNumber,
@@ -121,11 +123,10 @@ contract Erc20StorageProof is IStorageProof {
 
         // The path for a storage value is the hash of its slot
         bytes32 proofPath = keccak256(abi.encodePacked(slot));
-        return
-            TriePRoofs
-                .verify(storageProof, stateRoot, proofPath)
-                .toRLPItem()
-                .toUint();
+        return TrieProofs
+            .verify(storageProof, stateRoot, proofPath)
+            .toRlpItem()
+            .toUint();
     }
 
     function getHolderBalanceSlot(
@@ -134,7 +135,9 @@ contract Erc20StorageProof is IStorageProof {
     ) public pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(bytes32(holder), balanceMappingPosition)
+                // TODO: CHECK
+                // abi.encodePacked(bytes32(holder), balanceMappingPosition)
+                abi.encodePacked(bytes32(uint256(holder)), balanceMappingPosition)
             );
     }
 
@@ -146,7 +149,7 @@ contract Erc20StorageProof is IStorageProof {
         bytes memory accountStateProof,
         bytes memory storageProof,
         uint256 balanceMappingPosition
-    ) public view returns (uint256) {
+    ) public override returns (uint256) {
         require(isRegistered(token), "Token not registered");
 
         uint256 holderBalanceSlot = uint256(

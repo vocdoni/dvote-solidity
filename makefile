@@ -5,9 +5,10 @@ PROJECT_NAME=$(shell basename "$(PWD)")
 .DEFAULT_GOAL := help
 SOLC=./node_modules/.bin/solcjs
 TSC=./node_modules/.bin/tsc
-CONTRACT_SOURCES=$(wildcard contracts/*.sol contracts/registry/*.sol contracts/resolver/*.sol)
-ENS_REGISTRY_ARTIFACT_NAME=contracts_registry_ENSRegistry_sol_ENSRegistry
-ENS_PUBLIC_RESOLVER_ARTIFACT_NAME=contracts_resolver_PublicResolver_sol_PublicResolver
+VOTING_CONTRACTS=$(wildcard contracts/*.sol)
+ENS_CONTRACTS=$(wildcard contracts/vendor/registry/*.sol contracts/vendor/resolver/*.sol)
+ENS_REGISTRY_ARTIFACT_NAME=contracts_vendor_registry_ENSRegistry_sol_ENSRegistry
+ENS_PUBLIC_RESOLVER_ARTIFACT_NAME=contracts_vendor_resolver_PublicResolver_sol_PublicResolver
 PROCESS_ARTIFACT_NAME=contracts_processes_sol_Processes
 NAMESPACE_ARTIFACT_NAME=contracts_namespaces_sol_Namespaces
 STORAGE_PROOF_ARTIFACT_NAME=contracts_storage-proof_sol_Erc20StorageProof
@@ -64,22 +65,27 @@ build/index.js: build contract-output lib/index.ts
 	$(TSC) --build tsconfig.json
 
 build/ens-registry.json: build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin
+	@stat $^ > /dev/null
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin)\"}" > $@
 
 build/ens-public-resolver.json: build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).abi build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).bin
+	@stat $^ > /dev/null
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).bin)\"}" > $@
 
 build/processes.json: build/solc/$(PROCESS_ARTIFACT_NAME).abi build/solc/$(PROCESS_ARTIFACT_NAME).bin
+	@stat $^ > /dev/null
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(PROCESS_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(PROCESS_ARTIFACT_NAME).bin)\"}" > $@
 
 build/namespaces.json: build/solc/$(NAMESPACE_ARTIFACT_NAME).abi build/solc/$(NAMESPACE_ARTIFACT_NAME).bin
+	@stat $^ > /dev/null
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).bin)\"}" > $@
 
 build/storage-proof.json: build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin
+	@stat $^ > /dev/null
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin)\"}" > $@
 
@@ -95,21 +101,23 @@ build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi: build/solc
 build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin: build/solc
 
 # Link the contracts from node_modules
-contracts/vendor: contracts/vendor/openzeppelin contracts/vendor/rlp
+contracts/vendor: contracts/vendor/openzeppelin contracts/vendor/rlp/RLPReader.sol
 
 contracts/vendor/openzeppelin: node_modules
 	rm -f $@
 	ln -s ../../node_modules/@openzeppelin/contracts $@
 
-contracts/vendor/rlp: node_modules
-	rm -f $@
-	ln -s ../../node_modules/solidity-rlp/contracts $@
+contracts/vendor/rlp/RLPReader.sol: node_modules
+	rm -Rf $(shell dirname $@)
+	mkdir -p $(shell dirname $@)
+	cat node_modules/solidity-rlp/contracts/RLPReader.sol | sed "s/pragma solidity \^0.5.0;/pragma solidity >=0.6.0 <0.7.0;/" > $@
 
 # Intermediate solidity compiled artifacts
-build/solc: $(CONTRACT_SOURCES) contracts/vendor
+build/solc: $(VOTING_CONTRACTS) $(ENS_CONTRACTS) contracts/vendor
 	@echo "Building contracts"
 	mkdir -p $@
-	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD} $(CONTRACT_SOURCES)
+	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD} $(VOTING_CONTRACTS)
+	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD}/contracts/vendor $(ENS_CONTRACTS)
 	@touch $@
 
 ## test: Compile and test the contracts

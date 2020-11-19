@@ -140,8 +140,7 @@ library TrieProofs {
         assembly {
             b := byte(0, mload(memPtr))
         }
-        return
-            b == 0x80; /* empty byte string */
+        return b == 0x80; /* empty byte string */
     }
 
     function sharedPrefixLength(
@@ -199,7 +198,7 @@ library TrieProofs {
         decoded_key = decodeNibbles(decoded_key, 0);
 
         // siblings to RLP encoding list
-        RLPReader.RLPItem[] memory rlpSiblings = siblings.toRLPItem().toList();
+        RLPReader.RLPItem[] memory rlpSiblings = siblings.toRlpItem().toList();
         bytes memory rlpNode;
         bytes32 nodeHashHash;
         RLPReader.RLPItem[] memory node;
@@ -219,7 +218,7 @@ library TrieProofs {
             // We use the fact that an rlp encoded list consists of some
             // encoding of its length plus the concatenation of its
             // *rlp-encoded* items.
-            rlpNode = rlpSiblings[i].toRLPBytes();
+            rlpNode = rlpSiblings[i].toRlpBytes();
 
             // The root node is hashed with Keccak-256
             if (i == 0 && rootHash != keccak256(rlpNode)) {
@@ -309,7 +308,7 @@ library TrieProofs {
                         revert();
                     }
 
-                    if (isEmptyByteSecuence(node[nibble])) {
+                    if (isEmptyByteSequence(node[nibble])) {
                         // Sanity
                         if (i != rlpSiblings.length - 1) {
                             // leaf node should be at last level
@@ -324,7 +323,10 @@ library TrieProofs {
                 } else {
                     // we have consumed the entire mptKey, so we need to look at what's contained in this node.
                     // Sanity
-                    if (i != stack.length - 1) {
+
+                    // TODO: CHECK rlpSiblings.length
+                    // if (i != stack.length - 1) {
+                    if (i != rlpSiblings.length - 1) {
                         // should be at last level
                         revert();
                     }

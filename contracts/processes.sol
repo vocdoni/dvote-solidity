@@ -504,8 +504,9 @@ contract Processes is IProcessStore, Chained {
 
         // Check that the sender holds tokens
         // TODO: ADAPT CALL
+        // token, holder, blockNumber, blockHeaderRLP, accountStateProof, storageProof, balanceMappingPosition
         require(
-            IStorageProof(storageProofAddress).getBalance(tokenContractAddress, msg.sender, block.number - 1, bytes(""), 0) > 0,
+            IStorageProof(storageProofAddress).getBalance(tokenContractAddress, msg.sender, block.number - 1, bytes(""), bytes(""), bytes(""), 0) > 0,
             "No token balance"
         );
 
