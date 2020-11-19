@@ -99,8 +99,13 @@ contracts/openzeppelin: node_modules
 	rm -f $@
 	ln -s ../node_modules/@openzeppelin/contracts $@
 
+# Get RLP contract
+contracts/rlp: node_modules
+	rm -f $@
+	ln -s ../node_modules/solidity-rlp/contracts $@
+
 # Intermediate solidity compiled artifacts
-build/solc: $(CONTRACT_SOURCES) contracts/openzeppelin
+build/solc: $(CONTRACT_SOURCES) contracts/openzeppelin contracts/rlp
 	@echo "Building contracts"
 	mkdir -p $@
 	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD}/contracts $(CONTRACT_SOURCES)
@@ -116,3 +121,4 @@ test: clean all
 clean: 
 	rm -Rf ./build
 	rm -Rf ./contracts/openzeppelin
+	rm -Rf ./contracts/rlp
