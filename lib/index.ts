@@ -3,8 +3,7 @@ import * as EnsPublicResolver from "./ens-public-resolver.json"
 import * as Process from "./processes.json"
 import * as Namespace from "./namespaces.json"
 
-import { ContractTransaction, utils } from "ethers"
-import { BigNumber } from "ethers"
+import { ContractTransaction, utils, BigNumber } from "ethers"
 
 ///////////////////////////////////////////////////////////////////////////////
 // SMART CONTRACTS ABI + BYTECODE

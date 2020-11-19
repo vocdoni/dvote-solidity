@@ -2,8 +2,8 @@
 
 pragma solidity >=0.6.0 <0.7.0;
 
-import "./openzeppelin/token/ERC20/IERC20.sol";
-import "./rlp/RLPReader.sol";
+import "./vendor/openzeppelin/token/ERC20/IERC20.sol";
+import "./vendor/rlp/RLPReader.sol";
 import "./interfaces.sol";
 import "./lib.sol";
 

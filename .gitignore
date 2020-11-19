@@ -2,8 +2,8 @@ build
 node_modules
 .vscode
 .stamps
-contracts/openzeppelin
-contracts/rlp
+contracts/vendor/openzeppelin
+contracts/vendor/rlp
 .env
 .stamps
 .DS_Store

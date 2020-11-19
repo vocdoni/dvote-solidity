@@ -2,7 +2,7 @@
 
 pragma solidity >=0.6.0 <0.7.0;
 
-import "./rlp/RLPReader.sol";
+import "./vendor/rlp/RLPReader.sol";
 
 
 library SafeUint8 {

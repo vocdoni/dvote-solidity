@@ -94,21 +94,22 @@ build/solc/$(NAMESPACE_ARTIFACT_NAME).bin: build/solc
 build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi: build/solc
 build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin: build/solc
 
-# Get openzeppelin contracts
-contracts/openzeppelin: node_modules
-	rm -f $@
-	ln -s ../node_modules/@openzeppelin/contracts $@
+# Link the contracts from node_modules
+contracts/vendor: contracts/vendor/openzeppelin contracts/vendor/rlp
 
-# Get RLP contract
-contracts/rlp: node_modules
+contracts/vendor/openzeppelin: node_modules
 	rm -f $@
-	ln -s ../node_modules/solidity-rlp/contracts $@
+	ln -s ../../node_modules/@openzeppelin/contracts $@
+
+contracts/vendor/rlp: node_modules
+	rm -f $@
+	ln -s ../../node_modules/solidity-rlp/contracts $@
 
 # Intermediate solidity compiled artifacts
-build/solc: $(CONTRACT_SOURCES) contracts/openzeppelin contracts/rlp
+build/solc: $(CONTRACT_SOURCES) contracts/vendor
 	@echo "Building contracts"
 	mkdir -p $@
-	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD}/contracts $(CONTRACT_SOURCES)
+	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD} $(CONTRACT_SOURCES)
 	@touch $@
 
 ## test: Compile and test the contracts
@@ -120,5 +121,5 @@ test: clean all
 
 clean: 
 	rm -Rf ./build
-	rm -Rf ./contracts/openzeppelin
-	rm -Rf ./contracts/rlp
+	rm -Rf ./contracts/vendor/openzeppelin
+	rm -Rf ./contracts/vendor/rlp
