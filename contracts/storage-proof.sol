@@ -113,10 +113,9 @@ contract Erc20StorageProof is IStorageProof {
             );
     }
 
-    // TODO: redundant parameters
     function getStorage(
-        address account,
-        uint256 blockNumber,
+        // address account,
+        // uint256 blockNumber,
         uint256 slot,
         bytes32 stateRoot,
         bytes memory storageProof
@@ -165,8 +164,8 @@ contract Erc20StorageProof is IStorageProof {
         );
         return
             getStorage(
-                token,
-                blockNumber,
+                // token,
+                // blockNumber,
                 holderBalanceSlot,
                 root,
                 storageProof

@@ -324,8 +324,6 @@ library TrieProofs {
                     // we have consumed the entire mptKey, so we need to look at what's contained in this node.
                     // Sanity
 
-                    // TODO: CHECK rlpSiblings.length
-                    // if (i != stack.length - 1) {
                     if (i != rlpSiblings.length - 1) {
                         // should be at last level
                         revert();
