@@ -29,6 +29,15 @@ contract Erc20StorageProof is IStorageProof {
         return tokens[ercTokenAddress].registered;
     }
 
+    function getBalanceMappingPosition(address ercTokenAddress)
+        public
+        view
+        returns (uint256)
+    {
+        require(ercTokenAddress != address(0x0), "Invalid address");
+        return tokens[ercTokenAddress].balanceMappingPosition;
+    }
+
     function registerToken(
         address tokenAddress,
         uint256 balanceMappingPosition,

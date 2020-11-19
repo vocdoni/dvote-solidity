@@ -4,6 +4,7 @@ pragma solidity >=0.6.0 <0.7.0;
 
 import "./rlp/RLPReader.sol";
 
+
 library SafeUint8 {
     /// @notice Adds two uint8 integers and fails if an overflow occurs
     function add8(uint8 a, uint8 b) internal pure returns (uint8) {
@@ -13,6 +14,7 @@ library SafeUint8 {
         return c;
     }
 }
+
 
 library ContractSupport {
     // Compatible contract functions signatures
@@ -57,29 +59,37 @@ library ContractSupport {
     }
 }
 
+
 library TrieProofs {
-    
     using RLPReader for RLPReader.RLPItem;
     using RLPReader for bytes;
 
     bytes32 internal constant EMPTY_TRIE_ROOT_HASH = 0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421;
 
     // decoding from compact encoding (hex prefix encoding on the yellow paper)
-    function decodeNibbles(bytes memory compact, uint skipNibbles) internal pure returns (bytes memory nibbles) {
+    function decodeNibbles(bytes memory compact, uint256 skipNibbles)
+        internal
+        pure
+        returns (bytes memory nibbles)
+    {
         require(compact.length > 0); // input > 0
 
-        uint length = compact.length * 2; // need bytes, compact uses nibbles
-        require(skipNibbles <= length); 
+        uint256 length = compact.length * 2; // need bytes, compact uses nibbles
+        require(skipNibbles <= length);
         length -= skipNibbles;
 
         nibbles = new bytes(length);
-        uint nibblesLength = 0;
+        uint256 nibblesLength = 0;
 
-        for (uint i = skipNibbles; i < skipNibbles + length; i += 1) {
+        for (uint256 i = skipNibbles; i < skipNibbles + length; i += 1) {
             if (i % 2 == 0) {
-                nibbles[nibblesLength] = bytes1((uint8(compact[i/2]) >> 4) & 0xF);
+                nibbles[nibblesLength] = bytes1(
+                    (uint8(compact[i / 2]) >> 4) & 0xF
+                );
             } else {
-                nibbles[nibblesLength] = bytes1((uint8(compact[i/2]) >> 0) & 0xF);
+                nibbles[nibblesLength] = bytes1(
+                    (uint8(compact[i / 2]) >> 0) & 0xF
+                );
             }
             nibblesLength += 1;
         }
@@ -87,12 +97,16 @@ library TrieProofs {
         assert(nibblesLength == nibbles.length);
     }
 
-    function merklePatriciaCompactDecode(bytes memory compact) internal pure returns (bool isLeaf, bytes memory nibbles) {
-        require(compact.length > 0);
-        
-        uint first_nibble = uint8(compact[0]) >> 4 & 0xF;
-        uint skipNibbles;
-        
+    function merklePatriciaCompactDecode(bytes memory compact)
+        internal
+        pure
+        returns (bool isLeaf, bytes memory nibbles)
+    {
+        require(compact.length > 0, "Empty");
+
+        uint256 first_nibble = (uint8(compact[0]) >> 4) & 0xF;
+        uint256 skipNibbles;
+
         if (first_nibble == 0) {
             skipNibbles = 2;
             isLeaf = false;
@@ -109,24 +123,33 @@ library TrieProofs {
             // Not supposed to happen!
             revert();
         }
-        
+
         return (isLeaf, decodeNibbles(compact, skipNibbles));
     }
-    
-    function isEmptyByteSequence(RLPReader.RLPItem memory item) internal pure returns (bool) {
+
+    function isEmptyByteSequence(RLPReader.RLPItem memory item)
+        internal
+        pure
+        returns (bool)
+    {
         if (item.len != 1) {
             return false;
         }
         uint8 b;
-        uint memPtr = item.memPtr;
+        uint256 memPtr = item.memPtr;
         assembly {
             b := byte(0, mload(memPtr))
         }
-        return b == 0x80 /* empty byte string */;
+        return
+            b == 0x80; /* empty byte string */
     }
 
-    function sharedPrefixLength(uint xsOffset, bytes memory xs, bytes memory ys) internal pure returns (uint) {
-        uint i;
+    function sharedPrefixLength(
+        uint256 xsOffset,
+        bytes memory xs,
+        bytes memory ys
+    ) internal pure returns (uint256) {
+        uint256 i;
         for (i = 0; i + xsOffset < xs.length && i < ys.length; i++) {
             if (xs[i + xsOffset] != ys[i]) {
                 return i;
@@ -148,7 +171,8 @@ library TrieProofs {
         if (input.length < 32) {
             return keccak256(input);
         } else {
-            return keccak256(abi.encodePacked(keccak256(abi.encodePacked(input))));
+            return
+                keccak256(abi.encodePacked(keccak256(abi.encodePacked(input))));
         }
     }
 
@@ -168,11 +192,8 @@ library TrieProofs {
     ) internal pure returns (bytes memory value) {
         // copy key for convenience
         bytes memory decoded_key = new bytes(32);
-        assembly { 
-            mstore(
-                add(decoded_key, 0x20),
-                key
-            )
+        assembly {
+            mstore(add(decoded_key, 0x20), key)
         }
         // key consisting on nibbles
         decoded_key = decodeNibbles(decoded_key, 0);
@@ -215,11 +236,17 @@ library TrieProofs {
             if (node.length == 2) {
                 bool isLeaf;
                 bytes memory nodeKey;
-                (isLeaf, nodeKey) = merklePatriciaCompactDecode(node[0].toBytes());
+                (isLeaf, nodeKey) = merklePatriciaCompactDecode(
+                    node[0].toBytes()
+                );
 
-                uint256 prefixLength = sharedPrefixLength(keyOffset, decoded_key, nodeKey);
+                uint256 prefixLength = sharedPrefixLength(
+                    keyOffset,
+                    decoded_key,
+                    nodeKey
+                );
                 keyOffset += prefixLength;
-                
+
                 if (prefixLength < nodeKey.length) {
                     // Proof claims divergent extension or leaf. (Only
                     // relevant for proofs of exclusion.)
@@ -253,7 +280,8 @@ library TrieProofs {
 
                     rlpValue = node[1];
                     return rlpValue.toBytes();
-                } else { // extension node
+                } else {
+                    // extension node
                     // Sanity check
                     if (i == rlpSiblings.length - 1) {
                         // should not be at last level
@@ -280,7 +308,7 @@ library TrieProofs {
                         // each element of the path has to be a nibble
                         revert();
                     }
-                
+
                     if (isEmptyByteSecuence(node[nibble])) {
                         // Sanity
                         if (i != rlpSiblings.length - 1) {
