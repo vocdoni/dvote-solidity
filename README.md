@@ -28,9 +28,29 @@ In vocdoni, everything is a process, the main building block of any decentralize
 - Acts as the persistent source of truth
 - Stores the results
 
+### Storage Proof
+
+In order to run EVM census based elections, voters submit census Merkle Proofs that are checked against a certain block hash on the Ethereum blockchain. This contract is in charge of storing the ERC tokens available and validating the balance mapping position. 
+
+### Base contracts
+
+#### Chainable
+
+It is quite likely that contracts like [process](#process) will need to be upgraded, while we also expect older data to remain available. 
+
+Chainable is a base contract that allows defining predecessor instances and activate future instances succeeding the current one. Legacy data can be navigated to, pretty much as you would do on a MiniMe token contract. 
+
+Contracts inheriting from Chainable can either:
+- Have no predecessor and become active as soon as they are deployed
+- Have a predecessor and start inactive by default
+
+When a predecessor activates a successor
+- The predecessor becomes inactive
+- The successor becomes active
+
 ## Get started
 
-To get the raw JSON contract ABI and bytecode [click here](https://gitlab.com/vocdoni/dvote-solidity/-/jobs/artifacts/master/download?job=dvote-solidity-build).
+<!-- To get the raw JSON contract ABI and bytecode [click here](https://gitlab.com/vocdoni/dvote-solidity/-/jobs/artifacts/master/download?job=dvote-solidity-build). -->
 
 For JavaScript, [install NodeJS](https://www.nodejs.org) and NPM on your system.
 
