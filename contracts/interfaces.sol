@@ -65,7 +65,8 @@ interface IStorageProof {
         uint256 balanceMappingPosition,
         uint256 blockNumber,
         bytes memory blockHeaderRLP,
-        bytes memory accountStateProof) external;
+        bytes memory accountStateProof,
+        bytes memory storageProof) external;
 
     /// @notice Determines whether the given address is registered as an ERC token contract
     function isRegistered(address ercTokenAddress) external view returns (bool);
@@ -74,9 +75,15 @@ interface IStorageProof {
     /// @notice Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number
     function getProof(address ercTokenAddress, uint256 blockNumber) external view returns(bytes memory);
     
-    // TODO: Adapt
-    /// @notice Fethces a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number
-    function getBalance(address token, address holder, uint256 blockNumber, bytes memory storageProof, uint256 balanceMappingPosition) external view returns (uint256);
+    /// @notice Returns the token balance of a holder at the given block number
+    function getBalance(
+        address token,
+        address holder,
+        uint256 blockNumber,
+        bytes memory blockHeaderRLP,
+        bytes memory accountStateProof,
+        bytes memory storageProof,
+        uint256 balanceMappingPosition) external view returns (uint256);
 }
 
 /// @notice The `INamespaceStore` interface defines the standard methods that allow querying and updating the details of each namespace.

@@ -3,6 +3,7 @@ node_modules
 .vscode
 .stamps
 contracts/openzeppelin
+contracts/rlp
 .env
 .stamps
 .DS_Store
