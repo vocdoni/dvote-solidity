@@ -119,7 +119,7 @@ contract Erc20StorageProof is IStorageProof {
         uint256 slot,
         bytes32 stateRoot,
         bytes memory storageProof
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         require(stateRoot != bytes32(0), "no data");
 
         // The path for a storage value is the hash of its slot

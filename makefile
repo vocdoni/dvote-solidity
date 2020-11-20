@@ -41,15 +41,14 @@ all: node_modules js contract-output
 
 init: node_modules
 
-node_modules: package.json package-lock.json
+node_modules: package.json
 	@echo Updating Node packages
+	rm package-lock.json
 	npm install || true
 	if [ -d node_modules/web3-providers/node_modules/websocket ]; then \
 	  rm -Rf node_modules/web3-providers/node_modules/websocket/.git ; \
 	  rm -Rf node_modules/web3-providers-ws/node_modules/websocket/.git ; \
 	fi
-	@touch $@
-package-lock.json:
 	@touch $@
 
 js: build/index.js
