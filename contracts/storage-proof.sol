@@ -136,8 +136,6 @@ contract Erc20StorageProof is IStorageProof {
     ) public pure returns (bytes32) {
         return
             keccak256(
-                // TODO: CHECK
-                // abi.encodePacked(bytes32(holder), balanceMappingPosition)
                 abi.encodePacked(bytes32(uint256(holder)), balanceMappingPosition)
             );
     }

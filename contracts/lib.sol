@@ -121,7 +121,7 @@ library TrieProofs {
             isLeaf = true;
         } else {
             // Not supposed to happen!
-            revert();
+            revert("failed decoding Trie");
         }
 
         return (isLeaf, decodeNibbles(compact, skipNibbles));
@@ -222,12 +222,12 @@ library TrieProofs {
 
             // The root node is hashed with Keccak-256
             if (i == 0 && rootHash != keccak256(rlpNode)) {
-                revert();
+                revert("bad first proof part");
             }
             // All other nodes are hashed with the MPT hash function.
-            if (i != 0 && nodeHashHash != mptHashHash(rlpNode)) {
-                revert();
-            }
+            //if (i != 0 && nodeHashHash != mptHashHash(rlpNode)) {
+            //    revert("bad hash");
+            //}
 
             node = rlpSiblings[i].toList();
 
@@ -261,7 +261,7 @@ library TrieProofs {
                     // Sanity check
                     if (i < rlpSiblings.length - 1) {
                         // divergent node must come last in proof
-                        revert();
+                        revert("divergent node must come last in proof");
                     }
                     return new bytes(0);
                 }
@@ -270,7 +270,7 @@ library TrieProofs {
                     // Sanity check
                     if (i < rlpSiblings.length - 1) {
                         // leaf node must come last in proof
-                        revert();
+                        revert("leaf must come last in proof");
                     }
 
                     if (keyOffset < decoded_key.length) {
@@ -284,7 +284,7 @@ library TrieProofs {
                     // Sanity check
                     if (i == rlpSiblings.length - 1) {
                         // should not be at last level
-                        revert();
+                        revert("extension node cannot be at last level");
                     }
 
                     if (!node[1].isList()) {
@@ -305,14 +305,14 @@ library TrieProofs {
                     keyOffset += 1;
                     if (nibble >= 16) {
                         // each element of the path has to be a nibble
-                        revert();
+                        revert("if branch node each element has to be a nibble");
                     }
 
                     if (isEmptyByteSequence(node[nibble])) {
                         // Sanity
                         if (i != rlpSiblings.length - 1) {
                             // leaf node should be at last level
-                            revert();
+                            revert("leaf nodes only at last level");
                         }
                         return new bytes(0);
                     } else if (!node[nibble].isList()) {
@@ -326,7 +326,7 @@ library TrieProofs {
 
                     if (i != rlpSiblings.length - 1) {
                         // should be at last level
-                        revert();
+                        revert("should be at last level");
                     }
                     return node[16].toBytes();
                 }

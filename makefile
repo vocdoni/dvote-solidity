@@ -12,6 +12,7 @@ ENS_PUBLIC_RESOLVER_ARTIFACT_NAME=contracts_vendor_resolver_PublicResolver_sol_P
 PROCESS_ARTIFACT_NAME=contracts_processes_sol_Processes
 NAMESPACE_ARTIFACT_NAME=contracts_namespaces_sol_Namespaces
 STORAGE_PROOF_ARTIFACT_NAME=contracts_storage-proof_sol_Erc20StorageProof
+STORAGE_PROOF_TEST_ARTIFACT_NAME=contracts_storage-proof-test_sol_Erc20StorageProofTest
 
 #-----------------------------------------------------------------------
 # HELP
@@ -52,7 +53,7 @@ node_modules: package.json
 	@touch $@
 
 js: build/index.js
-contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json build/storage-proof.json
+contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json build/storage-proof.json build/storage-proof-test.json
 
 build:
 	@mkdir -p build
@@ -88,6 +89,11 @@ build/storage-proof.json: build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi build/so
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin)\"}" > $@
 
+build/storage-proof-test.json: build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).abi build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).bin
+	@stat $^ > /dev/null
+	@echo "Building $@"
+	echo "{\"abi\":$$(cat build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).bin)\"}" > $@
+
 build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi: build/solc
 build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin: build/solc
 build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).abi: build/solc
@@ -98,6 +104,8 @@ build/solc/$(NAMESPACE_ARTIFACT_NAME).abi: build/solc
 build/solc/$(NAMESPACE_ARTIFACT_NAME).bin: build/solc
 build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi: build/solc
 build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin: build/solc
+build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).abi: build/solc
+build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).bin: build/solc
 
 # Link the contracts from node_modules
 contracts/vendor: contracts/vendor/openzeppelin contracts/vendor/rlp/RLPReader.sol
