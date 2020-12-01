@@ -22,7 +22,8 @@ interface IProcessStore {
         uint32[2] memory startBlock_blockCount,
         Status status,
         uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites,
-        uint16[3] memory maxTotalCost_costExponent_namespace
+        uint16[3] memory maxTotalCost_costExponent_namespace,
+        uint256 evmBlockHeight // EVM only
     );
     function getParamsSignature(bytes32 processId) external view returns (bytes32);
     function getResults(bytes32 processId) external view returns (uint32[][] memory tally, uint32 height);
@@ -36,6 +37,7 @@ interface IProcessStore {
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[3] memory maxTotalCost_costExponent_namespace,
+        uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) external;
     function setStatus(bytes32 processId, Status newStatus) external;

@@ -62,10 +62,12 @@ contract Erc20StorageProof is IStorageProof {
         uint256 balance = tokenContract.balanceOf(msg.sender);
         require(balance > 0, "Insufficient funds");
 
+        // TODO: UNCOMMENT THE SECTION BELOW
+
+        /*
         // check storage root hash valid for height
         // check storage proof valid for balanceMappingPosition (value returned == balance)
-        uint256 balanceFromTrie = 0;
-        balanceFromTrie = getBalance(
+        uint256 balanceFromTrie = getBalance(
             tokenAddress,
             msg.sender,
             blockNumber,
@@ -76,6 +78,8 @@ contract Erc20StorageProof is IStorageProof {
         );
 
         require(balanceFromTrie > 0, "No funds located");
+        */
+
         ERC20Token storage newToken = tokens[tokenAddress];
         newToken.registered = true;
         newToken.balanceMappingPosition = balanceMappingPosition;

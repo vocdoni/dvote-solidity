@@ -6,6 +6,7 @@ pragma experimental ABIEncoderV2;
 import "./base.sol"; // Base contracts (Chained, Owned)
 import "./interfaces.sol"; // Common interface for retro compatibility
 import "./lib.sol"; // Helpers
+import "./vendor/openzeppelin/token/ERC20/IERC20.sol";
 
 
 contract Processes is IProcessStore, Chained {
@@ -97,6 +98,7 @@ contract Processes is IProcessStore, Chained {
         // This will determine the oracles that listen and react to it.
         // Indirectly, it will also determine the Vochain that hosts this process.
         uint16 namespace;
+        uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
         ProcessResults results; // results wraps the tally, the total number of votes, a list of signatures and a list of proofs
     }
@@ -208,7 +210,8 @@ contract Processes is IProcessStore, Chained {
             uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
             Status status, // status
             uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
-            uint16[3] memory maxTotalCost_costExponent_namespace
+            uint16[3] memory maxTotalCost_costExponent_namespace,
+            uint256 evmBlockHeight
         )
     {
         if (processes[processId].entity == address(0x0)) {
@@ -243,6 +246,7 @@ contract Processes is IProcessStore, Chained {
             proc.costExponent,
             proc.namespace
         ];
+        evmBlockHeight = proc.evmBlockHeight;
     }
 
     /// @notice Gets the signature of the process parameters, so that authentication can be performed on the Vochain as well
@@ -317,6 +321,7 @@ contract Processes is IProcessStore, Chained {
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) public override onlyIfActive {
         if (CensusOrigin(mode_envelopeType_censusOrigin[2]) == CensusOrigin.OFF_CHAIN) {
@@ -336,6 +341,7 @@ contract Processes is IProcessStore, Chained {
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
                 maxTotalCost_costExponent_namespace,
+                evmBlockHeight,
                 paramsSignature
             );
         }
@@ -458,6 +464,7 @@ contract Processes is IProcessStore, Chained {
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) internal {
         uint8 mode = mode_envelopeType_censusOrigin[0];
@@ -489,26 +496,12 @@ contract Processes is IProcessStore, Chained {
             "Invalid token contract address"
         );
 
-        // Check that the token address is valid
-
-        // Redundant code?
-        // require(
-        //     ContractSupport.isContract(tokenContractAddress),
-        //     "Not a contract"
-        // );
-        // require(
-        //     ContractSupport.supportsBalanceOf(tokenContractAddress),
-        //     "Not a contract"
-        // );
+        // Check the token contract
         require(IStorageProof(storageProofAddress).isRegistered(tokenContractAddress), "Token not registered");
 
         // Check that the sender holds tokens
-        // TODO: ADAPT CALL
-        // token, holder, blockNumber, blockHeaderRLP, accountStateProof, storageProof, balanceMappingPosition
-        require(
-            IStorageProof(storageProofAddress).getBalance(tokenContractAddress, msg.sender, block.number - 1, bytes(""), bytes(""), bytes(""), 0) > 0,
-            "No token balance"
-        );
+        uint256 balance = IERC20(tokenContractAddress).balanceOf(msg.sender);
+        require(balance > 0, "Insufficient funds");
 
         require(bytes(metadata).length > 0, "No metadata");
         require(
@@ -553,7 +546,6 @@ contract Processes is IProcessStore, Chained {
         processData.blockCount = startBlock_blockCount[1];
         processData.metadata = metadata;
 
-        // TODO: store block number?
 
         processData.status = Status.READY;
         // processData.questionIndex = 0;
@@ -568,6 +560,7 @@ contract Processes is IProcessStore, Chained {
         processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
         processData.costExponent = maxTotalCost_costExponent_namespace[1];
         processData.namespace = maxTotalCost_costExponent_namespace[2];
+        processData.evmBlockHeight = evmBlockHeight;
         processData.paramsSignature = paramsSignature;
 
         emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
