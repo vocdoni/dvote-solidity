@@ -325,7 +325,7 @@ contract Processes is IProcessStore, Chained {
         bytes32 paramsSignature
     ) public override onlyIfActive {
         if (CensusOrigin(mode_envelopeType_censusOrigin[2]) == CensusOrigin.OFF_CHAIN) {
-            newStandardProcess(
+            newProcessStd(
                 mode_envelopeType_censusOrigin,
                 metadata_merkleRoot_merkleTree,
                 startBlock_blockCount,
@@ -334,7 +334,7 @@ contract Processes is IProcessStore, Chained {
                 paramsSignature
             );
         } else {
-            newEvmProcess(
+            newProcessEvm(
                 mode_envelopeType_censusOrigin,
                 metadata_merkleRoot_merkleTree[0],
                 tokenContractAddress,
@@ -348,7 +348,7 @@ contract Processes is IProcessStore, Chained {
     }
 
     // Creates a new process using an external census
-    function newStandardProcess(
+    function newProcessStd(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
         string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         uint32[2] memory startBlock_blockCount,
@@ -457,14 +457,14 @@ contract Processes is IProcessStore, Chained {
         emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
     }
 
-    function newEvmProcess(
+    function newProcessEvm(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
         string memory metadata,
         address tokenContractAddress,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
-        uint256 evmBlockHeight, // EVM only
+        uint256 evmBlockHeight, // Ethereum block height at which the census will be considered
         bytes32 paramsSignature
     ) internal {
         uint8 mode = mode_envelopeType_censusOrigin[0];

@@ -6,7 +6,7 @@ import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
 import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN } from "../builders/process"
+import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN, DEFAULT_EVM_BLOCK_HEIGHT } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
 import StorageProofBuilder from "../builders/storage-proof"
 
@@ -151,6 +151,7 @@ describe("Process contract", () => {
             [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+            DEFAULT_EVM_BLOCK_HEIGHT,
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -191,6 +192,7 @@ describe("Process contract", () => {
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -207,6 +209,7 @@ describe("Process contract", () => {
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -245,6 +248,7 @@ describe("Process contract", () => {
                         [10 + nonce, 11 + nonce],
                         [12 + nonce, 13 + nonce, 14 + nonce, 15 + nonce],
                         [16 + nonce, 17 + nonce, namespace],
+                        DEFAULT_EVM_BLOCK_HEIGHT,
                         DEFAULT_PARAMS_SIGNATURE
                     )
                     await tx.wait()
@@ -594,6 +598,7 @@ describe("Process contract", () => {
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -612,6 +617,7 @@ describe("Process contract", () => {
                     [0, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -626,6 +632,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, 0],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -640,6 +647,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -652,6 +660,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -664,6 +673,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -678,6 +688,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [0, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -697,6 +708,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 0, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -714,6 +726,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 101, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -733,6 +746,7 @@ describe("Process contract", () => {
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, 0, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -755,6 +769,7 @@ describe("Process contract", () => {
                     [0, 0],
                     [0, 0, 0, 0],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()

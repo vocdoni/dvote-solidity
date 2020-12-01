@@ -289,6 +289,7 @@ export type IProcessCreateParams = {
     maxTotalCost: number,
     costExponent: number,
     namespace: number,
+    evmBlockHeight?: number,
     paramsSignature: string
 }
 
@@ -299,6 +300,7 @@ type IProcessCreateParamsTuple = [
     number[], // startBlock_blockCount
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent_namespace
+    number, // evmBlockHeight
     string, // paramsSignature
     IMethodOverrides? // (Optional) Ethereum transaction overrides
 ]
@@ -309,7 +311,8 @@ type IProcessStateTuple = [
     number[], // startBlock_blockCount
     IProcessStatus, // status
     number[], // questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites
-    number[] // maxTotalCost_costExponent_namespace
+    number[], // maxTotalCost_costExponent_namespace
+    BigNumber // evmBlockHeight
 ]
 
 /** Smart Contract operations for a Voting Process contract */
@@ -419,6 +422,7 @@ export class ProcessContractParameters {
     maxTotalCost: number;
     costExponent: number;
     namespace: number;
+    evmBlockHeight: number;
     paramsSignature?: string;
 
     /** Parse a plain parameters object  */
@@ -460,6 +464,10 @@ export class ProcessContractParameters {
         if (typeof params.censusOrigin == "number") result.censusOrigin = new ProcessCensusOrigin(params.censusOrigin as IProcessCensusOrigin) // Fail on error
         else result.censusOrigin = params.censusOrigin
 
+        if (!result.censusOrigin.isOffChain && (!params.evmBlockHeight || typeof params.evmBlockHeight != "number")) {
+            throw new Error("Invalid evmBlockHeight for an EVM census-based process")
+        }
+
         result.entityAddress = params.tokenAddress || "0x0000000000000000000000000000000000000000"
         result.metadata = params.metadata
         result.censusMerkleRoot = params.censusMerkleRoot
@@ -473,6 +481,7 @@ export class ProcessContractParameters {
         result.maxTotalCost = params.maxTotalCost
         result.costExponent = params.costExponent
         result.namespace = params.namespace
+        result.evmBlockHeight = params.evmBlockHeight || 0
         result.paramsSignature = params.paramsSignature
 
         return result
@@ -482,7 +491,7 @@ export class ProcessContractParameters {
     static fromContract(params: IProcessStateTuple): ProcessContractParameters {
         const result = new ProcessContractParameters()
 
-        if (!Array.isArray(params) || params.length != 7)
+        if (!Array.isArray(params) || params.length != 8)
             throw new Error("Invalid parameters list")
         else if (!Array.isArray(params[0]) ||
             params[0].length != 3 ||
@@ -529,6 +538,10 @@ export class ProcessContractParameters {
         result.costExponent = params[6][1]
         result.namespace = params[6][2]
 
+        if (typeof params[7] == "number") result.evmBlockHeight = params[7]
+        else if (params[7] instanceof BigNumber) result.evmBlockHeight = params[7].toNumber()
+        else throw new Error("Invalid blockCount")
+
         return result
     }
 
@@ -554,6 +567,7 @@ export class ProcessContractParameters {
                 this.maxVoteOverwrites
             ], // int questionCount_maxCount_maxValue_maxVoteOverwrites
             [this.maxTotalCost, this.costExponent, this.namespace], // int maxTotalCost_costExponent_namespace
+            this.evmBlockHeight, // uint256 evmBlockHeight
             this.paramsSignature // String paramsSignature
         ]
         if (transactionOptions) paramsResult.push(transactionOptions)
