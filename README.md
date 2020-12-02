@@ -65,13 +65,16 @@ See [the example](./-/tree/master/lib/example.js) on `/lib/example.js`
 To import the ABI and the bytecode:
 
 ```javascript
-const { EntityResolver, Process, Namespace } = require("dvote-solidity")
+const { EnsPublicResolver, Process, TokenStorageProof, Namespace } = require("dvote-solidity")
 
-console.log(EntityResolver.abi)
-console.log(EntityResolver.bytecode)
+console.log(EnsPublicResolver.abi)
+console.log(EnsPublicResolver.bytecode)
 
 console.log(Process.abi)
 console.log(Process.bytecode)
+
+console.log(TokenStorageProof.abi)
+console.log(TokenStorageProof.bytecode)
 
 console.log(Namespace.abi)
 console.log(Namespace.bytecode)
@@ -84,12 +87,13 @@ Then use a client library to attach to an instance or deploy your own:
 ### JavaScript (ethers.js)
 
 ```javascript
-const { EntityResolver, Process } = require("dvote-solidity")
+const { EnsPublicResolver, Process, TokenStorageProof, Namespace } = require("dvote-solidity")
 const ethers = require("ethers")
 const config = { ... }
 
-const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = EntityResolver
+const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = EnsPublicResolver
 const { abi: processAbi, bytecode: processByteCode } = Process
+const { abi: tokenStorageProofAbi, bytecode: tokenStorageProofByteCode } = TokenStorageProof
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = Namespace
 
 const provider = new ethers.providers.JsonRpcProvider(config.GATEWAY_URL)
@@ -102,22 +106,27 @@ const wallet = new ethers.Wallet(privateKey, provider);
 // deploying
 const resolverFactory = new ethers.ContractFactory(entityResolverAbi, entityResolverByteCode, wallet)
 const processFactory = new ethers.ContractFactory(processAbi, processByteCode, wallet)
+const tokenStorageProofFactory = new ethers.ContractFactory(tokenStorageProofAbi, tokenStorageProofByteCode, wallet)
 const namespaceFactory = new ethers.ContractFactory(namespaceAbi, namespaceByteCode, wallet)
 
 const resolverInstance = await resolverFactory.deploy()
 console.log("Resolver deployed at", resolverInstance.address)
+
+const tokenStorageProofInstance = await tokenStorageProofFactory.deploy()
+console.log("Token Storage Proof deployed at", tokenStorageProofInstance.address)
 
 const namespaceInstance = await namespaceFactory.deploy()
 console.log("Namespace deployed at", namespaceInstance.address)
 
 // The process contract needs the address of an already deployed namespace instance
 const predecessorInstanceAddress = "0x0000000000000000000000000000000000000000" // No predecessor
-const processInstance = await processFactory.deploy(predecessorInstanceAddress, namespaceInstance.address)
+const processInstance = await processFactory.deploy(predecessorInstanceAddress, namespaceInstance.address, tokenStorageProofInstance.address)
 console.log("Process deployed at", processInstance.address)
 
 // or attaching
 const resolver = new ethers.Contract(resolverAddress, entityResolverAbi, wallet)
 const process = new ethers.Contract(processAddress, processAbi, wallet)
+const tokenStorageProof = new ethers.Contract(tokenStorageProofAddress, tokenStorageProofAbi, wallet)
 const namespace = new ethers.Contract(namespaceAddress, namespaceAbi, wallet)
 
 const tx1 = await resolver.setText(...)
@@ -126,29 +135,6 @@ const tx2 = await process.newProcess(...)
 await tx2.wait()
 const tx3 = await process.addOracle(...)
 await tx3.wait()
-```
-
-### Web3.js
-
-```javascript
-const Web3 = require("web3")
-const web3 = new Web3(_your_provider_)
-
-function deployEntityResolver() {
-	return web3.eth.getAccounts().then(accounts => {
-		return new web3.eth.Contract(entityResolverAbi)
-			.deploy({ data: entityResolverByteCode })
-			.send({ from: accounts[0], gas: "1300000" })
-	})
-}
-
-function deployProcess() {
-	return web3.eth.getAccounts().then(accounts => {
-		return new web3.eth.Contract(processAbi)
-			.deploy({ data: processByteCode })
-			.send({ from: accounts[0], gas: "2600000" })
-	})
-}
 ```
 
 ## Types and values

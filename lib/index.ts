@@ -1,6 +1,7 @@
 import * as EnsRegistry from "./ens-registry.json"
 import * as EnsPublicResolver from "./ens-public-resolver.json"
 import * as Process from "./processes.json"
+import * as TokenStorageProof from "./token-storage-proof.json"
 import * as Namespace from "./namespaces.json"
 
 import { ContractTransaction, utils, BigNumber } from "ethers"
@@ -12,6 +13,7 @@ import { ContractTransaction, utils, BigNumber } from "ethers"
 export { EnsRegistry }
 export { EnsPublicResolver }
 export { Process }
+export { TokenStorageProof }
 export { Namespace }
 
 export type IMethodOverrides = {
