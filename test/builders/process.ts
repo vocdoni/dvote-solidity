@@ -2,12 +2,12 @@ import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvel
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 import NamespaceBuilder from "./namespace"
-import StorageProofBuilder from "./storage-proof"
+import TokenStorageProofBuilder from "./token-storage-proof"
 import { assert } from "console"
 
 import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
 import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
-import { abi as storageProofAbi, bytecode as storageProofByteCode } from "../../build/storage-proof.json"
+// import { abi as tokenStorageProofAbi, bytecode as tokenStorageProofByteCode } from "../../build/token-storage-proof.json"
 
 // DEFAULT VALUES
 export const DEFAULT_PREDECESSOR_INSTANCE_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -55,7 +55,7 @@ export default class ProcessBuilder {
     costExponent: number = DEFAULT_COST_EXPONENT
     namespace: number = DEFAULT_NAMESPACE
     namespaceAddress: string
-    storageProofAddress: string
+    tokenStorageProofAddress: string
     oracleAddress: string
     paramsSignature: string = DEFAULT_PARAMS_SIGNATURE
 
@@ -92,16 +92,16 @@ export default class ProcessBuilder {
         }
 
         // Storage Proof deploy dependency
-        let storageProofAddress = this.storageProofAddress
-        if (!storageProofAddress) {
-            const storageProofInstance = await new StorageProofBuilder().build()
-            storageProofAddress = storageProofInstance.address
+        let tokenStorageProofAddress = this.tokenStorageProofAddress
+        if (!tokenStorageProofAddress) {
+            const tokenStorageProofInstance = await new TokenStorageProofBuilder().build()
+            tokenStorageProofAddress = tokenStorageProofInstance.address
         }
 
         // Process itself
         const contractFactory = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
 
-        let contractInstance = await contractFactory.deploy(this.predecessorInstanceAddress, namespaceAddress, storageProofAddress) as Contract & ProcessContractMethods
+        let contractInstance = await contractFactory.deploy(this.predecessorInstanceAddress, namespaceAddress, tokenStorageProofAddress) as Contract & ProcessContractMethods
 
         contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
 
@@ -201,8 +201,8 @@ export default class ProcessBuilder {
         this.namespace = namespace
         return this
     }
-    withStorageProof(storageProofAddress: string) {
-        this.storageProofAddress = storageProofAddress
+    withTokenStorageProof(tokenStorageProofAddress: string) {
+        this.tokenStorageProofAddress = tokenStorageProofAddress
         return this
     }
     withNamespaceInstance(namespaceAddress: string) {

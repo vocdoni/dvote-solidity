@@ -53,7 +53,7 @@ contract Processes is IProcessStore, Chained {
     // GLOBAL DATA
 
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
-    address public storageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
+    address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
 
     // DATA STRUCTS
     struct ProcessResults {
@@ -180,13 +180,13 @@ contract Processes is IProcessStore, Chained {
 
     /// @notice Creates a new instance of the contract and sets the contract owner (see Owned).
     /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor (see Chained).
-    constructor(address predecessor, address namespace, address storageProof) public {
+    constructor(address predecessor, address namespace, address tokenStorageProof) public {
         Chained.setUp(predecessor);
 
         require(ContractSupport.isContract(namespace), "Invalid namespace");
-        require(ContractSupport.isContract(storageProof), "Invalid storageProof");
+        require(ContractSupport.isContract(tokenStorageProof), "Invalid tokenStorageProof");
         namespaceAddress = namespace;
-        storageProofAddress = storageProof;
+        tokenStorageProofAddress = tokenStorageProof;
     }
 
     function setNamespaceAddress(address namespace) public onlyContractOwner {
@@ -497,7 +497,7 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Check the token contract
-        require(IStorageProof(storageProofAddress).isRegistered(tokenContractAddress), "Token not registered");
+        require(ITokenStorageProof(tokenStorageProofAddress).isRegistered(tokenContractAddress), "Token not registered");
 
         // Check that the sender holds tokens
         uint256 balance = IERC20(tokenContractAddress).balanceOf(msg.sender);

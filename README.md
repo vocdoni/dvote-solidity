@@ -572,21 +572,58 @@ Feel free to contribute any additional test cases that you consider necessary.
 
 ### xDAI and Sokol
 
-Both networks currently feature a prior version. Expect them to be soon replaced by version 0.10.0.
+Both networks currently feature a prior version. Expect them to be soon replaced by version 0.12.0.
 
 ### Goerli
 
-- Entity resolver deployed at `0x7fBf10CE8b0cF34b6F8104A83387ACe6E4b067eE`
-  - ENS: `entities.dev.vocdoni.eth`
-- Namespace deployed at `0xCB0d4fDeB158611c31550BCF5715617402adfAF4`
-- Process deployed at `0x0932D53F7545d39a747C68DD327e330daf104385`
+- ENS Registry: 
+  - Address: `0xDA49dD1B5c62018C4F33ff2e39B30A21644E4EE8`
+- ENS Resolver:
+  - Address: `0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D`
+  - Domain: `entities.vocdoni.eth`
+- Process:
+  - Address: `0x671884dB8DFB20d1D26173947a45622956009a0e`
+  - Domain: `processes.vocdoni.eth`
   - Predecessor: `0x0000000000000000000000000000000000000000`
-  - Namespace: `0xCB0d4fDeB158611c31550BCF5715617402adfAF4`
-  - ENS: `processes.dev.vocdoni.eth`
+- Token Storage Proofs:
+  - ERC20
+    - Address: `0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA`
+    - Domain: `erc20.proofs.vocdoni.eth`
+- Namespace:
+  - Address: `0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007`
+  - Domain: `namespaces.vocdoni.eth`
 
+
+<!--
+```
+ENS Registry deployed at 0xDA49dD1B5c62018C4F33ff2e39B30A21644E4EE8
+ENS Public Resolver deployed at 0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D
+ERC20 Token Storage Proof deployed at 0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA
+Namespace deployed at 0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007
+Process deployed at 0x671884dB8DFB20d1D26173947a45622956009a0e
+ - Predecessor: 0x0000000000000000000000000000000000000000
+ - Token Storage Proofs: 0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA
+ - Namespace: 0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007
+
+Root owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+'eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+'vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+'entities.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+'processes.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+'proofs.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+'erc20.proofs.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+'namespaces.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
+
+'entities.vocdoni.eth' address 0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D
+'processes.vocdoni.eth' address 0x671884dB8DFB20d1D26173947a45622956009a0e
+'erc20.proofs.vocdoni.eth' address 0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA
+'namespaces.vocdoni.eth' address 0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007
+ENS Text of 0x180dd5765d9f7ecef810b565a2e5bd14a3ccd536c442b3de74867df552855e85 vnd.vocdoni.boot-nodes is https://bootnodes.vocdoni.net/gateways.json
+```
+--->
 
 ## Development
 
-Run `npm install` to get the dependencies
+Run `make install` to get the dependencies
 
 On Linux, you may need to remove `package-lock.json` and try again.

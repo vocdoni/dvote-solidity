@@ -11,8 +11,8 @@ ENS_REGISTRY_ARTIFACT_NAME=contracts_vendor_registry_ENSRegistry_sol_ENSRegistry
 ENS_PUBLIC_RESOLVER_ARTIFACT_NAME=contracts_vendor_resolver_PublicResolver_sol_PublicResolver
 PROCESS_ARTIFACT_NAME=contracts_processes_sol_Processes
 NAMESPACE_ARTIFACT_NAME=contracts_namespaces_sol_Namespaces
-STORAGE_PROOF_ARTIFACT_NAME=contracts_storage-proof_sol_Erc20StorageProof
-STORAGE_PROOF_TEST_ARTIFACT_NAME=contracts_storage-proof-test_sol_Erc20StorageProofTest
+TOKEN_STORAGE_PROOF_ARTIFACT_NAME=contracts_token-storage-proof_sol_TokenStorageProof
+TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME=contracts_token-storage-proof-test_sol_TokenStorageProofTest
 
 #-----------------------------------------------------------------------
 # HELP
@@ -53,7 +53,7 @@ node_modules: package.json
 	@touch $@
 
 js: build/index.js
-contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json build/storage-proof.json build/storage-proof-test.json
+contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json build/token-storage-proof.json build/token-storage-proof-test.json
 
 build:
 	@mkdir -p build
@@ -84,15 +84,15 @@ build/namespaces.json: build/solc/$(NAMESPACE_ARTIFACT_NAME).abi build/solc/$(NA
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).bin)\"}" > $@
 
-build/storage-proof.json: build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin
+build/token-storage-proof.json: build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).abi build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).bin)\"}" > $@
 
-build/storage-proof-test.json: build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).abi build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).bin
+build/token-storage-proof-test.json: build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).abi build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).bin)\"}" > $@
 
 build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi: build/solc
 build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin: build/solc

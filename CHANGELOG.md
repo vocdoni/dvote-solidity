@@ -12,7 +12,7 @@
   - Adding `censusOrigin` and `enum CensusOrigin {OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME}`
   - Using `startBlock` and `blockCount` as `uint32`
 - Adding `Chainable` and `Ownable` as base contracts of `Processes`
-- Adding the `StorageProof` contract and `IStorageProof`
+- Adding the `TokenStorageProof` contract and `ITokenStorageProof`
 - Adding the library `ContractSupport`
 - Using `IERC20` from OpenZeppelin
 

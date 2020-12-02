@@ -8,7 +8,7 @@ import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode
 
 import ProcessBuilder, { DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
-import StorageProofBuilder from "../builders/storage-proof"
+import TokenStorageProofBuilder from "../builders/token-storage-proof"
 
 import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
 
@@ -47,7 +47,7 @@ describe("Chainable Process contract", () => {
 
     it("should fail deploying if the predecessor address is not a contract", async () => {
         const namespaceInstance = await new NamespaceBuilder().build()
-        const storageProofAddress = (await new StorageProofBuilder().build()).address
+        const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
         const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
 
@@ -73,7 +73,7 @@ describe("Chainable Process contract", () => {
     describe("Instance forking", () => {
         it("should allow to deploy a contract with no predecessorAddress", async () => {
             const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new StorageProofBuilder().build()).address
+            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
             const localInstance1: Contract & ProcessContractMethods = await contractFactory.deploy(nullAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
@@ -85,7 +85,7 @@ describe("Chainable Process contract", () => {
 
         it("should not allow to deploy with itself as a predecessor", async () => {
             const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new StorageProofBuilder().build()).address
+            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
             // Compute the address that the next contract deployed will get
             const nextContractDeployAddress = utils.getContractAddress({
@@ -108,7 +108,7 @@ describe("Chainable Process contract", () => {
 
         it("should retrieve the predecessorAddress if set", async () => {
             const predecessorAddress = (await new ProcessBuilder().build()).address
-            const storageProofAddress = (await new StorageProofBuilder().build()).address
+            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -138,7 +138,7 @@ describe("Chainable Process contract", () => {
 
         it("should have no successor by default", async () => {
             const predecessorAddress = (await new ProcessBuilder().build()).address
-            const storageProofAddress = (await new StorageProofBuilder().build()).address
+            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -374,7 +374,7 @@ describe("Chainable Process contract", () => {
 
         it("should retrieve the activationBlock if set", async () => {
             const predecessorAddress = (await new ProcessBuilder().build()).address
-            const storageProofAddress = (await new StorageProofBuilder().build()).address
+            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
             expect(await contractInstance.predecessorAddress()).to.eq(nullAddress)
             expect((await contractInstance.activationBlock()).toNumber()).to.be.gt(0)

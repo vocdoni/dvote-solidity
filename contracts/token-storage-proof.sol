@@ -8,7 +8,7 @@ import "./interfaces.sol";
 import "./lib.sol";
 
 
-contract Erc20StorageProof is IStorageProof {
+contract TokenStorageProof is ITokenStorageProof {
     using TrieProofs for bytes;
     using RLPReader for RLPReader.RLPItem;
     using RLPReader for bytes;

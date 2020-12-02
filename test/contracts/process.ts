@@ -8,7 +8,7 @@ import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode
 
 import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN, DEFAULT_EVM_BLOCK_HEIGHT } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
-import StorageProofBuilder from "../builders/storage-proof"
+import TokenStorageProofBuilder from "../builders/token-storage-proof"
 
 import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
 import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
@@ -50,7 +50,7 @@ describe("Process contract", () => {
         const namespaceInstance1 = await new NamespaceBuilder().build()
         const namespaceInstance2 = await new NamespaceBuilder().build()
         const somePredecessorAddr = (await new ProcessBuilder().build()).address
-        const storageProofAddress = (await new StorageProofBuilder().build()).address
+        const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
         const contractFactory1 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
         const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
 
@@ -72,7 +72,7 @@ describe("Process contract", () => {
     it("should fail deploying if the namespace address is not a contract", async () => {
         const noParentAddr = "0x0000000000000000000000000000000000000000"
         const somePredecessorAddr = (await new ProcessBuilder().build()).address
-        const storageProofAddress = (await new StorageProofBuilder().build()).address
+        const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
         const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
 

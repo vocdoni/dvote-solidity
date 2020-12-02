@@ -4,7 +4,7 @@ pragma solidity >=0.6.0 <0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./storage-proof.sol";
+import "./token-storage-proof.sol";
 import "./vendor/rlp/RLPReader.sol";
 import "./lib.sol";
 
@@ -15,7 +15,7 @@ import "./lib.sol";
 // *** Never deploy this contract!                           ***
 // *************************************************************
 
-contract Erc20StorageProofTest is Erc20StorageProof {
+contract TokenStorageProofTest is TokenStorageProof {
 
     using TrieProofs for bytes;
     using RLPReader for RLPReader.RLPItem;

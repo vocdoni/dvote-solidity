@@ -1,9 +1,9 @@
-import { StorageProofContractMethods, StorageProofTestContractMethods } from "../../lib/index"
+import { TokenStorageProofContractMethods, TokenStorageProofTestContractMethods } from "../../lib/index"
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 
-import { abi as storageProofAbi, bytecode as storageProofByteCode } from "../../build/storage-proof.json"
-import { abi as storageProofTestAbi, bytecode as storageProofTestByteCode } from "../../build/storage-proof-test.json"
+import { abi as tokenStorageProofAbi, bytecode as tokenStorageProofByteCode } from "../../build/token-storage-proof.json"
+import { abi as tokenStorageProofTestAbi, bytecode as tokenStorageProofTestByteCode } from "../../build/token-storage-proof-test.json"
 
 export const STORAGE_PROOFS_USDT_11328124 = {
     "height": 11328124,
@@ -1378,7 +1378,7 @@ export const STORAGE_PROOFS_USDT_11328124 = {
   }
 
 // BUILDER
-export default class StorageProofBuilder {
+export default class TokenStorageProofBuilder {
     accounts: TestAccount[]
 
     entityAccount: TestAccount
@@ -1388,18 +1388,18 @@ export default class StorageProofBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(): Promise<Contract & StorageProofContractMethods> {
+    async build(): Promise<Contract & TokenStorageProofContractMethods> {
         const deployAccount = this.accounts[0]
-        const contractFactory = new ContractFactory(storageProofAbi, storageProofByteCode, deployAccount.wallet)
-        let contractInstance = await contractFactory.deploy() as Contract & StorageProofContractMethods
+        const contractFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofByteCode, deployAccount.wallet)
+        let contractInstance = await contractFactory.deploy() as Contract & TokenStorageProofContractMethods
 
         // TODO: Register a token
 
-        return contractInstance.connect(this.entityAccount.wallet) as Contract & StorageProofContractMethods
+        return contractInstance.connect(this.entityAccount.wallet) as Contract & TokenStorageProofContractMethods
     }
 }
 
-export class StorageProofTestBuilder {
+export class TokenStorageProofTestBuilder {
     accounts: TestAccount[]
 
     entityAccount: TestAccount
@@ -1409,11 +1409,11 @@ export class StorageProofTestBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(): Promise<Contract & StorageProofTestContractMethods> {
+    async build(): Promise<Contract & TokenStorageProofTestContractMethods> {
         const deployAccount = this.accounts[0]
-        const contractFactory = new ContractFactory(storageProofTestAbi, storageProofTestByteCode, deployAccount.wallet)
-        let contractInstance = await contractFactory.deploy() as Contract & StorageProofTestContractMethods
+        const contractFactory = new ContractFactory(tokenStorageProofTestAbi, tokenStorageProofTestByteCode, deployAccount.wallet)
+        let contractInstance = await contractFactory.deploy() as Contract & TokenStorageProofTestContractMethods
 
-        return contractInstance.connect(this.entityAccount.wallet) as Contract & StorageProofTestContractMethods
+        return contractInstance.connect(this.entityAccount.wallet) as Contract & TokenStorageProofTestContractMethods
     }
 }

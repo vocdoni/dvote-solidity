@@ -611,7 +611,7 @@ export interface NamespaceContractMethods {
 ///////////////////////////////////////////////////////////////////////////////
 
 /** Smart Contract operations for Storage Proofs */
-export interface StorageProofContractMethods {
+export interface TokenStorageProofContractMethods {
     // GETTERS
 
     /// Determines whether the given address is registered as an ERC token contract
@@ -652,7 +652,7 @@ export interface StorageProofContractMethods {
 ///////////////////////////////////////////////////////////////////////////////
 
 /** Smart Contract operations for Storage Proofs Test */
-export interface StorageProofTestContractMethods {
+export interface TokenStorageProofTestContractMethods {
     exposedVerify(siblings: Buffer, rootHash: string, key: string): Promise<string>
     testVerify(): Promise<number | BigNumber>
     testExclusion(): Promise<string>

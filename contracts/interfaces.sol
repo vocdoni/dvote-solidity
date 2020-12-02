@@ -59,8 +59,8 @@ interface IProcessStore {
     event ResultsAvailable(bytes32 processId);
 }
 
-/// @notice The `IStorageProof` interface defines the standard methods that allow checking ERC token balances.
-interface IStorageProof {
+/// @notice The `ITokenStorageProof` interface defines the standard methods that allow checking ERC token balances.
+interface ITokenStorageProof {
     /// @notice Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
     function registerToken(
         address tokenAddress,
