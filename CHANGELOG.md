@@ -1,6 +1,6 @@
 # DVote Solidity Changelog
 
-## (0.12.0)
+## 0.12.0
 
 **Breaking changes**
 - Process contract
@@ -11,6 +11,7 @@
   - Splitting `newProcess` into two internal functions for off-chain censuses and EVM based censuses
   - Adding `censusOrigin` and `enum CensusOrigin {OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME}`
   - Using `startBlock` and `blockCount` as `uint32`
+  - Storing the evmBlockHeight as the census snapshot point for EVM processes
 - Adding `Chainable` and `Ownable` as base contracts of `Processes`
 - Adding the `TokenStorageProof` contract and `ITokenStorageProof`
 - Adding the library `ContractSupport`
