@@ -261,7 +261,7 @@ mode = ProcessMode.make({})
 mode = ProcessMode.make({ autoStart: false, interruptible: false, dynamicCensus: false, encryptedMetadata: false })
 // => 0
 mode = ProcessMode.make({ autoStart: true, interruptible: true, dynamicCensus: true, encryptedMetadata: true })
-// => 31
+// => 15
 
 // And also
 const pMode = new ProcessMode(15)
