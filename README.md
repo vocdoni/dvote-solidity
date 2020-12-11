@@ -566,9 +566,56 @@ Feel free to contribute any additional test cases that you consider necessary.
 
 ## Deployments
 
-### xDAI and Sokol
+### xDAI
 
-Both networks currently feature a prior version. Expect them to be soon replaced by version 0.12.0.
+This network currently features an old version. Expect it to be soon updated.
+
+### Sokol
+
+- ENS Registry: 
+  - Address: `0xDb6C74071116D17a47D9c191cbE6d640111Ee5C2`
+- ENS Resolver:
+  - Address: `0xf3c50b2f86C0FC53e06CeaB88236BB404c3F2F9d`
+  - Domain: `entities.vocdoni.eth`
+- Process:
+  - Address: `0xd92D591322A2375C1F010DF36FFC23257c71a418`
+  - Domain: `processes.vocdoni.eth`
+  - Predecessor: `0x0000000000000000000000000000000000000000`
+- Token Storage Proofs:
+  - ERC20
+    - Address: `0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8`
+    - Domain: `erc20.proofs.vocdoni.eth`
+- Namespace:
+  - Address: `0xC9d39F57a14FadA742c69FF7EDaB2C965e933921`
+  - Domain: `namespaces.vocdoni.eth`
+
+<!-- 
+ENS Registry deployed at 0xDb6C74071116D17a47D9c191cbE6d640111Ee5C2
+ENS Public Resolver deployed at 0xf3c50b2f86C0FC53e06CeaB88236BB404c3F2F9d
+ERC20 Token Storage Proof deployed at 0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8
+Namespace deployed at 0xC9d39F57a14FadA742c69FF7EDaB2C965e933921
+Process deployed at 0xd92D591322A2375C1F010DF36FFC23257c71a418
+ - Predecessor: 0x0000000000000000000000000000000000000000
+ - Token Storage Proofs: 0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8
+ - Namespace: 0xC9d39F57a14FadA742c69FF7EDaB2C965e933921
+
+Root owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+'eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+'vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+'entities.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+'processes.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+'proofs.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+'erc20.proofs.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+'namespaces.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
+
+'entities.vocdoni.eth' address 0xf3c50b2f86C0FC53e06CeaB88236BB404c3F2F9d
+'processes.vocdoni.eth' address 0xd92D591322A2375C1F010DF36FFC23257c71a418
+'erc20.proofs.vocdoni.eth' address 0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8
+'namespaces.vocdoni.eth' address 0xC9d39F57a14FadA742c69FF7EDaB2C965e933921
+ENS Text of 0xe00f56aac24b5b78b94c38f511631b8b09a5c5a9ee49978dbe57f28135695e1a vnd.vocdoni.boot-nodes is https://bootnodes.vocdoni.net/gateways.json
+
+
+-->
 
 ### Goerli
 

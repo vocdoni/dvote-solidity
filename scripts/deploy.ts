@@ -3,14 +3,17 @@ import { EnsPublicResolverContractMethods, EnsRegistryContractMethods, Namespace
 
 const utils = require('web3-utils');
 const namehash = require('eth-ens-namehash');
+const { JsonRpcProvider } = providers
 
+
+console.log("Checking .env")
 require("dotenv").config({ path: __dirname + "/.env" })
 
 const ENDPOINT = process.env.ENDPOINT
 const MNEMONIC = process.env.MNEMONIC
 const HD_PATH = process.env.HD_PATH || "m/44'/60'/0'/0/0"
 const CHAIN_ID = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 100
-const NETWORK_ID = process.env.NETWORK_ID || "xdai"
+const NETWORK_ID = process.env.NETWORK_ID || "sokol"
 
 const { abi: ENSRegistryAbi, bytecode: ENSRegistryBytecode } = require("../build/ens-registry.json")
 const { abi: ENSPublicResolverAbi, bytecode: ENSPublicResolverBytecode } = require("../build/ens-public-resolver.json")
@@ -18,19 +21,27 @@ const { abi: VotingProcessAbi, bytecode: VotingProcessBytecode } = require("../b
 const { abi: tokenStorageProofAbi, bytecode: tokenStorageProofBytecode } = require("../build/token-storage-proof.json")
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../build/namespaces.json")
 
+const transactionOptions = {} as any
+let rpcParams = undefined
+
 // Overriding the gas price for xDAI and Sokol networks
-/* const transactionOptions = { gasPrice: utils2.parseUnits("1", "gwei") } */
-// Else
-const transactionOptions = {}
+if (NETWORK_ID == "xdai" || NETWORK_ID == "sokol") {
+    transactionOptions.gasPrice = utils2.parseUnits("1", "gwei")
+    rpcParams = { chainId: CHAIN_ID, name: NETWORK_ID, ensAddress: "0x0000000000000000000000000000000000000000" }
+}
 
 async function deploy() {
-    const provider = new providers.JsonRpcProvider(ENDPOINT, { chainId: CHAIN_ID, name: NETWORK_ID, ensAddress: "0x0000000000000000000000000000000000000000" })
+    const provider = new JsonRpcProvider(ENDPOINT, rpcParams)
+    await provider.detectNetwork()
 
     // From mnemonic
     const wallet = Wallet.fromMnemonic(MNEMONIC, HD_PATH).connect(provider)
 
     // Deploy
     console.log("Deploying from", wallet.address, "\n")
+
+    console.log()
+    console.log("Contract deployment")
 
     // ENS Registry
     const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
@@ -65,10 +76,11 @@ async function deploy() {
     console.log(" - Predecessor:", predecessorAddress)
     console.log(" - Token Storage Proofs:", tokenStorageProofInstance.address)
     console.log(" - Namespace:", namespaceInstance.address)
-    console.log()
-
 
     // ENS DEPLOYMENT
+
+    console.log()
+    console.log("Domain owner")
 
     // create .eth TLD
     const rootNode = namehash.hash("") // 0x0000000000000000000000000000000000000000000000000000000000000000
@@ -152,6 +164,9 @@ async function deploy() {
     var namespacesVocdoniEthOwner = await ensRegistryInstance.owner(namespacesVocdoniEthNode)
     console.log("'namespaces.vocdoni.eth' owner", namespacesVocdoniEthOwner)
 
+    console.log()
+    console.log("Domain resolvers")
+
     // set the resolver
     tx = await ensRegistryInstance.setResolver(entitiesVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
     await tx.wait()
@@ -165,6 +180,7 @@ async function deploy() {
     await tx.wait()
 
     console.log()
+    console.log("Domain addresses")
 
     // set the addresses
     tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
@@ -182,6 +198,9 @@ async function deploy() {
     tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](namespacesVocdoniEthNode, namespaceInstance.address, transactionOptions)
     await tx.wait()
     console.log("'namespaces.vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](namespacesVocdoniEthNode))
+
+    console.log()
+    console.log("Bootnode key")
 
     // set the bootnode URL on the entity of Vocdoni
     const BOOTNODES_KEY = "vnd.vocdoni.boot-nodes"
