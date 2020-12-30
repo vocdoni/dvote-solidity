@@ -1,5 +1,11 @@
 # DVote Solidity Changelog
 
+## 0.12.1
+
+- Minor changes
+  - More descriptive revert error
+  - Returning `paramsSignature` as null in `ProcessContractParameters.fromContract()`
+
 ## 0.12.0
 
 **Breaking changes**

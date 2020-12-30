@@ -489,7 +489,10 @@ export class ProcessContractParameters {
         return result
     }
 
-    /** Convert the output data from `get()` into a JSON object */
+    /**
+     * Convert the output data from `get()` into a JSON object.
+     * NOTE: `paramsSignature` is not defined within `params`, so it will be null.
+     * */
     static fromContract(params: IProcessStateTuple): ProcessContractParameters {
         const result = new ProcessContractParameters()
 
@@ -543,6 +546,8 @@ export class ProcessContractParameters {
         if (typeof params[7] == "number") result.evmBlockHeight = params[7]
         else if (params[7] instanceof BigNumber) result.evmBlockHeight = params[7].toNumber()
         else throw new Error("Invalid blockCount")
+
+        result.paramsSignature = null
 
         return result
     }

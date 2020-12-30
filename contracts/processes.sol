@@ -719,7 +719,7 @@ contract Processes is IProcessStore, Chained {
 
         require(
             tally.length == processes[processId].questionCount,
-            "Invalid tally"
+            "Invalid length"
         );
 
         // cannot publish results on a canceled process or on a process
