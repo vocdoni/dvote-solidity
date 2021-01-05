@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 0.12.2
+
+- Adding a missing TS type
+
 ## 0.12.1
 
 - Minor changes
