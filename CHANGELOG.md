@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 0.12.3
+
+- Add the `overrides` parameter to `registerToken`
+
 ## 0.12.2
 
 - Adding a missing TS type

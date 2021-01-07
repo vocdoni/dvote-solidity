@@ -651,7 +651,7 @@ export interface TokenStorageProofContractMethods {
     // SETTERS
 
     /// Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
-    registerToken(tokenAddress: string, balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer): Promise<ContractTransaction>
+    registerToken(tokenAddress: string, balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, overrides?: IMethodOverrides): Promise<ContractTransaction>
 }
 
 ///////////////////////////////////////////////////////////////////////////////

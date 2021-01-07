@@ -3,21 +3,80 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils, BigNumber } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { TokenStorageProofTestContractMethods } from "../../lib"
+import { TokenStorageProofContractMethods, TokenStorageProofTestContractMethods } from "../../lib"
 
-import { TokenStorageProofTestBuilder, STORAGE_PROOFS_USDT_11328124 as proofs } from "../builders/token-storage-proof"
-import { abi as tokenStorageProofTestAbi, bytecode as tokenStorageProofTestByteCode} from "../../build/token-storage-proof-test.json"
+import TokenStorageProofBuilder, { TokenStorageProofTestBuilder, STORAGE_PROOFS_USDT_11328124 as proofs } from "../builders/token-storage-proof"
+import { abi as tokenStorageProofTestAbi, bytecode as tokenStorageProofTestByteCode } from "../../build/token-storage-proof-test.json"
 
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
 let randomAccount1: TestAccount
 let randomAccount2: TestAccount
-let contractInstance: TokenStorageProofTestContractMethods & Contract
+let contractInstance: TokenStorageProofContractMethods & Contract
+let testContractInstance: TokenStorageProofTestContractMethods & Contract
 let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
 const emptyArray: Array<number> = []
+
+const dummyErc20Contract = `
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
+
+contract ERC20 {
+    mapping (address => uint256) private _balances;
+
+    mapping (address => mapping (address => uint256)) private _allowances;
+
+    uint256 private _totalSupply;
+
+    string private _name;
+    string private _symbol;
+    uint8 private _decimals;
+    constructor (string memory name, string memory symbol) public {
+        _name = name;
+        _symbol = symbol;
+        _decimals = 18;
+        _balances[msg.sender] = 1000000000000000000;
+        _totalSupply = 1000000000000000000;
+    }
+    function name() public view returns (string memory) {
+        return _name;
+    }
+    function symbol() public view returns (string memory) {
+        return _symbol;
+    }
+    function decimals() public view returns (uint8) {
+        return _decimals;
+    }
+    function totalSupply() public view returns (uint256) {
+        return _totalSupply;
+    }
+    function balanceOf(address account) public view returns (uint256) {
+        return _balances[account];
+    }
+    function transfer(address recipient, uint256 amount) public virtual returns (bool) {
+        return true;
+    }
+    function allowance(address owner, address spender) public view virtual returns (uint256) {
+        return _allowances[owner][spender];
+    }
+    function approve(address spender, uint256 amount) public virtual returns (bool) {
+        return true;
+    }
+    function transferFrom(address sender, address recipient, uint256 amount) public virtual returns (bool) {
+        return true;
+    }
+    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
+        return true;
+    }
+    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
+        return true;
+    }
+}
+`
 
 // const block3723000 = { // from aragon-evm
 //     "hash": "0x26ecbc6551f3eb70e5545a1c2305e4c7a990eecfd37005c8805bf00dfe2c9b90",
@@ -34,30 +93,64 @@ describe("StorageProofTest contract", () => {
         randomAccount1 = accounts[2]
         randomAccount2 = accounts[3]
         tx = null
-        contractInstance = await new TokenStorageProofTestBuilder().build()
+        testContractInstance = await new TokenStorageProofTestBuilder().build()
     })
 
-    it("should deploy the contract", async() => {
+    it("should deploy the contract", async () => {
         const storageProofTestContractInstance = await new TokenStorageProofTestBuilder().build()
-        const storageProofAddress = storageProofTestContractInstance.address
+        expect(storageProofTestContractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+
         const contractFactory = new ContractFactory(tokenStorageProofTestAbi, tokenStorageProofTestByteCode, deployAccount.wallet)
         const localInstance: Contract & TokenStorageProofTestContractMethods = await contractFactory.deploy() as Contract & TokenStorageProofTestContractMethods
-        
+
         expect(localInstance).to.be.ok
         expect(localInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
     })
 
-    it ("should verify inclusion", async() => {
-        expect(contractInstance.testVerify).to.be.ok
+    it("should verify inclusion", async () => {
+        expect(testContractInstance.testVerify).to.be.ok
 
-        const verifiedData = await contractInstance.testVerify()
+        const verifiedData = await testContractInstance.testVerify()
         expect(verifiedData).to.deep.equal(BigNumber.from(0x12))
     })
 
-    it ("should verify exclusion", async() => {
-        expect(contractInstance.testExclusion).to.be.ok
+    it("should verify exclusion", async () => {
+        expect(testContractInstance.testExclusion).to.be.ok
 
-        const exclusion = await contractInstance.testExclusion()
+        const exclusion = await testContractInstance.testExclusion()
         expect(exclusion).to.eq("0x")
+    })
+
+    it("should register a token contract", async () => {
+        const solc = require("solc")
+        const output = solc.compile(JSON.stringify({
+            language: "Solidity",
+            sources: { "dummy.sol": { content: dummyErc20Contract } },
+            settings: { outputSelection: { "*": { "*": ["*"] } } }
+        }))
+
+        const { contracts } = JSON.parse(output)
+        const erc20Abi = contracts["dummy.sol"].ERC20.abi
+        const erc20Bytecode = contracts["dummy.sol"].ERC20.evm.bytecode.object
+
+        const dummyTokenFactory = new ContractFactory(erc20Abi, erc20Bytecode, deployAccount.wallet)
+        const dummyTokenInstance = await dummyTokenFactory.deploy("Dummy Token", "DUM") as Contract
+
+        // register
+        contractInstance = await new TokenStorageProofBuilder().build()
+
+        expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
+
+        const blockNumber = await contractInstance.provider.getBlockNumber()
+        await contractInstance.connect(deployAccount.wallet).registerToken(
+            dummyTokenInstance.address,
+            0,
+            blockNumber,
+            Buffer.from("00000000000000000000000000000000000000000000000000", "hex"),
+            Buffer.from("000000000000000000000000000000000000000000000000000000", "hex"),
+            Buffer.from("0000000000000000000000000000000000000000000000000000000000", "hex")
+        )
+
+        expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(true)
     })
 })
