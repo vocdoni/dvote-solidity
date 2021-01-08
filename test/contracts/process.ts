@@ -1542,7 +1542,7 @@ describe("Process contract", () => {
                         expect(processData6.entityAddress).to.eq(entityAccount.address)
                         expect(processData6.status.value).to.eq(ProcessStatus.PAUSED, "The process should remain paused")
                     }
-                }).timeout(4000)
+                }).timeout(5000)
             })
 
             describe("from ended", () => {

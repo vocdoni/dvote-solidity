@@ -49,8 +49,8 @@ describe("Process contract parameter wrapper", () => {
         expect(params1[7]).to.eq("0x0110")
 
         const params2 = ProcessContractParameters.fromParams({
-            mode: 2,
-            envelopeType: 3,
+            mode: 9,
+            envelopeType: 2,
             censusOrigin: 4,
             // tokenAddress
             metadata: "65",
@@ -69,8 +69,8 @@ describe("Process contract parameter wrapper", () => {
             paramsSignature: "0x1100"
         }).toContractParams({ gasLimit: 100 })
 
-        expect(params2[0][0]).to.eq(2)
-        expect(params2[0][1]).to.eq(3)
+        expect(params2[0][0]).to.eq(9)
+        expect(params2[0][1]).to.eq(2)
         expect(params2[0][2]).to.eq(4)
         expect(params2[1]).to.eq("0x0000000000000000000000000000000000000000")
         expect(params2[2][0]).to.eq("65")

@@ -625,15 +625,15 @@ ENS Text of 0xe00f56aac24b5b78b94c38f511631b8b09a5c5a9ee49978dbe57f28135695e1a v
   - Address: `0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D`
   - Domain: `entities.vocdoni.eth`
 - Process:
-  - Address: `0x671884dB8DFB20d1D26173947a45622956009a0e`
+  - Address: `0x24CB5a0CcAA52dE01111F3aB892dAEB022c66271`
   - Domain: `processes.vocdoni.eth`
   - Predecessor: `0x0000000000000000000000000000000000000000`
 - Token Storage Proofs:
   - ERC20
-    - Address: `0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA`
+    - Address: `0x1a72D4949936bDA05E187706DaF0dB6fb96603b6`
     - Domain: `erc20.proofs.vocdoni.eth`
 - Namespace:
-  - Address: `0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007`
+  - Address: `0xF3A916387e6242cD0eAA0e2ba5820bB3D86DC037`
   - Domain: `namespaces.vocdoni.eth`
 
 

@@ -472,8 +472,8 @@ contract Processes is IProcessStore, Chained {
         // Sanity checks
 
         require(
-            mode & MODE_AUTO_START == 0,
-            "Auto start not allowed on EVM processes"
+            mode & MODE_AUTO_START != 0,
+            "Auto start is needed on EVM processes"
         );
         require(
             mode & MODE_INTERRUPTIBLE == 0,
@@ -487,13 +487,13 @@ contract Processes is IProcessStore, Chained {
             "Invalid census origin value"
         );
         require(
-            mode & MODE_DYNAMIC_CENSUS != 0,
-            "EVM based censuses need dynamic census enabled"
+            mode & MODE_DYNAMIC_CENSUS == 0,
+            "Dynamic census not allowed on EVM processes"
         );
         require(
             tokenContractAddress != msg.sender &&
                 tokenContractAddress != address(0x0),
-            "Invalid token contract address"
+            "Invalid token address"
         );
 
         // Check the token contract

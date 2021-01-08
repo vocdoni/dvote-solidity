@@ -21,6 +21,8 @@ const { abi: VotingProcessAbi, bytecode: VotingProcessBytecode } = require("../b
 const { abi: tokenStorageProofAbi, bytecode: tokenStorageProofBytecode } = require("../build/token-storage-proof.json")
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../build/namespaces.json")
 
+const processPredessorContractAddress = "0x0000000000000000000000000000000000000000"  // no predecessor
+
 const transactionOptions = {} as any
 let rpcParams = undefined
 
@@ -30,7 +32,7 @@ if (NETWORK_ID == "xdai" || NETWORK_ID == "sokol") {
     rpcParams = { chainId: CHAIN_ID, name: NETWORK_ID, ensAddress: "0x0000000000000000000000000000000000000000" }
 }
 
-async function deploy() {
+async function deployAll() {
     const provider = new JsonRpcProvider(ENDPOINT, rpcParams)
     await provider.detectNetwork()
 
@@ -68,14 +70,17 @@ async function deploy() {
     console.log("Namespace deployed at", namespaceInstance.address)
 
     // Process
-    const predecessorAddress = "0x0000000000000000000000000000000000000000"  // no predecessor
     const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
-    const processContract = await processFactory.deploy(predecessorAddress, namespaceInstance.address, tokenStorageProofInstance.address, transactionOptions)
+    const processContract = await processFactory.deploy(processPredessorContractAddress, namespaceInstance.address, tokenStorageProofInstance.address, transactionOptions)
     const processInstance = await processContract.deployed() as Contract & ProcessContractMethods
     console.log("Process deployed at", processInstance.address)
-    console.log(" - Predecessor:", predecessorAddress)
+    console.log(" - Predecessor:", processPredessorContractAddress)
     console.log(" - Token Storage Proofs:", tokenStorageProofInstance.address)
     console.log(" - Namespace:", namespaceInstance.address)
+
+    if (processPredessorContractAddress != "0x0000000000000000000000000000000000000000") {
+        // TODO: Activate successor
+    }
 
     // ENS DEPLOYMENT
 
@@ -214,4 +219,55 @@ async function deploy() {
     console.log("\nDone")
 }
 
-deploy().catch(err => console.log(err))
+async function deployBase() {
+    const provider = new JsonRpcProvider(ENDPOINT, rpcParams)
+    await provider.detectNetwork()
+
+    // From mnemonic
+    const wallet = Wallet.fromMnemonic(MNEMONIC, HD_PATH).connect(provider)
+
+    // Deploy
+    console.log("Deploying from", wallet.address, "\n")
+
+    console.log()
+    console.log("Base contract deployment")
+
+    // ENS Public resolver
+    const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
+    const ensPublicResolverContract = await ensPublicResolverFactory.deploy("0x0000000000000000000000000000000000000000", transactionOptions)
+    const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
+    console.log("ENS Public Resolver deployed at", ensPublicResolverInstance.address)
+
+    // ERC Storage Proof
+    const tokenStorageProofFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofBytecode, wallet)
+    const tokenStorageProofContract = await tokenStorageProofFactory.deploy(transactionOptions)
+    const tokenStorageProofInstance = await tokenStorageProofContract.deployed() as Contract & TokenStorageProofContractMethods
+    console.log("ERC20 Token Storage Proof deployed at", tokenStorageProofInstance.address)
+
+    // Namespace
+    const namespaceFactory = new ContractFactory(namespaceAbi, namespaceByteCode, wallet)
+    const namespaceContract = await namespaceFactory.deploy(transactionOptions)
+    const namespaceInstance = await namespaceContract.deployed() as Contract & NamespaceContractMethods
+    console.log("Namespace deployed at", namespaceInstance.address)
+
+    // Process
+    const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
+    const processContract = await processFactory.deploy(processPredessorContractAddress, namespaceInstance.address, tokenStorageProofInstance.address, transactionOptions)
+    const processInstance = await processContract.deployed() as Contract & ProcessContractMethods
+    console.log("Process deployed at", processInstance.address)
+    console.log(" - Predecessor:", processPredessorContractAddress)
+    console.log(" - Token Storage Proofs:", tokenStorageProofInstance.address)
+    console.log(" - Namespace:", namespaceInstance.address)
+
+    if (processPredessorContractAddress != "0x0000000000000000000000000000000000000000") {
+        // TODO: Activate successor
+    }
+
+    // done
+    console.log("NOTE: the deployed contracts will not be used until their ENS records are updated")
+    console.log("See https://app.ens.domains/search/vocdoni")
+    console.log("\nDone")
+}
+
+deployBase().catch(err => console.log(err))
+// deployAll().catch(err => console.log(err))

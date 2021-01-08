@@ -1,5 +1,10 @@
 # DVote Solidity Changelog
 
+## 0.12.4
+
+- Fix two checks on the process `mode` for EVM processes
+- Adapt the TypeScript wrappers to reflect these changes
+
 ## 0.12.3
 
 - Add the `overrides` parameter to `registerToken`

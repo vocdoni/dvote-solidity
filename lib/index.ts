@@ -280,7 +280,7 @@ export type IProcessCreateParams = {
     censusOrigin: ProcessCensusOrigin | number,
     tokenAddress?: string,
     metadata: string,
-    censusMerkleRoot?: string,
+    censusMerkleRoot: string,
     censusMerkleTree?: string,
     startBlock: number,
     blockCount: number,
@@ -430,12 +430,11 @@ export class ProcessContractParameters {
     /** Parse a plain parameters object  */
     static fromParams(params: IProcessCreateParams): ProcessContractParameters {
         // Integrity checks
-        if (params.metadata.length == 0)
+        if (!params.metadata)
             throw new Error("Invalid metadata")
-        else if (params.censusMerkleRoot.length == 0)
+        else if (!params.censusMerkleRoot)
             throw new Error("Invalid censusMerkleRoot")
-        else if (params.censusMerkleTree.length == 0)
-            throw new Error("Invalid censusMerkleTree")
+        // censusMerkleTree > see below
         else if (params.questionCount < 1 || params.questionCount > 255)
             throw new Error("Invalid questionCount")
         else if (params.maxCount < 1 || params.maxCount > 255)
@@ -451,7 +450,8 @@ export class ProcessContractParameters {
             throw new Error("Invalid costExponent")
         else if (params.namespace < 0 || params.namespace > 65355)
             throw new Error("Invalid namespace")
-        else if (params.paramsSignature.length == 0)
+        // evmBlockHeight > see below
+        else if (!params.paramsSignature)
             throw new Error("Invalid paramsSignature")
 
         const result = new ProcessContractParameters()
@@ -466,14 +466,28 @@ export class ProcessContractParameters {
         if (typeof params.censusOrigin == "number") result.censusOrigin = new ProcessCensusOrigin(params.censusOrigin as IProcessCensusOrigin) // Fail on error
         else result.censusOrigin = params.censusOrigin
 
-        if (!result.censusOrigin.isOffChain && (!params.evmBlockHeight || typeof params.evmBlockHeight != "number")) {
-            throw new Error("Invalid evmBlockHeight for an EVM census-based process")
+        if (result.censusOrigin.isOffChain) {
+            if (!params.censusMerkleTree)
+                throw new Error("Invalid censusMerkleTree")
+        } else {
+            if (!result.mode.isAutoStart) {
+                throw new Error("Auto start is mandatory on EVM processes")
+            }
+            else if (result.mode.isInterruptible) {
+                throw new Error("EVM processes cannot be interruptible")
+            }
+            else if (result.mode.hasDynamicCensus) {
+                throw new Error("EVM processes cannot have dynamic censuses")
+            }
+            else if (!params.evmBlockHeight || typeof params.evmBlockHeight != "number" || params.evmBlockHeight < 0) {
+                throw new Error("Invalid evmBlockHeight for an EVM census-based process")
+            }
         }
 
         result.entityAddress = params.tokenAddress || "0x0000000000000000000000000000000000000000"
         result.metadata = params.metadata
         result.censusMerkleRoot = params.censusMerkleRoot
-        result.censusMerkleTree = params.censusMerkleTree
+        result.censusMerkleTree = params.censusMerkleTree || ""
         result.startBlock = params.startBlock
         result.blockCount = params.blockCount
         result.questionCount = params.questionCount
@@ -564,7 +578,7 @@ export class ProcessContractParameters {
             [
                 this.metadata,
                 this.censusMerkleRoot,
-                this.censusMerkleTree
+                this.censusMerkleTree || "0x00"
             ], // String metadata_censusMerkleRoot_censusMerkleTree
             [this.startBlock, this.blockCount], // int startBlock_blockCount
             [
