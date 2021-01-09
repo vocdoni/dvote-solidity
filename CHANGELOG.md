@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 0.12.6
+
+- Using `_isBigNumber` instead of comparing `evmBlockHeight` with `BigNumber`
+
 ## 0.12.5
 
 - Storing the census Root on EVM processes

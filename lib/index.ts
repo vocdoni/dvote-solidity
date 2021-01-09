@@ -560,7 +560,7 @@ export class ProcessContractParameters {
         result.namespace = params[6][2]
 
         if (typeof params[7] == "number") result.evmBlockHeight = params[7]
-        else if (params[7] instanceof BigNumber) result.evmBlockHeight = params[7].toNumber()
+        else if (params[7] && params[7]._isBigNumber) result.evmBlockHeight = params[7].toNumber()
         else throw new Error("Invalid blockCount")
 
         result.paramsSignature = null
