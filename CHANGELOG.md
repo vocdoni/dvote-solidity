@@ -1,5 +1,10 @@
 # DVote Solidity Changelog
 
+## 0.12.5
+
+- Storing the census Root on EVM processes
+- Typing the `tokenStorageProofAddress` Solidity getter
+
 ## 0.12.4
 
 - Fix two checks on the process `mode` for EVM processes

@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin } from "../../lib"
+import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin, TokenStorageProofContractMethods } from "../../lib"
 
 import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN, DEFAULT_EVM_BLOCK_HEIGHT } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
@@ -12,6 +12,8 @@ import TokenStorageProofBuilder from "../builders/token-storage-proof"
 
 import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
 import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
+import { abi as tokenStorageProofsAbi } from "../../build/token-storage-proof.json"
+const solc = require("solc")
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
@@ -27,6 +29,64 @@ let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
 const emptyArray: Array<number> = []
+
+const dummyErc20Contract = `
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
+
+contract ERC20 {
+    mapping (address => uint256) private _balances;
+
+    mapping (address => mapping (address => uint256)) private _allowances;
+
+    uint256 private _totalSupply;
+
+    string private _name;
+    string private _symbol;
+    uint8 private _decimals;
+    constructor (string memory name, string memory symbol) public {
+        _name = name;
+        _symbol = symbol;
+        _decimals = 18;
+        _balances[msg.sender] = 1000000000000000000;
+        _totalSupply = 1000000000000000000;
+    }
+    function name() public view returns (string memory) {
+        return _name;
+    }
+    function symbol() public view returns (string memory) {
+        return _symbol;
+    }
+    function decimals() public view returns (uint8) {
+        return _decimals;
+    }
+    function totalSupply() public view returns (uint256) {
+        return _totalSupply;
+    }
+    function balanceOf(address account) public view returns (uint256) {
+        return _balances[account];
+    }
+    function transfer(address recipient, uint256 amount) public virtual returns (bool) {
+        return true;
+    }
+    function allowance(address owner, address spender) public view virtual returns (uint256) {
+        return _allowances[owner][spender];
+    }
+    function approve(address spender, uint256 amount) public virtual returns (bool) {
+        return true;
+    }
+    function transferFrom(address sender, address recipient, uint256 amount) public virtual returns (bool) {
+        return true;
+    }
+    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
+        return true;
+    }
+    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
+        return true;
+    }
+}
+`
 
 addCompletionHooks()
 
@@ -58,6 +118,7 @@ describe("Process contract", () => {
         expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
         expect(await localInstance1.predecessorAddress()).to.eq(nullAddress)
         expect(await localInstance1.namespaceAddress()).to.eq(namespaceInstance1.address)
+        expect(await localInstance1.tokenStorageProofAddress()).to.eq(storageProofAddress)
 
         const contractFactory2 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
         const localInstance2: Contract & ProcessContractMethods = await contractFactory2.deploy(somePredecessorAddr, namespaceInstance2.address, storageProofAddress) as Contract & ProcessContractMethods
@@ -67,6 +128,7 @@ describe("Process contract", () => {
         expect(localInstance2.address).to.not.eq(localInstance1.address)
         expect(await localInstance2.predecessorAddress()).to.eq(somePredecessorAddr)
         expect(await localInstance2.namespaceAddress()).to.eq(namespaceInstance2.address)
+        expect(await localInstance2.tokenStorageProofAddress()).to.eq(storageProofAddress)
     })
 
     it("should fail deploying if the namespace address is not a contract", async () => {
@@ -219,7 +281,7 @@ describe("Process contract", () => {
             expect(processIdExpected).to.eq(processIdActual)
         })
 
-        it("retrieved metadata should match the one submitted", async () => {
+        it("retrieved metadata should match the one submitted (off chain census)", async () => {
             contractInstance = await new ProcessBuilder().build(0)
             let nextProcessId: string
             let created = 0
@@ -272,6 +334,92 @@ describe("Process contract", () => {
 
                     expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(created, "Count mismatch")
                     expect(await contractInstance.getNextProcessId(entityAccount.address, namespace)).to.not.eq(nextProcessId)
+                }
+            }
+        }).timeout(15000)
+
+        it("retrieved metadata should match the one submitted (EVM census)", async () => {
+            contractInstance = await new ProcessBuilder().build(0)
+            let nextProcessId: string
+            let created = 0
+            let mode: number, envelopeType: number, censusOrigin: number, nonce: number
+            expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(0, "Should be empty")
+
+            // ERC TOKEN CONTRACT
+            const output = solc.compile(JSON.stringify({
+                language: "Solidity",
+                sources: { "dummy.sol": { content: dummyErc20Contract } },
+                settings: { outputSelection: { "*": { "*": ["*"] } } }
+            }))
+            const { contracts } = JSON.parse(output)
+            const erc20Abi = contracts["dummy.sol"].ERC20.abi
+            const erc20Bytecode = contracts["dummy.sol"].ERC20.evm.bytecode.object
+
+            const dummyTokenFactory = new ContractFactory(erc20Abi, erc20Bytecode, deployAccount.wallet)
+            const dummyTokenInstance = await dummyTokenFactory.deploy("Dummy Token", "DUM") as Contract
+
+            const proofsAddress = await contractInstance.tokenStorageProofAddress()
+            const proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & TokenStorageProofContractMethods
+
+            expect(await proofsInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
+            await proofsInstance.connect(deployAccount.wallet).registerToken(
+                dummyTokenInstance.address,
+                0,
+                await proofsInstance.provider.getBlockNumber(),
+                Buffer.from("00000000000000000000000000000000000000000000000000", "hex"),
+                Buffer.from("000000000000000000000000000000000000000000000000000000", "hex"),
+                Buffer.from("0000000000000000000000000000000000000000000000000000000000", "hex")
+            )
+
+            expect(await proofsInstance.isRegistered(dummyTokenInstance.address)).to.eq(true)
+
+
+            // Create processes and check
+            for (let idx = 0; idx < 10; idx += 2) {
+                for (let namespace = 5; namespace <= 10; namespace += 5) {
+                    expect((await contractInstance.getEntityProcessCount(dummyTokenInstance.address)).toNumber()).to.eq(created, "Pre count mismatch")
+                    nextProcessId = await contractInstance.getNextProcessId(dummyTokenInstance.address, namespace)
+
+                    expect(() => {
+                        return contractInstance.get(nextProcessId)
+                    }).to.throw
+
+                    // Create nextProcessId
+                    nonce = idx * namespace
+                    mode = ProcessMode.make({ autoStart: true })
+                    envelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
+                    censusOrigin = ProcessCensusOrigin.ERC20
+                    tx = await contractInstance.connect(deployAccount.wallet).newProcess(
+                        [mode, envelopeType, censusOrigin],
+                        dummyTokenInstance.address,
+                        [`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `_SHOULD_BE_IGNORED_`],
+                        [10 + nonce, 11 + nonce],
+                        [12 + nonce, 13 + nonce, 14 + nonce, 15 + nonce],
+                        [16 + nonce, 17 + nonce, namespace],
+                        DEFAULT_EVM_BLOCK_HEIGHT,
+                        DEFAULT_PARAMS_SIGNATURE
+                    )
+                    await tx.wait()
+                    created++
+
+                    const params = await contractInstance.get(nextProcessId)
+                    expect(params).to.be.ok
+                    expect(params[0]).to.deep.eq([mode, envelopeType, censusOrigin])
+                    expect(params[1]).to.eq(dummyTokenInstance.address)
+                    expect(params[2]).to.deep.eq([`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, ""])
+                    expect(params[3][0]).to.eq(10 + nonce)
+                    expect(params[3][1]).to.eq(11 + nonce)
+                    expect(params[4]).to.eq(0)
+                    expect(params[5][1]).to.eq(12 + nonce)
+                    expect(params[5][2]).to.eq(13 + nonce)
+                    expect(params[5][3]).to.eq(14 + nonce)
+                    expect(params[5][4]).to.eq(15 + nonce)
+                    expect(params[6][0]).to.eq(16 + nonce)
+                    expect(params[6][1]).to.eq(17 + nonce)
+                    expect(params[6][2]).to.eq(namespace)
+
+                    expect((await contractInstance.getEntityProcessCount(dummyTokenInstance.address)).toNumber()).to.eq(created, "Count mismatch")
+                    expect(await contractInstance.getNextProcessId(dummyTokenInstance.address, namespace)).to.not.eq(nextProcessId)
                 }
             }
         }).timeout(15000)

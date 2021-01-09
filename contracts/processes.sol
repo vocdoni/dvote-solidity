@@ -180,11 +180,18 @@ contract Processes is IProcessStore, Chained {
 
     /// @notice Creates a new instance of the contract and sets the contract owner (see Owned).
     /// @param predecessor The address of the predecessor instance (if any). `0x0` means no predecessor (see Chained).
-    constructor(address predecessor, address namespace, address tokenStorageProof) public {
+    constructor(
+        address predecessor,
+        address namespace,
+        address tokenStorageProof
+    ) public {
         Chained.setUp(predecessor);
 
         require(ContractSupport.isContract(namespace), "Invalid namespace");
-        require(ContractSupport.isContract(tokenStorageProof), "Invalid tokenStorageProof");
+        require(
+            ContractSupport.isContract(tokenStorageProof),
+            "Invalid tokenStorageProof"
+        );
         namespaceAddress = namespace;
         tokenStorageProofAddress = tokenStorageProof;
     }
@@ -225,7 +232,11 @@ contract Processes is IProcessStore, Chained {
         }
 
         Process storage proc = processes[processId];
-        mode_envelopeType_censusOrigin = [proc.mode, proc.envelopeType, uint8(proc.censusOrigin)];
+        mode_envelopeType_censusOrigin = [
+            proc.mode,
+            proc.envelopeType,
+            uint8(proc.censusOrigin)
+        ];
         entityAddress = proc.entity;
         metadata_censusMerkleRoot_censusMerkleTree = [
             proc.metadata,
@@ -324,7 +335,10 @@ contract Processes is IProcessStore, Chained {
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) public override onlyIfActive {
-        if (CensusOrigin(mode_envelopeType_censusOrigin[2]) == CensusOrigin.OFF_CHAIN) {
+        if (
+            CensusOrigin(mode_envelopeType_censusOrigin[2]) ==
+            CensusOrigin.OFF_CHAIN
+        ) {
             newProcessStd(
                 mode_envelopeType_censusOrigin,
                 metadata_merkleRoot_merkleTree,
@@ -336,7 +350,7 @@ contract Processes is IProcessStore, Chained {
         } else {
             newProcessEvm(
                 mode_envelopeType_censusOrigin,
-                metadata_merkleRoot_merkleTree[0],
+                metadata_merkleRoot_merkleTree,
                 tokenContractAddress,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
@@ -459,7 +473,7 @@ contract Processes is IProcessStore, Chained {
 
     function newProcessEvm(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
-        string memory metadata,
+        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
         address tokenContractAddress,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
@@ -497,13 +511,19 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Check the token contract
-        require(ITokenStorageProof(tokenStorageProofAddress).isRegistered(tokenContractAddress), "Token not registered");
+        require(
+            ITokenStorageProof(tokenStorageProofAddress).isRegistered(
+                tokenContractAddress
+            ),
+            "Token not registered"
+        );
 
         // Check that the sender holds tokens
         uint256 balance = IERC20(tokenContractAddress).balanceOf(msg.sender);
         require(balance > 0, "Insufficient funds");
 
-        require(bytes(metadata).length > 0, "No metadata");
+        require(bytes(metadata_merkleRoot_merkleTree[0]).length > 0, "No metadata");
+        require(bytes(metadata_merkleRoot_merkleTree[1]).length > 0, "No merkleRoot");
         require(
             questionCount_maxCount_maxValue_maxVoteOverwrites[0] > 0,
             "No questionCount"
@@ -539,13 +559,17 @@ contract Processes is IProcessStore, Chained {
 
         processData.mode = mode_envelopeType_censusOrigin[0];
         processData.envelopeType = mode_envelopeType_censusOrigin[1];
-        processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
+        processData.censusOrigin = CensusOrigin(
+            mode_envelopeType_censusOrigin[2]
+        );
+
+        processData.censusMerkleRoot = metadata_merkleRoot_merkleTree[1];
+        // processData.censusMerkleTree = "";
 
         processData.entity = tokenContractAddress;
         processData.startBlock = startBlock_blockCount[0];
         processData.blockCount = startBlock_blockCount[1];
-        processData.metadata = metadata;
-
+        processData.metadata = metadata_merkleRoot_merkleTree[0];
 
         processData.status = Status.READY;
         // processData.questionIndex = 0;
@@ -560,6 +584,7 @@ contract Processes is IProcessStore, Chained {
         processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
         processData.costExponent = maxTotalCost_costExponent_namespace[1];
         processData.namespace = maxTotalCost_costExponent_namespace[2];
+
         processData.evmBlockHeight = evmBlockHeight;
         processData.paramsSignature = paramsSignature;
 
@@ -582,7 +607,10 @@ contract Processes is IProcessStore, Chained {
         require(processes[processId].entity == msg.sender, "Invalid entity");
 
         // Only processes managed by entities (with an off-chain census) can be updated
-        require(processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN, "Not off-chain");
+        require(
+            processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN,
+            "Not off-chain"
+        );
 
         Status currentStatus = processes[processId].status;
         if (currentStatus != Status.READY && currentStatus != Status.PAUSED) {
@@ -642,7 +670,10 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Only processes managed by entities (with an off-chain census) can be updated
-        require(processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN, "Not off-chain");
+        require(
+            processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN,
+            "Not off-chain"
+        );
 
         uint8 nextIdx = processes[processId].questionIndex.add8(1);
 
@@ -696,7 +727,10 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Only processes managed by entities (with an off-chain census) can be updated
-        require(processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN, "Not off-chain");
+        require(
+            processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN,
+            "Not off-chain"
+        );
 
         processes[processId].censusMerkleRoot = censusMerkleRoot;
         processes[processId].censusMerkleTree = censusMerkleTree;

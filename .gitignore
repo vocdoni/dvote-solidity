@@ -1,7 +1,6 @@
 build
 package-lock.json
 node_modules
-.vscode
 .stamps
 contracts/vendor/openzeppelin
 contracts/vendor/rlp

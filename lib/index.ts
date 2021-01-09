@@ -339,6 +339,8 @@ export interface ProcessContractMethods {
     successorAddress(): Promise<string>
     /** The address of the contract that defined the details of all namespaces */
     namespaceAddress(): Promise<string>
+    /** The address of the token storage proofs contract used by EVM census processes */
+    tokenStorageProofAddress(): Promise<string>
 
     // GETTERS
 
@@ -578,7 +580,7 @@ export class ProcessContractParameters {
             [
                 this.metadata,
                 this.censusMerkleRoot,
-                this.censusMerkleTree || "0x00"
+                this.censusMerkleTree || "ipfs://"
             ], // String metadata_censusMerkleRoot_censusMerkleTree
             [this.startBlock, this.blockCount], // int startBlock_blockCount
             [
