@@ -226,6 +226,9 @@ async function deployBase() {
     // From mnemonic
     const wallet = Wallet.fromMnemonic(MNEMONIC, HD_PATH).connect(provider)
 
+    console.log("\nIMPORTANT:\nMake sure that the process contract predecessor is the one you expect:\n" + processPredessorContractAddress + "\n")
+    await new Promise(resolve => setTimeout(resolve, 10 * 1000))
+
     // Deploy
     console.log("Deploying from", wallet.address, "\n")
 
