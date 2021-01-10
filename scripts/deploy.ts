@@ -21,7 +21,7 @@ const { abi: VotingProcessAbi, bytecode: VotingProcessBytecode } = require("../b
 const { abi: tokenStorageProofAbi, bytecode: tokenStorageProofBytecode } = require("../build/token-storage-proof.json")
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../build/namespaces.json")
 
-const processPredessorContractAddress = "0x0000000000000000000000000000000000000000"  // no predecessor
+let processPredessorContractAddress = "0xF59528dB0BA3eb2Ac44425a025d8215e93969fEC"
 
 const transactionOptions = {} as any
 let rpcParams = undefined
@@ -79,7 +79,10 @@ async function deployAll() {
     console.log(" - Namespace:", namespaceInstance.address)
 
     if (processPredessorContractAddress != "0x0000000000000000000000000000000000000000") {
-        // TODO: Activate successor
+        console.log("Activating the process successor from"), processPredessorContractAddress
+        const predecessor = new Contract(processPredessorContractAddress, VotingProcessAbi, wallet) as Contract & ProcessContractMethods
+        const tx = await predecessor.activateSuccessor(processInstance.address)
+        await tx.wait()
     }
 
     // ENS DEPLOYMENT
@@ -227,7 +230,7 @@ async function deployBase() {
     const wallet = Wallet.fromMnemonic(MNEMONIC, HD_PATH).connect(provider)
 
     console.log("\nIMPORTANT:\nMake sure that the process contract predecessor is the one you expect:\n" + processPredessorContractAddress + "\n")
-    await new Promise(resolve => setTimeout(resolve, 10 * 1000))
+    await new Promise(resolve => setTimeout(resolve, 10 * 1500))
 
     // Deploy
     console.log("Deploying from", wallet.address, "\n")
@@ -263,7 +266,10 @@ async function deployBase() {
     console.log(" - Namespace:", namespaceInstance.address)
 
     if (processPredessorContractAddress != "0x0000000000000000000000000000000000000000") {
-        // TODO: Activate successor
+        console.log("Activating the process successor from"), processPredessorContractAddress
+        const predecessor = new Contract(processPredessorContractAddress, VotingProcessAbi, wallet) as Contract & ProcessContractMethods
+        const tx = await predecessor.activateSuccessor(processInstance.address)
+        await tx.wait()
     }
 
     // done
