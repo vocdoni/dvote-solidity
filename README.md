@@ -589,34 +589,6 @@ This network currently features an old version. Expect it to be soon updated.
   - Address: `0xC9d39F57a14FadA742c69FF7EDaB2C965e933921`
   - Domain: `namespaces.vocdoni.eth`
 
-<!-- 
-ENS Registry deployed at 0xDb6C74071116D17a47D9c191cbE6d640111Ee5C2
-ENS Public Resolver deployed at 0xf3c50b2f86C0FC53e06CeaB88236BB404c3F2F9d
-ERC20 Token Storage Proof deployed at 0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8
-Namespace deployed at 0xC9d39F57a14FadA742c69FF7EDaB2C965e933921
-Process deployed at 0xd92D591322A2375C1F010DF36FFC23257c71a418
- - Predecessor: 0x0000000000000000000000000000000000000000
- - Token Storage Proofs: 0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8
- - Namespace: 0xC9d39F57a14FadA742c69FF7EDaB2C965e933921
-
-Root owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-'eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-'vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-'entities.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-'processes.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-'proofs.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-'erc20.proofs.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-'namespaces.vocdoni.eth' owner 0x4Dde54208c610daf611339DBA94b52f25a01314A
-
-'entities.vocdoni.eth' address 0xf3c50b2f86C0FC53e06CeaB88236BB404c3F2F9d
-'processes.vocdoni.eth' address 0xd92D591322A2375C1F010DF36FFC23257c71a418
-'erc20.proofs.vocdoni.eth' address 0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8
-'namespaces.vocdoni.eth' address 0xC9d39F57a14FadA742c69FF7EDaB2C965e933921
-ENS Text of 0xe00f56aac24b5b78b94c38f511631b8b09a5c5a9ee49978dbe57f28135695e1a vnd.vocdoni.boot-nodes is https://bootnodes.vocdoni.net/gateways.json
-
-
--->
-
 ### Goerli
 
 - ENS Registry: 
@@ -625,45 +597,16 @@ ENS Text of 0xe00f56aac24b5b78b94c38f511631b8b09a5c5a9ee49978dbe57f28135695e1a v
   - Address: `0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D`
   - Domain: `entities.vocdoni.eth`
 - Process:
-  - Address: `0xF59528dB0BA3eb2Ac44425a025d8215e93969fEC`
+  - Address: `0x29270b266B097990423c2E8deFE36c5dC2fD3420`
   - Domain: `processes.vocdoni.eth`
   - Predecessor: `0x0000000000000000000000000000000000000000`
 - Token Storage Proofs:
   - ERC20
-    - Address: `0x93727E69962B6AE854e03924B209D9DA0b8e5e21`
+    - Address: `0x8C919Dce62E70c2eD1e33a7286730AeBf6f46c22`
     - Domain: `erc20.proofs.vocdoni.eth`
 - Namespace:
-  - Address: `0xae02F4f9cf1522C89420Cc20b0C8c59001425336`
+  - Address: `0x68bA6Be72de773467B8067d8Ad2C2a1245B45362`
   - Domain: `namespaces.vocdoni.eth`
-
-
-<!--
-```
-ENS Registry deployed at 0xDA49dD1B5c62018C4F33ff2e39B30A21644E4EE8
-ENS Public Resolver deployed at 0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D
-ERC20 Token Storage Proof deployed at 0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA
-Namespace deployed at 0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007
-Process deployed at 0x671884dB8DFB20d1D26173947a45622956009a0e
- - Predecessor: 0x0000000000000000000000000000000000000000
- - Token Storage Proofs: 0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA
- - Namespace: 0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007
-
-Root owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-'eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-'vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-'entities.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-'processes.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-'proofs.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-'erc20.proofs.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-'namespaces.vocdoni.eth' owner 0xF904848ea36c46817096E94f932A9901E377C8a5
-
-'entities.vocdoni.eth' address 0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D
-'processes.vocdoni.eth' address 0x671884dB8DFB20d1D26173947a45622956009a0e
-'erc20.proofs.vocdoni.eth' address 0x9564C87eAcbfD357c11536e7Cec921a48FE25EAA
-'namespaces.vocdoni.eth' address 0x2266b67B76c1fE6789f8aF3A1FC5ce26B15fD007
-ENS Text of 0x180dd5765d9f7ecef810b565a2e5bd14a3ccd536c442b3de74867df552855e85 vnd.vocdoni.boot-nodes is https://bootnodes.vocdoni.net/gateways.json
-```
---->
 
 ## Development
 
