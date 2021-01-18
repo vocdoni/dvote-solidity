@@ -1,5 +1,13 @@
 # DVote Solidity Changelog
 
+## 0.13.0
+
+- **Breaking**: Census Origin indexes updated (grouped by type)
+  - Adding `OFF_CHAIN_TREE_WEIGHTED` and `OFF_CHAIN_CA`
+  - Renaming `OFF_CHAIN` into `OFF_CHAIN_TREE`
+- Renaming `censusMerkleRoot` into `censusRoot` (internal)
+- Renaming `censusMerkleTree` into `censusUri` (internal)
+
 ## 0.12.6
 
 - Using `_isBigNumber` instead of comparing `evmBlockHeight` with `BigNumber`

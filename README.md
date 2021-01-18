@@ -23,8 +23,11 @@ Every process instance (see below) has to point to one namespace contract.
 In vocdoni, everything is a process, the main building block of any decentralized governance activity.
 
 - Allows to set the details that define the vote
+  - Human readable details (Metadata)
 - Allows to control how the Vochain should handle the process
-- Allows to control what status clients should display
+  - Who can vote (census origin, census root, census URI)
+  - When they can vote (startBlock, blockCount, current status)
+  - How ballots should be dealt with (envelopeType, uniqueValues, maxValue, costExponent, ...)
 - Acts as the persistent source of truth
 - Stores the results
 
@@ -149,8 +152,8 @@ struct Process {
     uint64 startBlock; // Tendermint block number on which the voting process starts
     uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
     string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
-    string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
-    string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
+    string censusRoot; // Hex string with the Merkle Root hash of the census
+    string censusUri; // Content (hashed) URI of the exported Merkle Tree (not including the public keys)
     Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
     
     uint8 questionIndex; // The index of the currently active question (only assembly processes)

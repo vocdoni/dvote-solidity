@@ -14,8 +14,8 @@ describe("Process contract parameter wrapper", () => {
             censusOrigin: 3,
             tokenAddress: "4",
             metadata: "56",
-            censusMerkleRoot: "78",
-            censusMerkleTree: "90",
+            censusRoot: "78",
+            censusUri: "90",
             startBlock: 11,
             blockCount: 22,
             questionCount: 33,
@@ -51,11 +51,11 @@ describe("Process contract parameter wrapper", () => {
         const params2 = ProcessContractParameters.fromParams({
             mode: 9,
             envelopeType: 2,
-            censusOrigin: 4,
+            censusOrigin: 1,
             // tokenAddress
             metadata: "65",
-            censusMerkleRoot: "87",
-            censusMerkleTree: "09",
+            censusRoot: "87",
+            censusUri: "09",
             startBlock: 111,
             blockCount: 222,
             questionCount: 34,
@@ -71,7 +71,7 @@ describe("Process contract parameter wrapper", () => {
 
         expect(params2[0][0]).to.eq(9)
         expect(params2[0][1]).to.eq(2)
-        expect(params2[0][2]).to.eq(4)
+        expect(params2[0][2]).to.eq(1)
         expect(params2[1]).to.eq("0x0000000000000000000000000000000000000000")
         expect(params2[2][0]).to.eq("65")
         expect(params2[2][1]).to.eq("87")
@@ -107,8 +107,8 @@ describe("Process contract parameter wrapper", () => {
         expect(json1.censusOrigin.value).to.eq(3)
         expect(json1.entityAddress).to.eq("0x3")
         expect(json1.metadata).to.eq("0x4")
-        expect(json1.censusMerkleRoot).to.eq("0x5")
-        expect(json1.censusMerkleTree).to.eq("0x6")
+        expect(json1.censusRoot).to.eq("0x5")
+        expect(json1.censusUri).to.eq("0x6")
         expect(json1.startBlock).to.eq(7)
         expect(json1.blockCount).to.eq(8)
         expect(json1.status.value).to.eq(0)
@@ -138,8 +138,8 @@ describe("Process contract parameter wrapper", () => {
         expect(json2.censusOrigin.value).to.eq(2)
         expect(json2.entityAddress).to.eq("0x30")
         expect(json2.metadata).to.eq("0x40")
-        expect(json2.censusMerkleRoot).to.eq("0x50")
-        expect(json2.censusMerkleTree).to.eq("0x60")
+        expect(json2.censusRoot).to.eq("0x50")
+        expect(json2.censusUri).to.eq("0x60")
         expect(json2.startBlock).to.eq(70)
         expect(json2.blockCount).to.eq(80)
         expect(json2.status.value).to.eq(1)

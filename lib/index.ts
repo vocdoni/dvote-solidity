@@ -182,20 +182,26 @@ export class ProcessCensusOrigin {
     }
     get value() { return this._status }
 
-    /** The process will allow voters from an off-chain Merkle Root */
-    public static OFF_CHAIN: IProcessCensusOrigin = 0
-    /** The process will allow voters holding assets on an ERC20 token contract */
-    public static ERC20: IProcessCensusOrigin = 1
-    /** The process will allow voters holding assets on an ERC721 token contract */
-    public static ERC721: IProcessCensusOrigin = 2
-    /** The process will allow voters holding assets on an ERC1155 token contract */
-    public static ERC1155: IProcessCensusOrigin = 3
-    /** The process will allow voters holding assets on an ERC777 token contract */
-    public static ERC777: IProcessCensusOrigin = 4
-    /** The process will allow voters holding assets on an ERC20 (MiniMe) token contract variant */
-    public static MINI_ME: IProcessCensusOrigin = 5
+    /** The process will allow voters from an off-chain Census Merkle Root */
+    public static OFF_CHAIN_TREE: IProcessCensusOrigin = 1
+    /** The process will allow voters from an off-chain Census Merkle Root to submit weighted votes */
+    public static OFF_CHAIN_TREE_WEIGHTED: IProcessCensusOrigin = 2
+    /** The process will allow voters holding a valid signature from a predefined Public Key */
+    public static OFF_CHAIN_CA: IProcessCensusOrigin = 3
+    /** The process will allow voters holding assets on a predefined ERC20 token contract */
+    public static ERC20: IProcessCensusOrigin = 11
+    /** The process will allow voters holding assets on a predefined ERC721 token contract */
+    public static ERC721: IProcessCensusOrigin = 12
+    /** The process will allow voters holding assets on a predefined ERC1155 token contract */
+    public static ERC1155: IProcessCensusOrigin = 13
+    /** The process will allow voters holding assets on a predefined ERC777 token contract */
+    public static ERC777: IProcessCensusOrigin = 14
+    /** The process will allow voters holding assets on a predefined ERC20 (MiniMe) token contract */
+    public static MINI_ME: IProcessCensusOrigin = 15
 
-    get isOffChain(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN }
+    get isOffChain(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN_TREE }
+    get isOffChainWeighted(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN_TREE_WEIGHTED }
+    get isOffChainCA(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN_CA }
     get isErc20(): boolean { return this._status == ProcessCensusOrigin.ERC20 }
     get isErc721(): boolean { return this._status == ProcessCensusOrigin.ERC721 }
     get isErc1155(): boolean { return this._status == ProcessCensusOrigin.ERC1155 }
@@ -203,9 +209,11 @@ export class ProcessCensusOrigin {
     get isMiniMe(): boolean { return this._status == ProcessCensusOrigin.MINI_ME }
 }
 
-export type IProcessCensusOrigin = 0 | 1 | 2 | 3 | 4 | 5
+export type IProcessCensusOrigin = 1 | 2 | 3 | 11 | 12 | 13 | 14 | 15
 export const processCensusOriginValues = [
-    ProcessCensusOrigin.OFF_CHAIN,
+    ProcessCensusOrigin.OFF_CHAIN_TREE,
+    ProcessCensusOrigin.OFF_CHAIN_TREE_WEIGHTED,
+    ProcessCensusOrigin.OFF_CHAIN_CA,
     ProcessCensusOrigin.ERC20,
     ProcessCensusOrigin.ERC721,
     ProcessCensusOrigin.ERC1155,
@@ -280,8 +288,8 @@ export type IProcessCreateParams = {
     censusOrigin: ProcessCensusOrigin | number,
     tokenAddress?: string,
     metadata: string,
-    censusMerkleRoot: string,
-    censusMerkleTree?: string,
+    censusRoot: string,
+    censusUri?: string,
     startBlock: number,
     blockCount: number,
     questionCount: number,
@@ -298,7 +306,7 @@ export type IProcessCreateParams = {
 type IProcessCreateParamsTuple = [
     number[], // mode_envelopeType_censusOrigin
     string,   // tokenContractAddress
-    string[], // metadata_censusMerkleRoot_censusMerkleTree
+    string[], // metadata_censusRoot_censusUri
     number[], // startBlock_blockCount
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent_namespace
@@ -309,7 +317,7 @@ type IProcessCreateParamsTuple = [
 type IProcessStateTuple = [
     number[], // mode_envelopeType_censusOrigin
     string,   // entityAddress
-    string[], // metadata_censusMerkleRoot_censusMerkleTree
+    string[], // metadata_censusRoot_censusUri
     number[], // startBlock_blockCount
     IProcessStatus, // status
     number[], // questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites
@@ -350,7 +358,7 @@ export interface ProcessContractMethods {
      * ```[
         mode_envelopeType_censusOrigin: number[],
         entityAddress: string,  
-        metadata_censusMerkleRoot_censusMerkleTree: string[],
+        metadata_censusRoot_censusUri: string[],
         startBlock_blockCount: number[],
         status: IProcessStatus,
         questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites: number[],
@@ -382,7 +390,7 @@ export interface ProcessContractMethods {
      * 
      * ```[
         mode_envelopeType_censusOrigin: number[],
-        metadata_censusMerkleRoot_censusMerkleTree: string[],
+        metadata_censusRoot_censusUri: string[],
         tokenContractAddress: string,  
         startBlock_blockCount: number[],
         questionCount_maxCount_maxValue_maxVoteOverwrites: number[],
@@ -397,7 +405,7 @@ export interface ProcessContractMethods {
     /** Increments the index of the current question (only when INCREMENTAL mode is set) */
     incrementQuestionIndex(processId: string, overrides?: IMethodOverrides): Promise<ContractTransaction>
     /** Updates the census of the given process (only if the mode allows dynamic census) */
-    setCensus(processId: string, censusMerkleRoot: string, censusMerkleTree: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    setCensus(processId: string, censusRoot: string, censusUri: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Sets the given results for the given process */
     setResults(processId: string, tally: number[][], height: number, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Adds the given signature to the given process results */
@@ -413,8 +421,8 @@ export class ProcessContractParameters {
     censusOrigin: ProcessCensusOrigin;
     entityAddress?: string;
     metadata: string;
-    censusMerkleRoot: string;
-    censusMerkleTree: string;
+    censusRoot: string;
+    censusUri: string;
     startBlock: number;
     blockCount: number;
     status?: ProcessStatus;
@@ -434,9 +442,9 @@ export class ProcessContractParameters {
         // Integrity checks
         if (!params.metadata)
             throw new Error("Invalid metadata")
-        else if (!params.censusMerkleRoot)
-            throw new Error("Invalid censusMerkleRoot")
-        // censusMerkleTree > see below
+        else if (!params.censusRoot)
+            throw new Error("Invalid censusRoot")
+        // censusUri > see below
         else if (params.questionCount < 1 || params.questionCount > 255)
             throw new Error("Invalid questionCount")
         else if (params.maxCount < 1 || params.maxCount > 255)
@@ -469,8 +477,8 @@ export class ProcessContractParameters {
         else result.censusOrigin = params.censusOrigin
 
         if (result.censusOrigin.isOffChain) {
-            if (!params.censusMerkleTree)
-                throw new Error("Invalid censusMerkleTree")
+            if (!params.censusUri)
+                throw new Error("Invalid censusUri")
         } else {
             if (!result.mode.isAutoStart) {
                 throw new Error("Auto start is mandatory on EVM processes")
@@ -488,8 +496,8 @@ export class ProcessContractParameters {
 
         result.entityAddress = params.tokenAddress || "0x0000000000000000000000000000000000000000"
         result.metadata = params.metadata
-        result.censusMerkleRoot = params.censusMerkleRoot
-        result.censusMerkleTree = params.censusMerkleTree || ""
+        result.censusRoot = params.censusRoot
+        result.censusUri = params.censusUri || ""
         result.startBlock = params.startBlock
         result.blockCount = params.blockCount
         result.questionCount = params.questionCount
@@ -527,11 +535,11 @@ export class ProcessContractParameters {
         result.entityAddress = params[1]
 
         if (!Array.isArray(params[2]) || params[2].length != 3 || params[2].some((item) => typeof item != "string"))
-            throw new Error("Invalid parameters metadata_censusMerkleRoot_censusMerkleTree list")
+            throw new Error("Invalid parameters metadata_censusRoot_censusUri list")
 
         result.metadata = params[2][0]
-        result.censusMerkleRoot = params[2][1]
-        result.censusMerkleTree = params[2][2]
+        result.censusRoot = params[2][1]
+        result.censusUri = params[2][2]
 
         if (!Array.isArray(params[3]) || typeof params[3][0] != "number")
             throw new Error("Invalid startBlock")
@@ -579,9 +587,9 @@ export class ProcessContractParameters {
             this.entityAddress,
             [
                 this.metadata,
-                this.censusMerkleRoot,
-                this.censusMerkleTree || "ipfs://"
-            ], // String metadata_censusMerkleRoot_censusMerkleTree
+                this.censusRoot,
+                this.censusUri || "ipfs://"
+            ], // String metadata_censusRoot_censusUri
             [this.startBlock, this.blockCount], // int startBlock_blockCount
             [
                 this.questionCount,
