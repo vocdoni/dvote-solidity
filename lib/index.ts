@@ -183,9 +183,9 @@ export class ProcessCensusOrigin {
     get value() { return this._status }
 
     /** The process will allow voters from an off-chain Census Merkle Root */
-    public static OFF_CHAIN: IProcessCensusOrigin = 1
+    public static OFF_CHAIN_TREE: IProcessCensusOrigin = 1
     /** The process will allow voters from an off-chain Census Merkle Root to submit weighted votes */
-    public static OFF_CHAIN_WEIGHTED: IProcessCensusOrigin = 2
+    public static OFF_CHAIN_TREE_WEIGHTED: IProcessCensusOrigin = 2
     /** The process will allow voters holding a valid signature from a predefined Public Key */
     public static OFF_CHAIN_CA: IProcessCensusOrigin = 3
     /** The process will allow voters holding assets on a predefined ERC20 token contract */
@@ -199,8 +199,8 @@ export class ProcessCensusOrigin {
     /** The process will allow voters holding assets on a predefined ERC20 (MiniMe) token contract */
     public static MINI_ME: IProcessCensusOrigin = 15
 
-    get isOffChain(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN }
-    get isOffChainWeighted(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN_WEIGHTED }
+    get isOffChain(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN_TREE }
+    get isOffChainWeighted(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN_TREE_WEIGHTED }
     get isOffChainCA(): boolean { return this._status == ProcessCensusOrigin.OFF_CHAIN_CA }
     get isErc20(): boolean { return this._status == ProcessCensusOrigin.ERC20 }
     get isErc721(): boolean { return this._status == ProcessCensusOrigin.ERC721 }
@@ -211,8 +211,8 @@ export class ProcessCensusOrigin {
 
 export type IProcessCensusOrigin = 1 | 2 | 3 | 11 | 12 | 13 | 14 | 15
 export const processCensusOriginValues = [
-    ProcessCensusOrigin.OFF_CHAIN,
-    ProcessCensusOrigin.OFF_CHAIN_WEIGHTED,
+    ProcessCensusOrigin.OFF_CHAIN_TREE,
+    ProcessCensusOrigin.OFF_CHAIN_TREE_WEIGHTED,
     ProcessCensusOrigin.OFF_CHAIN_CA,
     ProcessCensusOrigin.ERC20,
     ProcessCensusOrigin.ERC721,

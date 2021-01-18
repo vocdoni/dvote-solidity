@@ -18,7 +18,7 @@ describe("Process Census Origin wrapper", () => {
         expect(pm.isErc777).to.eq(false)
         expect(pm.isMiniMe).to.eq(false)
 
-        pm = new ProcessCensusOrigin(ProcessCensusOrigin.OFF_CHAIN)
+        pm = new ProcessCensusOrigin(ProcessCensusOrigin.OFF_CHAIN_TREE)
         expect(pm.isOffChain).to.eq(true)
         expect(pm.isOffChainWeighted).to.eq(false)
         expect(pm.isOffChainCA).to.eq(false)
@@ -39,7 +39,7 @@ describe("Process Census Origin wrapper", () => {
         expect(pm.isErc777).to.eq(false)
         expect(pm.isMiniMe).to.eq(false)
 
-        pm = new ProcessCensusOrigin(ProcessCensusOrigin.OFF_CHAIN_WEIGHTED)
+        pm = new ProcessCensusOrigin(ProcessCensusOrigin.OFF_CHAIN_TREE_WEIGHTED)
         expect(pm.isOffChain).to.eq(false)
         expect(pm.isOffChainWeighted).to.eq(true)
         expect(pm.isOffChainCA).to.eq(false)

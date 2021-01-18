@@ -23,8 +23,11 @@ Every process instance (see below) has to point to one namespace contract.
 In vocdoni, everything is a process, the main building block of any decentralized governance activity.
 
 - Allows to set the details that define the vote
+  - Human readable details (Metadata)
 - Allows to control how the Vochain should handle the process
-- Allows to control what status clients should display
+  - Who can vote (census origin, census root, census URI)
+  - When they can vote (startBlock, blockCount, current status)
+  - How ballots should be dealt with (envelopeType, uniqueValues, maxValue, costExponent, ...)
 - Acts as the persistent source of truth
 - Stores the results
 

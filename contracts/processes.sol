@@ -13,6 +13,10 @@ contract Processes is IProcessStore, Chained {
     using SafeUint8 for uint8;
 
     // CONSTANTS AND ENUMS
+    enum CensusOrigin {
+        __, OFF_CHAIN_TREE, OFF_CHAIN_TREE_WEIGHTED, OFF_CHAIN_CA, __4, __5, __6, __7, __8, __9,
+        __10, ERC20, ERC721, ERC1155, ERC777, MINI_ME
+    } // 256 items max
 
     /*
     Process Mode flags
@@ -337,8 +341,8 @@ contract Processes is IProcessStore, Chained {
     ) public override onlyIfActive {
         CensusOrigin origin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
         if (
-            origin == CensusOrigin.OFF_CHAIN ||
-            origin == CensusOrigin.OFF_CHAIN_WEIGHTED ||
+            origin == CensusOrigin.OFF_CHAIN_TREE ||
+            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
             origin == CensusOrigin.OFF_CHAIN_CA
         ) {
             newProcessStd(
@@ -446,8 +450,7 @@ contract Processes is IProcessStore, Chained {
 
         processData.mode = mode_envelopeType_censusOrigin[0];
         processData.envelopeType = mode_envelopeType_censusOrigin[1];
-        // Assigning censusOrigin is not really needed
-        // processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
+        processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
 
         processData.entity = msg.sender;
         processData.startBlock = startBlock_blockCount[0];
@@ -611,8 +614,11 @@ contract Processes is IProcessStore, Chained {
         require(processes[processId].entity == msg.sender, "Invalid entity");
 
         // Only processes managed by entities (with an off-chain census) can be updated
+        CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
-            processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN,
+            origin == CensusOrigin.OFF_CHAIN_TREE ||
+            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+            origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 
@@ -674,8 +680,11 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Only processes managed by entities (with an off-chain census) can be updated
+        CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
-            processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN,
+            origin == CensusOrigin.OFF_CHAIN_TREE ||
+            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+            origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 
@@ -731,8 +740,11 @@ contract Processes is IProcessStore, Chained {
         );
 
         // Only processes managed by entities (with an off-chain census) can be updated
+        CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
-            processes[processId].censusOrigin == CensusOrigin.OFF_CHAIN,
+            origin == CensusOrigin.OFF_CHAIN_TREE ||
+            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+            origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 

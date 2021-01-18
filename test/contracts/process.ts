@@ -207,7 +207,7 @@ describe("Process contract", () => {
         expect(processId1Actual).to.eq(processId1Expected)
 
         tx = await contractInstance.newProcess(
-            [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
+            [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
             nullAddress, // token/entity ID
             [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
             [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -248,7 +248,7 @@ describe("Process contract", () => {
             // 2
             contractInstance = contractInstance.connect(randomAccount1.wallet) as any
             tx = await contractInstance.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
                 nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -265,7 +265,7 @@ describe("Process contract", () => {
 
             contractInstance = contractInstance.connect(randomAccount2.wallet) as any
             tx = await contractInstance.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
                 nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -302,7 +302,7 @@ describe("Process contract", () => {
                     nonce = idx * namespace
                     mode = ProcessMode.make({ autoStart: true })
                     envelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
-                    censusOrigin = ProcessCensusOrigin.OFF_CHAIN
+                    censusOrigin = ProcessCensusOrigin.OFF_CHAIN_TREE
                     tx = await contractInstance.newProcess(
                         [mode, envelopeType, censusOrigin],
                         nullAddress, // token/entity ID
@@ -490,7 +490,7 @@ describe("Process contract", () => {
             // 2
             let newMode = ProcessMode.make({ autoStart: true })
             let newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
-            let newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
+            let newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN_TREE
             let newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             let newCensusRoot = "0x00000001111122222333334444"
             let newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
@@ -553,7 +553,7 @@ describe("Process contract", () => {
             // 3
             newMode = ProcessMode.make({ autoStart: true })
             newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
-            newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
+            newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN_TREE
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             newCensusRoot = "0x00000001111122222333334444"
             newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
@@ -622,7 +622,7 @@ describe("Process contract", () => {
             const params1 = ProcessContractParameters.fromParams({
                 mode: ProcessMode.make({}),
                 envelopeType: ProcessEnvelopeType.make({}),
-                censusOrigin: ProcessCensusOrigin.OFF_CHAIN,
+                censusOrigin: ProcessCensusOrigin.OFF_CHAIN_TREE,
                 metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
                 censusRoot: DEFAULT_CENSUS_ROOT,
                 censusUri: DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI,
@@ -649,7 +649,7 @@ describe("Process contract", () => {
             // 2
             let newMode = ProcessMode.make({ autoStart: true }),
                 newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true }),
-                newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN,
+                newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN_TREE,
                 newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash",
                 newCensusRoot = "0x00000001111122222333334444",
                 newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there",
@@ -694,7 +694,7 @@ describe("Process contract", () => {
             // 3
             newMode = ProcessMode.make({ autoStart: true })
             newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
-            newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
+            newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN_TREE
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
             newCensusRoot = "0x00000001111122222333334444"
             newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
@@ -742,7 +742,7 @@ describe("Process contract", () => {
             expect(prev).to.eq(1)
 
             tx = await contractInstance.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
                 nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -761,7 +761,7 @@ describe("Process contract", () => {
         it("should fail with auto start set and startBlock being zero", () => {
             expect(() => {
                 return contractInstance.newProcess(
-                    [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [0, DEFAULT_BLOCK_COUNT],
@@ -791,7 +791,7 @@ describe("Process contract", () => {
         it("should fail if the metadata or census references are empty", () => {
             expect(() => {
                 return contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     ["", DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -804,7 +804,7 @@ describe("Process contract", () => {
 
             expect(() => {
                 return contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, "", DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -817,7 +817,7 @@ describe("Process contract", () => {
 
             expect(() => {
                 return contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, ""],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -832,7 +832,7 @@ describe("Process contract", () => {
         it("should fail if questionCount is zero", async () => {
             try {
                 tx = await contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -852,7 +852,7 @@ describe("Process contract", () => {
         it("should fail if maxCount is zero or above 100", async () => {
             try {
                 tx = await contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -870,7 +870,7 @@ describe("Process contract", () => {
 
             try {
                 tx = await contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -890,7 +890,7 @@ describe("Process contract", () => {
         it("should fail if maxValue is zero", async () => {
             try {
                 tx = await contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
@@ -913,7 +913,7 @@ describe("Process contract", () => {
 
             try {
                 tx = await contractInstance.newProcess(
-                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
+                    [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
                     nullAddress, // token/entity ID
                     ["", "", ""],
                     [0, 0],
@@ -946,7 +946,7 @@ describe("Process contract", () => {
                     resolve({ namespace, processId })
                 })
                 // contractInstance.newProcess(
-                //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
+                //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
                 //     nullAddress, // token/entity ID
                 //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 //     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],

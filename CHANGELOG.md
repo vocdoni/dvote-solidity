@@ -3,6 +3,8 @@
 ## 0.13.0
 
 - Breaking: Census Origin indexes updated (grouped by type)
+  - Adding `OFF_CHAIN_TREE_WEIGHTED` and `OFF_CHAIN_CA`
+  - Renaming `OFF_CHAIN` into `OFF_CHAIN_TREE`
 - Renaming `censusMerkleRoot` into `censusRoot`
 - Renaming `censusMerkleTree` into `censusUri`
 
