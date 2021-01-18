@@ -41,7 +41,7 @@ export default class ProcessBuilder {
     enabled: boolean = true
     metadata: string = DEFAULT_METADATA_CONTENT_HASHED_URI
     censusRoot: string = DEFAULT_CENSUS_ROOT
-    censusTree: string = DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI
+    censusUri: string = DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI
     startBlock: number = DEFAULT_START_BLOCK
     blockCount: number = DEFAULT_BLOCK_COUNT
     mode: IProcessMode = DEFAULT_PROCESS_MODE
@@ -112,7 +112,7 @@ export default class ProcessBuilder {
                 censusOrigin: this.censusOrigin,
                 metadata: this.metadata,
                 censusRoot: this.censusRoot,
-                censusUri: this.censusTree,
+                censusUri: this.censusUri,
                 startBlock: this.startBlock,
                 blockCount: this.blockCount,
                 questionCount: this.questionCount,

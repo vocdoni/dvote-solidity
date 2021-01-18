@@ -32,7 +32,7 @@ interface IProcessStore {
     function newProcess(
         uint8[3] memory mode_envelopeType_censusOrigin,
         address tokenContractAddress,
-        string[3] memory metadata_censusRoot_censusTree,
+        string[3] memory metadata_censusRoot_censusUri,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[3] memory maxTotalCost_costExponent_namespace,
