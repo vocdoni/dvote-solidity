@@ -6,7 +6,7 @@ import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
 import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin, TokenStorageProofContractMethods } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN, DEFAULT_EVM_BLOCK_HEIGHT } from "../builders/process"
+import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN, DEFAULT_EVM_BLOCK_HEIGHT } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
 import TokenStorageProofBuilder from "../builders/token-storage-proof"
 
@@ -209,7 +209,7 @@ describe("Process contract", () => {
         tx = await contractInstance.newProcess(
             [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
             nullAddress, // token/entity ID
-            [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+            [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
             [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -250,7 +250,7 @@ describe("Process contract", () => {
             tx = await contractInstance.newProcess(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
                 nullAddress, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -267,7 +267,7 @@ describe("Process contract", () => {
             tx = await contractInstance.newProcess(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
                 nullAddress, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -399,8 +399,11 @@ describe("Process contract", () => {
                         DEFAULT_EVM_BLOCK_HEIGHT,
                         DEFAULT_PARAMS_SIGNATURE
                     )
-                    await tx.wait()
+                    const receipt = await tx.wait()
                     created++
+
+                    expect(receipt.events[0].args.processId).to.eq(nextProcessId)
+                    expect((await contractInstance.getEntityProcessCount(dummyTokenInstance.address)).toNumber()).to.eq(created, "Count mismatch")
 
                     const params = await contractInstance.get(nextProcessId)
                     expect(params).to.be.ok
@@ -418,11 +421,10 @@ describe("Process contract", () => {
                     expect(params[6][1]).to.eq(17 + nonce)
                     expect(params[6][2]).to.eq(namespace)
 
-                    expect((await contractInstance.getEntityProcessCount(dummyTokenInstance.address)).toNumber()).to.eq(created, "Count mismatch")
                     expect(await contractInstance.getNextProcessId(dummyTokenInstance.address, namespace)).to.not.eq(nextProcessId)
                 }
             }
-        }).timeout(15000)
+        })// .timeout(15000)
 
         it("getting a non-existent process should fail", async () => {
             for (let i = 0; i < 5; i++) {
@@ -446,8 +448,8 @@ describe("Process contract", () => {
                 censusOrigin: DEFAULT_CENSUS_ORIGIN,
                 // tokenAddress: "",
                 metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
-                censusMerkleRoot: DEFAULT_MERKLE_ROOT,
-                censusMerkleTree: DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI,
+                censusRoot: DEFAULT_CENSUS_ROOT,
+                censusUri: DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI,
                 startBlock: DEFAULT_START_BLOCK,
                 blockCount: DEFAULT_BLOCK_COUNT,
                 questionCount: DEFAULT_QUESTION_COUNT,
@@ -471,8 +473,8 @@ describe("Process contract", () => {
             expect(processData1.envelopeType.value).to.eq(ProcessEnvelopeType.make({}))
             expect(processData1.entityAddress).to.eq(entityAccount.address)
             expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
-            expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-            expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            expect(processData1.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
+            expect(processData1.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
             expect(processData1.startBlock).to.eq(DEFAULT_START_BLOCK)
             expect(processData1.blockCount).to.eq(DEFAULT_BLOCK_COUNT)
             expect(processData1.status.value).to.eq(ProcessStatus.PAUSED, "The process should start paused")
@@ -490,8 +492,8 @@ describe("Process contract", () => {
             let newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
             let newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
             let newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
-            let newCensusMerkleRoot = "0x00000001111122222333334444"
-            let newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
+            let newCensusRoot = "0x00000001111122222333334444"
+            let newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
             let newStartBlock = 1111111
             let newBlockCount = 22222
             let newQuestionCount = 10
@@ -508,8 +510,8 @@ describe("Process contract", () => {
                 envelopeType: newEnvelopeType,
                 censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
-                censusMerkleRoot: newCensusMerkleRoot,
-                censusMerkleTree: newCensusMerkleTree,
+                censusRoot: newCensusRoot,
+                censusUri: newCensusUri,
                 startBlock: newStartBlock,
                 blockCount: newBlockCount,
                 questionCount: newQuestionCount,
@@ -534,8 +536,8 @@ describe("Process contract", () => {
             expect(processData2.censusOrigin.value).to.eq(newCensusOrigin)
             expect(processData2.entityAddress).to.eq(entityAccount.address)
             expect(processData2.metadata).to.eq(newMetadata)
-            expect(processData2.censusMerkleRoot).to.eq(newCensusMerkleRoot)
-            expect(processData2.censusMerkleTree).to.eq(newCensusMerkleTree)
+            expect(processData2.censusRoot).to.eq(newCensusRoot)
+            expect(processData2.censusUri).to.eq(newCensusUri)
             expect(processData2.startBlock).to.eq(newStartBlock)
             expect(processData2.blockCount).to.eq(newBlockCount)
             expect(processData2.status.value).to.eq(ProcessStatus.READY, "The process should start ready")
@@ -553,8 +555,8 @@ describe("Process contract", () => {
             newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
             newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
-            newCensusMerkleRoot = "0x00000001111122222333334444"
-            newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
+            newCensusRoot = "0x00000001111122222333334444"
+            newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
             newStartBlock = 1111111
             newBlockCount = 22222
             newQuestionCount = 15
@@ -571,8 +573,8 @@ describe("Process contract", () => {
                 envelopeType: newEnvelopeType,
                 censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
-                censusMerkleRoot: newCensusMerkleRoot,
-                censusMerkleTree: newCensusMerkleTree,
+                censusRoot: newCensusRoot,
+                censusUri: newCensusUri,
                 startBlock: newStartBlock,
                 blockCount: newBlockCount,
                 questionCount: newQuestionCount,
@@ -597,8 +599,8 @@ describe("Process contract", () => {
             expect(processData2.censusOrigin.value).to.eq(newCensusOrigin)
             expect(processData3.entityAddress).to.eq(entityAccount.address)
             expect(processData3.metadata).to.eq(newMetadata)
-            expect(processData3.censusMerkleRoot).to.eq(newCensusMerkleRoot)
-            expect(processData3.censusMerkleTree).to.eq(newCensusMerkleTree)
+            expect(processData3.censusRoot).to.eq(newCensusRoot)
+            expect(processData3.censusUri).to.eq(newCensusUri)
             expect(processData3.startBlock).to.eq(newStartBlock)
             expect(processData3.blockCount).to.eq(newBlockCount)
             expect(processData3.status.value).to.eq(ProcessStatus.READY, "The process should start ready")
@@ -622,8 +624,8 @@ describe("Process contract", () => {
                 envelopeType: ProcessEnvelopeType.make({}),
                 censusOrigin: ProcessCensusOrigin.OFF_CHAIN,
                 metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
-                censusMerkleRoot: DEFAULT_MERKLE_ROOT,
-                censusMerkleTree: DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI,
+                censusRoot: DEFAULT_CENSUS_ROOT,
+                censusUri: DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI,
                 startBlock: DEFAULT_START_BLOCK,
                 blockCount: DEFAULT_BLOCK_COUNT,
                 questionCount: DEFAULT_QUESTION_COUNT,
@@ -649,8 +651,8 @@ describe("Process contract", () => {
                 newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true }),
                 newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN,
                 newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash",
-                newCensusMerkleRoot = "0x00000001111122222333334444",
-                newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there",
+                newCensusRoot = "0x00000001111122222333334444",
+                newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there",
                 newStartBlock = 1111111,
                 newBlockCount = 22222,
                 newQuestionCount = 10,
@@ -667,8 +669,8 @@ describe("Process contract", () => {
                 envelopeType: newEnvelopeType,
                 censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
-                censusMerkleRoot: newCensusMerkleRoot,
-                censusMerkleTree: newCensusMerkleTree,
+                censusRoot: newCensusRoot,
+                censusUri: newCensusUri,
                 startBlock: newStartBlock,
                 blockCount: newBlockCount,
                 questionCount: newQuestionCount,
@@ -694,8 +696,8 @@ describe("Process contract", () => {
             newEnvelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
             newCensusOrigin = ProcessCensusOrigin.OFF_CHAIN
             newMetadata = "ipfs://ipfs/more-hash-there!sha3-hash"
-            newCensusMerkleRoot = "0x00000001111122222333334444"
-            newCensusMerkleTree = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
+            newCensusRoot = "0x00000001111122222333334444"
+            newCensusUri = "ipfs://ipfs/more-hash-somewthere!sha3-hash-there"
             newStartBlock = 1111111
             newBlockCount = 22222
             newQuestionCount = 21
@@ -712,8 +714,8 @@ describe("Process contract", () => {
                 envelopeType: newEnvelopeType,
                 censusOrigin: newCensusOrigin,
                 metadata: newMetadata,
-                censusMerkleRoot: newCensusMerkleRoot,
-                censusMerkleTree: newCensusMerkleTree,
+                censusRoot: newCensusRoot,
+                censusUri: newCensusUri,
                 startBlock: newStartBlock,
                 blockCount: newBlockCount,
                 questionCount: newQuestionCount,
@@ -742,7 +744,7 @@ describe("Process contract", () => {
             tx = await contractInstance.newProcess(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
                 nullAddress, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -761,7 +763,7 @@ describe("Process contract", () => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [0, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -776,7 +778,7 @@ describe("Process contract", () => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({ interruptible: false }), ProcessEnvelopeType.make({})],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, 0],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -791,7 +793,7 @@ describe("Process contract", () => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    ["", DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    ["", DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -804,7 +806,7 @@ describe("Process contract", () => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, "", DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, "", DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -817,7 +819,7 @@ describe("Process contract", () => {
                 return contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, ""],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, ""],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -832,7 +834,7 @@ describe("Process contract", () => {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [0, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -852,7 +854,7 @@ describe("Process contract", () => {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 0, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -870,7 +872,7 @@ describe("Process contract", () => {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 101, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -890,7 +892,7 @@ describe("Process contract", () => {
                 tx = await contractInstance.newProcess(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN],
                     nullAddress, // token/entity ID
-                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, 0, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -946,7 +948,7 @@ describe("Process contract", () => {
                 // contractInstance.newProcess(
                 //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN],
                 //     nullAddress, // token/entity ID
-                //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_MERKLE_ROOT, DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI],
+                //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 //     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 //     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 //     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
@@ -2565,7 +2567,7 @@ describe("Process contract", () => {
 
             // Try to update it
             try {
-                tx = await contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree")
+                tx = await contractInstance.setCensus(processId, "new-census-root", "new-census-tree")
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -2576,8 +2578,8 @@ describe("Process contract", () => {
             const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
             expect(processData1.mode.value).to.eq(mode)
             expect(processData1.entityAddress).to.eq(entityAccount.address)
-            expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-            expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            expect(processData1.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
+            expect(processData1.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
 
             // 2
 
@@ -2602,8 +2604,8 @@ describe("Process contract", () => {
             const processData3 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
             expect(processData3.mode.value).to.eq(mode)
             expect(processData3.entityAddress).to.eq(entityAccount.address)
-            expect(processData3.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-            expect(processData3.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            expect(processData3.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
+            expect(processData3.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
         })
 
         it("Should allow to update the census in dynamic census mode", async () => {
@@ -2616,14 +2618,14 @@ describe("Process contract", () => {
             expect(processData0.status.value).to.eq(ProcessStatus.READY, "The process should be ready")
 
             // Update it
-            tx = await contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree")
+            tx = await contractInstance.setCensus(processId, "new-census-root", "new-census-tree")
             await tx.wait()
 
             const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
             expect(processData1.mode.value).to.eq(mode)
             expect(processData1.entityAddress).to.eq(entityAccount.address)
-            expect(processData1.censusMerkleRoot).to.eq("new-merkle-root")
-            expect(processData1.censusMerkleTree).to.eq("new-merkle-tree")
+            expect(processData1.censusRoot).to.eq("new-census-root")
+            expect(processData1.censusUri).to.eq("new-census-tree")
 
             // 2
 
@@ -2642,8 +2644,8 @@ describe("Process contract", () => {
             const processData3 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
             expect(processData3.mode.value).to.eq(mode)
             expect(processData3.entityAddress).to.eq(entityAccount.address)
-            expect(processData3.censusMerkleRoot).to.eq("123412341234")
-            expect(processData3.censusMerkleTree).to.eq("345634563456")
+            expect(processData3.censusRoot).to.eq("123412341234")
+            expect(processData3.censusUri).to.eq("345634563456")
         })
 
         it("Should only allow the creator to update the census", async () => {
@@ -2670,8 +2672,8 @@ describe("Process contract", () => {
 
                 const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
                 expect(processData1.entityAddress).to.eq(entityAccount.address)
-                expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-                expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+                expect(processData1.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
+                expect(processData1.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
             }
         })
 
@@ -2690,7 +2692,7 @@ describe("Process contract", () => {
 
             // Try to update it
             try {
-                tx = await contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree")
+                tx = await contractInstance.setCensus(processId, "new-census-root", "new-census-tree")
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -2702,8 +2704,8 @@ describe("Process contract", () => {
             expect(processData1.mode.value).to.eq(mode)
             expect(processData1.status.value).to.eq(ProcessStatus.ENDED, "The process should be ended")
             expect(processData1.entityAddress).to.eq(entityAccount.address)
-            expect(processData1.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-            expect(processData1.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            expect(processData1.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
+            expect(processData1.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
 
             // 2 - CANCELED
 
@@ -2732,8 +2734,8 @@ describe("Process contract", () => {
             expect(processData3.mode.value).to.eq(mode)
             expect(processData3.status.value).to.eq(ProcessStatus.CANCELED, "The process should be canceled")
             expect(processData3.entityAddress).to.eq(entityAccount.address)
-            expect(processData3.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-            expect(processData3.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            expect(processData3.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
+            expect(processData3.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
 
             // 3 - RESULTS
 
@@ -2765,8 +2767,8 @@ describe("Process contract", () => {
             expect(processData5.mode.value).to.eq(mode)
             expect(processData5.status.value).to.eq(ProcessStatus.RESULTS, "The process should have results")
             expect(processData5.entityAddress).to.eq(entityAccount.address)
-            expect(processData5.censusMerkleRoot).to.eq(DEFAULT_MERKLE_ROOT)
-            expect(processData5.censusMerkleTree).to.eq(DEFAULT_MERKLE_TREE_CONTENT_HASHED_URI)
+            expect(processData5.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
+            expect(processData5.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
         }).timeout(4000)
 
         it("should emit an event", async () => {
@@ -2779,7 +2781,7 @@ describe("Process contract", () => {
                 contractInstance.on("CensusUpdated", (processId: string, namespace: number) => {
                     resolve({ namespace, processId })
                 })
-                contractInstance.setCensus(processId, "new-merkle-root", "new-merkle-tree-uri").then(tx => tx.wait()).catch(reject)
+                contractInstance.setCensus(processId, "new-census-root", "new-census-tree-uri").then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok

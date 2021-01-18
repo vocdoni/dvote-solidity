@@ -149,8 +149,8 @@ struct Process {
     uint64 startBlock; // Tendermint block number on which the voting process starts
     uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
     string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
-    string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
-    string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
+    string censusRoot; // Hex string with the Merkle Root hash of the census
+    string censusUri; // Content (hashed) URI of the exported Merkle Tree (not including the public keys)
     Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
     
     uint8 questionIndex; // The index of the currently active question (only assembly processes)

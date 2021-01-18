@@ -69,8 +69,8 @@ contract Processes is IProcessStore, Chained {
         uint32 startBlock; // Tendermint block number on which the voting process starts
         uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
-        string censusMerkleRoot; // Hex string with the Merkle Root hash of the census
-        string censusMerkleTree; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
+        string censusRoot; // Hex string with the Census Root. Depending on the census origin, it will be a Merkle Root or a public key.
+        string censusUri; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
         Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
         uint8 questionIndex; // The index of the currently active question (only assembly processes)
         // How many questions are available to vote
@@ -213,7 +213,7 @@ contract Processes is IProcessStore, Chained {
         returns (
             uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
             address entityAddress,
-            string[3] memory metadata_censusMerkleRoot_censusMerkleTree, // [metadata, censusMerkleRoot, censusMerkleTree]
+            string[3] memory metadata_censusRoot_censusUri, // [metadata, censusRoot, censusUri]
             uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
             Status status, // status
             uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
@@ -238,10 +238,10 @@ contract Processes is IProcessStore, Chained {
             uint8(proc.censusOrigin)
         ];
         entityAddress = proc.entity;
-        metadata_censusMerkleRoot_censusMerkleTree = [
+        metadata_censusRoot_censusUri = [
             proc.metadata,
-            proc.censusMerkleRoot,
-            proc.censusMerkleTree
+            proc.censusRoot,
+            proc.censusUri
         ];
         startBlock_blockCount = [proc.startBlock, proc.blockCount];
         status = proc.status;
@@ -328,29 +328,31 @@ contract Processes is IProcessStore, Chained {
     function newProcess(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
         address tokenContractAddress,
-        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
+        string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) public override onlyIfActive {
+        CensusOrigin origin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
         if (
-            CensusOrigin(mode_envelopeType_censusOrigin[2]) ==
-            CensusOrigin.OFF_CHAIN
+            origin == CensusOrigin.OFF_CHAIN ||
+            origin == CensusOrigin.OFF_CHAIN_WEIGHTED ||
+            origin == CensusOrigin.OFF_CHAIN_CA
         ) {
             newProcessStd(
                 mode_envelopeType_censusOrigin,
-                metadata_merkleRoot_merkleTree,
+                metadata_censusRoot_censusUri,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
                 maxTotalCost_costExponent_namespace,
                 paramsSignature
             );
-        } else {
+        } else if (origin == CensusOrigin.ERC20) {
             newProcessEvm(
                 mode_envelopeType_censusOrigin,
-                metadata_merkleRoot_merkleTree,
+                metadata_censusRoot_censusUri,
                 tokenContractAddress,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
@@ -358,13 +360,15 @@ contract Processes is IProcessStore, Chained {
                 evmBlockHeight,
                 paramsSignature
             );
+        } else {
+            revert("Unsupported census origin");
         }
     }
 
     // Creates a new process using an external census
     function newProcessStd(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
-        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
+        string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
@@ -387,16 +391,16 @@ contract Processes is IProcessStore, Chained {
             );
         }
         require(
-            bytes(metadata_merkleRoot_merkleTree[0]).length > 0,
+            bytes(metadata_censusRoot_censusUri[0]).length > 0,
             "No metadata"
         );
         require(
-            bytes(metadata_merkleRoot_merkleTree[1]).length > 0,
-            "No merkleRoot"
+            bytes(metadata_censusRoot_censusUri[1]).length > 0,
+            "No censusRoot"
         );
         require(
-            bytes(metadata_merkleRoot_merkleTree[2]).length > 0,
-            "No merkleTree"
+            bytes(metadata_censusRoot_censusUri[2]).length > 0,
+            "No censusUri"
         );
         require(
             questionCount_maxCount_maxValue_maxVoteOverwrites[0] > 0,
@@ -448,10 +452,10 @@ contract Processes is IProcessStore, Chained {
         processData.entity = msg.sender;
         processData.startBlock = startBlock_blockCount[0];
         processData.blockCount = startBlock_blockCount[1];
-        processData.metadata = metadata_merkleRoot_merkleTree[0];
+        processData.metadata = metadata_censusRoot_censusUri[0];
 
-        processData.censusMerkleRoot = metadata_merkleRoot_merkleTree[1];
-        processData.censusMerkleTree = metadata_merkleRoot_merkleTree[2];
+        processData.censusRoot = metadata_censusRoot_censusUri[1];
+        processData.censusUri = metadata_censusRoot_censusUri[2];
 
         processData.status = status;
         // processData.questionIndex = 0;
@@ -473,7 +477,7 @@ contract Processes is IProcessStore, Chained {
 
     function newProcessEvm(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
-        string[3] memory metadata_merkleRoot_merkleTree, //  [metadata, merkleRoot, merkleTree]
+        string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
         address tokenContractAddress,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
@@ -522,8 +526,8 @@ contract Processes is IProcessStore, Chained {
         uint256 balance = IERC20(tokenContractAddress).balanceOf(msg.sender);
         require(balance > 0, "Insufficient funds");
 
-        require(bytes(metadata_merkleRoot_merkleTree[0]).length > 0, "No metadata");
-        require(bytes(metadata_merkleRoot_merkleTree[1]).length > 0, "No merkleRoot");
+        require(bytes(metadata_censusRoot_censusUri[0]).length > 0, "No metadata");
+        require(bytes(metadata_censusRoot_censusUri[1]).length > 0, "No censusRoot");
         require(
             questionCount_maxCount_maxValue_maxVoteOverwrites[0] > 0,
             "No questionCount"
@@ -563,13 +567,13 @@ contract Processes is IProcessStore, Chained {
             mode_envelopeType_censusOrigin[2]
         );
 
-        processData.censusMerkleRoot = metadata_merkleRoot_merkleTree[1];
-        // processData.censusMerkleTree = "";
+        processData.censusRoot = metadata_censusRoot_censusUri[1];
+        // processData.censusUri = "";
 
         processData.entity = tokenContractAddress;
         processData.startBlock = startBlock_blockCount[0];
         processData.blockCount = startBlock_blockCount[1];
-        processData.metadata = metadata_merkleRoot_merkleTree[0];
+        processData.metadata = metadata_censusRoot_censusUri[0];
 
         processData.status = Status.READY;
         // processData.questionIndex = 0;
@@ -700,11 +704,11 @@ contract Processes is IProcessStore, Chained {
 
     function setCensus(
         bytes32 processId,
-        string memory censusMerkleRoot,
-        string memory censusMerkleTree
+        string memory censusRoot,
+        string memory censusUri
     ) public override onlyIfActive {
-        require(bytes(censusMerkleRoot).length > 0, "No Merkle Root");
-        require(bytes(censusMerkleTree).length > 0, "No Merkle Tree");
+        require(bytes(censusRoot).length > 0, "No Census Root");
+        require(bytes(censusUri).length > 0, "No Census URI");
 
         if (processes[processId].entity == address(0x0)) {
             // Not found locally
@@ -732,8 +736,8 @@ contract Processes is IProcessStore, Chained {
             "Not off-chain"
         );
 
-        processes[processId].censusMerkleRoot = censusMerkleRoot;
-        processes[processId].censusMerkleTree = censusMerkleTree;
+        processes[processId].censusRoot = censusRoot;
+        processes[processId].censusUri = censusUri;
 
         emit CensusUpdated(processId, processes[processId].namespace);
     }

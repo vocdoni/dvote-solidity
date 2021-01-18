@@ -7,7 +7,10 @@ pragma experimental ABIEncoderV2;
 /// @notice Should operations be updated, then two versions should be kept, one for the old version and one for the new.
 interface IProcessStore {
     enum Status {READY, ENDED, CANCELED, PAUSED, RESULTS}
-    enum CensusOrigin {OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME} // 8 items max
+    enum CensusOrigin {
+        __, OFF_CHAIN, OFF_CHAIN_WEIGHTED, OFF_CHAIN_CA, __4, __5, __6, __7, __8, __9,
+        __10, ERC20, ERC721, ERC1155, ERC777, MINI_ME
+    } // 256 items max
 
     modifier onlyOracle(bytes32 processId) virtual;
 
@@ -18,7 +21,7 @@ interface IProcessStore {
     function get(bytes32 processId) external view returns (
         uint8[3] memory mode_envelopeType_censusOrigin,
         address entityAddress,
-        string[3] memory metadata_censusMerkleRoot_censusMerkleTree,
+        string[3] memory metadata_censusRoot_censusUri,
         uint32[2] memory startBlock_blockCount,
         Status status,
         uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites,
@@ -33,7 +36,7 @@ interface IProcessStore {
     function newProcess(
         uint8[3] memory mode_envelopeType_censusOrigin,
         address tokenContractAddress,
-        string[3] memory metadata_merkleRoot_merkleTree,
+        string[3] memory metadata_censusRoot_censusTree,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[3] memory maxTotalCost_costExponent_namespace,
@@ -42,7 +45,7 @@ interface IProcessStore {
     ) external;
     function setStatus(bytes32 processId, Status newStatus) external;
     function incrementQuestionIndex(bytes32 processId) external;
-    function setCensus(bytes32 processId, string memory censusMerkleRoot, string memory censusMerkleTree) external;
+    function setCensus(bytes32 processId, string memory censusRoot, string memory censusUri) external;
     function setResults(bytes32 processId, uint32[][] memory tally, uint32 height) external;
 
     // EVENTS

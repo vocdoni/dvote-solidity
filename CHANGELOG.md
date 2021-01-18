@@ -1,5 +1,11 @@
 # DVote Solidity Changelog
 
+## 0.13.0
+
+- Breaking: Census Origin indexes updated (grouped by type)
+- Renaming `censusMerkleRoot` into `censusRoot`
+- Renaming `censusMerkleTree` into `censusUri`
+
 ## 0.12.6
 
 - Using `_isBigNumber` instead of comparing `evmBlockHeight` with `BigNumber`
