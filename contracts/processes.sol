@@ -68,10 +68,10 @@ contract Processes is IProcessStore, Chained {
     struct Process {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
-        CensusOrigin censusOrigin; // Where to check the census proofs against (Off-chain vs EVM Merkle Tree)
+        CensusOrigin censusOrigin; // How the census proofs are computed (Off-chain vs EVM Merkle Tree)
         address entity; // The address of the Entity (or contract) holding the process
-        uint32 startBlock; // Tendermint block number on which the voting process starts
-        uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
+        uint32 startBlock; // Vochain block number on which the voting process starts
+        uint32 blockCount; // Amount of Vochain blocks during which the voting process should be active
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusRoot; // Hex string with the Census Root. Depending on the census origin, it will be a Merkle Root or a public key.
         string censusUri; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
