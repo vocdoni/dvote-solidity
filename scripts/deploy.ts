@@ -21,7 +21,7 @@ const { abi: VotingProcessAbi, bytecode: VotingProcessBytecode } = require("../b
 const { abi: tokenStorageProofAbi, bytecode: tokenStorageProofBytecode } = require("../build/token-storage-proof.json")
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../build/namespaces.json")
 
-let processPredessorContractAddress = "0xF59528dB0BA3eb2Ac44425a025d8215e93969fEC"
+let processPredessorContractAddress = "0x29270b266B097990423c2E8deFE36c5dC2fD3420"
 
 const transactionOptions = {} as any
 let rpcParams = undefined
@@ -79,7 +79,7 @@ async function deployAll() {
     console.log(" - Namespace:", namespaceInstance.address)
 
     if (processPredessorContractAddress != "0x0000000000000000000000000000000000000000") {
-        console.log("Activating the process successor from"), processPredessorContractAddress
+        console.log("Activating the process successor from", processPredessorContractAddress)
         const predecessor = new Contract(processPredessorContractAddress, VotingProcessAbi, wallet) as Contract & ProcessContractMethods
         const tx = await predecessor.activateSuccessor(processInstance.address)
         await tx.wait()

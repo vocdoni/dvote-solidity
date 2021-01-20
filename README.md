@@ -594,21 +594,19 @@ This network currently features an old version. Expect it to be soon updated.
 
 ### Goerli
 
-- ENS Registry: 
-  - Address: `0xDA49dD1B5c62018C4F33ff2e39B30A21644E4EE8`
 - ENS Resolver:
-  - Address: `0x5aE2bD1998f4dEFD6Be5629780c8CFfB52CE612D`
+  - Address: `0xA5d5A4a1636F358a4E95119EB8E59455bCf368C7`
   - Domain: `entities.vocdoni.eth`
 - Process:
-  - Address: `0x29270b266B097990423c2E8deFE36c5dC2fD3420`
+  - Address: `0x9dB7d8632DD1BCea307eB3868FC1434d079242F9`
   - Domain: `processes.vocdoni.eth`
-  - Predecessor: `0x0000000000000000000000000000000000000000`
+  - Predecessor: `0x29270b266B097990423c2E8deFE36c5dC2fD3420`
 - Token Storage Proofs:
   - ERC20
-    - Address: `0x8C919Dce62E70c2eD1e33a7286730AeBf6f46c22`
+    - Address: `0x30963184f2Bcc3a59c1365231eBbbDA8B3B92782`
     - Domain: `erc20.proofs.vocdoni.eth`
 - Namespace:
-  - Address: `0x68bA6Be72de773467B8067d8Ad2C2a1245B45362`
+  - Address: `0x4a82b6ca00D36319eb2c2A56aB097912eb25A113`
   - Domain: `namespaces.vocdoni.eth`
 
 ## Development
