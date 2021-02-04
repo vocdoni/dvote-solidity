@@ -476,7 +476,7 @@ export class ProcessContractParameters {
         if (typeof params.censusOrigin == "number") result.censusOrigin = new ProcessCensusOrigin(params.censusOrigin as IProcessCensusOrigin) // Fail on error
         else result.censusOrigin = params.censusOrigin
 
-        if (result.censusOrigin.isOffChain) {
+        if (result.censusOrigin.isOffChain || result.censusOrigin.isOffChainWeighted || result.censusOrigin.isOffChainCA) {
             if (!params.censusUri)
                 throw new Error("Invalid censusUri")
         } else {

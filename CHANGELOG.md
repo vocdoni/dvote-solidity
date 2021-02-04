@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 0.13.1
+
+- Minor fix to support CA process contract parameters
+
 ## 0.13.0
 
 - **Breaking**: Census Origin indexes updated (grouped by type)
