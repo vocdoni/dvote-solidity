@@ -20,6 +20,23 @@
             "console": "integratedTerminal",
             "internalConsoleOptions": "openOnSessionStart",
             "protocol": "inspector"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Deploy",
+            "runtimeArgs": [
+                "--nolazy",
+                "-r",
+                "ts-node/register/transpile-only"
+            ],
+            "program": "${workspaceFolder}/scripts/deploy.ts",
+            "cwd": "${workspaceFolder}/scripts",
+            "internalConsoleOptions": "openOnSessionStart",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ]
         }
     ]
 }
