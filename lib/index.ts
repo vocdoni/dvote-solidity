@@ -334,7 +334,7 @@ export interface ProcessContractMethods {
     /** Get the process ID that would be assigned to the next process */
     getNextProcessId(entityAddress: string, namespace: number): Promise<string>,
     /** Compute the process ID that corresponds to the given parameters */
-    getProcessId(entityAddress: string, processCountIndex: number, namespace: number): Promise<string>,
+    getProcessId(entityAddress: string, processCountIndex: number, namespace: number, chainId: number | BigNumber): Promise<string>,
 
     // GLOBAL VARIABLES
     /** The block at which the contract became active. If it is zero, then it still needs activation from its predecessor. */
@@ -349,6 +349,8 @@ export interface ProcessContractMethods {
     namespaceAddress(): Promise<string>
     /** The address of the token storage proofs contract used by EVM census processes */
     tokenStorageProofAddress(): Promise<string>
+    /** The chain ID of the Ethereum network where the contract lives */
+    chainId(): Promise<BigNumber>
 
     // GETTERS
 

@@ -58,6 +58,7 @@ contract Processes is IProcessStore, Chained {
 
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
+    uint64 chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
 
     // DATA STRUCTS
     struct ProcessResults {
@@ -165,18 +166,19 @@ contract Processes is IProcessStore, Chained {
     {
         // From 0 to N-1, the next index is N
         uint256 processCount = getEntityProcessCount(entityAddress);
-        return getProcessId(entityAddress, processCount, namespace);
+        return getProcessId(entityAddress, processCount, namespace, chainId);
     }
 
-    /// @notice Compute the process ID
+    /// @notice Compute the process ID from the given parameters, salted with the contract chain ID
     function getProcessId(
         address entityAddress,
         uint256 processCountIndex,
-        uint16 namespace
+        uint16 namespace,
+        uint64 chainIdNumber
     ) public override pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(entityAddress, processCountIndex, namespace)
+                abi.encodePacked(entityAddress, processCountIndex, namespace, chainIdNumber)
             );
     }
 
@@ -187,7 +189,8 @@ contract Processes is IProcessStore, Chained {
     constructor(
         address predecessor,
         address namespace,
-        address tokenStorageProof
+        address tokenStorageProof,
+        uint64 chainIdNumber
     ) public {
         Chained.setUp(predecessor);
 
@@ -198,6 +201,7 @@ contract Processes is IProcessStore, Chained {
         );
         namespaceAddress = namespace;
         tokenStorageProofAddress = tokenStorageProof;
+        chainId = chainIdNumber;
     }
 
     function setNamespaceAddress(address namespace) public onlyContractOwner {
@@ -444,7 +448,8 @@ contract Processes is IProcessStore, Chained {
         bytes32 processId = getProcessId(
             msg.sender,
             prevCount,
-            maxTotalCost_costExponent_namespace[2]
+            maxTotalCost_costExponent_namespace[2],
+            chainId
         );
         Process storage processData = processes[processId];
 
@@ -560,7 +565,8 @@ contract Processes is IProcessStore, Chained {
         bytes32 processId = getProcessId(
             tokenContractAddress,
             prevCount,
-            maxTotalCost_costExponent_namespace[2]
+            maxTotalCost_costExponent_namespace[2],
+            chainId
         );
         Process storage processData = processes[processId];
 

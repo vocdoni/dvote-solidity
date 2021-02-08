@@ -71,7 +71,7 @@ async function deployAll() {
 
     // Process
     const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
-    const processContract = await processFactory.deploy(processPredessorContractAddress, namespaceInstance.address, tokenStorageProofInstance.address, transactionOptions)
+    const processContract = await processFactory.deploy(processPredessorContractAddress, namespaceInstance.address, tokenStorageProofInstance.address, CHAIN_ID, transactionOptions)
     const processInstance = await processContract.deployed() as Contract & ProcessContractMethods
     console.log("Process deployed at", processInstance.address)
     console.log(" - Predecessor:", processPredessorContractAddress)

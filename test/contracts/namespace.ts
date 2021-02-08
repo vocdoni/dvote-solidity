@@ -6,7 +6,7 @@ import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
 import { NamespaceContractMethods } from "../../lib"
 
-import NamespaceBuilder, { DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID, DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES } from "../builders/namespace"
+import NamespaceBuilder, { DEFAULT_NAMESPACE, DEFAULT_NETWORK_ID, DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES } from "../builders/namespace"
 
 import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 
@@ -53,7 +53,7 @@ describe("Namespace contract", () => {
 
     describe("Namespace management", () => {
         it("should set a whole namespace at once", async () => {
-            expect(await contractInstance.getNamespace(DEFAULT_NAMESPACE)).to.deep.eq([DEFAULT_CHAIN_ID, DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES])
+            expect(await contractInstance.getNamespace(DEFAULT_NAMESPACE)).to.deep.eq([DEFAULT_NETWORK_ID, DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES])
 
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 

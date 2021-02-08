@@ -5,7 +5,7 @@ import { getAccounts, TestAccount } from "../utils"
 import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 
 export const DEFAULT_NAMESPACE = 1
-export const DEFAULT_CHAIN_ID = "namespace-1"
+export const DEFAULT_NETWORK_ID = "namespace-1"
 export const DEFAULT_GENESIS = "genesis-goes-here"
 export const DEFAULT_VALIDATORS = ["0x03e3e79624fe1b1da829946b2269dfa01ef8ea3d99dc5032d8590ab71f8bd1b399", "0x031d04a26c158223550251366c2440601c3b297488e29dd4271610957b7394b66e", "0x023a91c59a377a0721a7afe044dbdd270b3df32ef70c8bf483db934f0170c5c8ae"]
 export const DEFAULT_ORACLES = ["0x16EBAAe4EEBC77662aF386cE0Cb0C9b53ACb8689", "0x6B902080Bea78A6dDB7025c6F5F8FD634fA2a3A8", "0xaD9b7B66bD14787a02285514c410627DAb5F6c14"]
@@ -16,7 +16,7 @@ export default class NamespaceBuilder {
 
     entityAccount: TestAccount
     namespaceIdx: number = DEFAULT_NAMESPACE
-    chainId: string = DEFAULT_CHAIN_ID
+    networkId: string = DEFAULT_NETWORK_ID
     genesis: string = DEFAULT_GENESIS
     validators: string[] = DEFAULT_VALIDATORS
     oracles: string[] = DEFAULT_ORACLES
@@ -31,7 +31,7 @@ export default class NamespaceBuilder {
         const contractFactory = new ContractFactory(namespaceAbi, namespaceByteCode, deployAccount.wallet)
         let contractInstance = await contractFactory.deploy() as Contract & NamespaceContractMethods
 
-        const tx = await contractInstance.setNamespace(this.namespaceIdx, this.chainId, this.genesis, this.validators, this.oracles)
+        const tx = await contractInstance.setNamespace(this.namespaceIdx, this.networkId, this.genesis, this.validators, this.oracles)
         await tx.wait()
 
         return contractInstance.connect(this.entityAccount.wallet) as Contract & NamespaceContractMethods
@@ -43,10 +43,10 @@ export default class NamespaceBuilder {
         this.namespaceIdx = namespace
         return this
     }
-    withChainId(chainId: string) {
-        if (typeof chainId != "string") throw new Error("Invalid string")
+    withNetworkId(networkId: string) {
+        if (typeof networkId != "string") throw new Error("Invalid string")
 
-        this.chainId = chainId
+        this.networkId = networkId
         return this
     }
     withGenesis(genesis: string) {

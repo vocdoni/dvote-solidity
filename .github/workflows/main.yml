@@ -21,6 +21,4 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
     - run: sudo apt-get install make
-    # - run: npm install
-    # - run: make all
     - run: make test

@@ -29,6 +29,7 @@ let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
 const emptyArray: Array<number> = []
+const ethChainId = 0
 
 const dummyErc20Contract = `
 // SPDX-License-Identifier: MIT
@@ -103,7 +104,7 @@ describe("Process contract", () => {
         tx = null
 
         contractInstance = await new ProcessBuilder().build()
-        processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+        processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
     })
 
     it("should deploy the contract", async () => {
@@ -112,7 +113,7 @@ describe("Process contract", () => {
         const somePredecessorAddr = (await new ProcessBuilder().build()).address
         const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
         const contractFactory1 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-        const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
+        const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
         expect(localInstance1).to.be.ok
         expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -121,7 +122,7 @@ describe("Process contract", () => {
         expect(await localInstance1.tokenStorageProofAddress()).to.eq(storageProofAddress)
 
         const contractFactory2 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-        const localInstance2: Contract & ProcessContractMethods = await contractFactory2.deploy(somePredecessorAddr, namespaceInstance2.address, storageProofAddress) as Contract & ProcessContractMethods
+        const localInstance2: Contract & ProcessContractMethods = await contractFactory2.deploy(somePredecessorAddr, namespaceInstance2.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
         expect(localInstance2).to.be.ok
         expect(localInstance2.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -140,7 +141,7 @@ describe("Process contract", () => {
 
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(noParentAddr, randomAddress, storageProofAddress) as Contract & ProcessContractMethods
+            await contractFactory.deploy(noParentAddr, randomAddress, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -150,7 +151,7 @@ describe("Process contract", () => {
 
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(somePredecessorAddr, randomAddress, storageProofAddress) as Contract & ProcessContractMethods
+            await contractFactory.deploy(somePredecessorAddr, randomAddress, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -163,20 +164,58 @@ describe("Process contract", () => {
         expect(contractInstance.getProcessId).to.be.ok
         expect(contractInstance.getProcessId.call).to.be.ok
 
-        const proc1 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE)
-        const proc2 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE)
+        const proc1 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+        const proc2 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
-        const proc3 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE)
-        const proc4 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE)
+        const proc3 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+        const proc4 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
-        const proc5 = await contractInstance.getProcessId(accounts[0].address, 2, DEFAULT_NAMESPACE)
-        const proc6 = await contractInstance.getProcessId(accounts[0].address, 3, DEFAULT_NAMESPACE)
+        const proc5 = await contractInstance.getProcessId(accounts[0].address, 2, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+        const proc6 = await contractInstance.getProcessId(accounts[0].address, 3, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
-        const proc7 = await contractInstance.getProcessId(accounts[1].address, 0, DEFAULT_NAMESPACE)
-        const proc8 = await contractInstance.getProcessId(accounts[1].address, 1, DEFAULT_NAMESPACE)
+        const proc7 = await contractInstance.getProcessId(accounts[1].address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+        const proc8 = await contractInstance.getProcessId(accounts[1].address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
-        const proc9 = await contractInstance.getProcessId(accounts[1].address, 0, 10)
-        const proc10 = await contractInstance.getProcessId(accounts[1].address, 0, 20)
+        const proc9 = await contractInstance.getProcessId(accounts[1].address, 0, 10, DEFAULT_CHAIN_ID)
+        const proc10 = await contractInstance.getProcessId(accounts[1].address, 0, 20, DEFAULT_CHAIN_ID)
+
+        expect(proc1).to.eq(proc2)
+        expect(proc3).to.eq(proc4)
+
+        expect(proc1).to.not.eq(proc3)
+        expect(proc1).to.not.eq(proc5)
+        expect(proc1).to.not.eq(proc6)
+
+        expect(proc3).to.not.eq(proc5)
+        expect(proc3).to.not.eq(proc6)
+
+        expect(proc5).to.not.eq(proc6)
+
+        expect(proc7).to.not.eq(proc1)
+        expect(proc8).to.not.eq(proc3)
+
+        expect(proc9).to.not.eq(proc7)
+        expect(proc10).to.not.eq(proc7)
+    })
+
+    it("different chain Id's should produce different process Id's", async () => {
+        expect(contractInstance.getProcessId).to.be.ok
+        expect(contractInstance.getProcessId.call).to.be.ok
+
+        const proc1 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE, 10)
+        const proc2 = await contractInstance.getProcessId(accounts[0].address, 0, DEFAULT_NAMESPACE, 10)
+
+        const proc3 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE, 20)
+        const proc4 = await contractInstance.getProcessId(accounts[0].address, 1, DEFAULT_NAMESPACE, 20)
+
+        const proc5 = await contractInstance.getProcessId(accounts[0].address, 2, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+        const proc6 = await contractInstance.getProcessId(accounts[0].address, 3, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+
+        const proc7 = await contractInstance.getProcessId(accounts[1].address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID + 1)
+        const proc8 = await contractInstance.getProcessId(accounts[1].address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID + 1)
+
+        const proc9 = await contractInstance.getProcessId(accounts[1].address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID + 10)
+        const proc10 = await contractInstance.getProcessId(accounts[1].address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID + 20)
 
         expect(proc1).to.eq(proc2)
         expect(proc3).to.eq(proc4)
@@ -201,7 +240,7 @@ describe("Process contract", () => {
         // The entity already has 1 process at the moment
         const count1 = await contractInstance.getEntityProcessCount(entityAccount.address)
         expect(count1.toNumber()).to.eq(1)
-        const processId1Expected = await contractInstance.getProcessId(entityAccount.address, count1.toNumber(), DEFAULT_NAMESPACE)
+        const processId1Expected = await contractInstance.getProcessId(entityAccount.address, count1.toNumber(), DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
         const processId1Actual = await contractInstance.getNextProcessId(entityAccount.address, DEFAULT_NAMESPACE)
 
         expect(processId1Actual).to.eq(processId1Expected)
@@ -220,7 +259,7 @@ describe("Process contract", () => {
 
         // The entity has 2 processes now
         // So the next process index is 2
-        const processId2Expected = await contractInstance.getProcessId(entityAccount.address, 2, DEFAULT_NAMESPACE)
+        const processId2Expected = await contractInstance.getProcessId(entityAccount.address, 2, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
         const processId2Actual = await contractInstance.getNextProcessId(entityAccount.address, DEFAULT_NAMESPACE)
 
         expect(processId1Actual).to.not.eq(processId2Actual)
@@ -229,7 +268,7 @@ describe("Process contract", () => {
         // 
         const count3 = await contractInstance.getEntityProcessCount(entityAccount.address)
         expect(count3.toNumber()).to.eq(2)
-        const processId3Expected = await contractInstance.getProcessId(entityAccount.address, count3.toNumber(), 10)
+        const processId3Expected = await contractInstance.getProcessId(entityAccount.address, count3.toNumber(), 10, DEFAULT_CHAIN_ID)
         const processId3Actual = await contractInstance.getNextProcessId(entityAccount.address, 10)
 
         expect(processId3Expected).to.eq(processId3Actual)
@@ -241,7 +280,7 @@ describe("Process contract", () => {
 
             // one is already created by the builder
 
-            let processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1, DEFAULT_NAMESPACE)
+            let processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             let processIdActual = await contractInstance.getNextProcessId(entityAccount.address, DEFAULT_NAMESPACE)
             expect(processIdExpected).to.eq(processIdActual)
 
@@ -259,7 +298,7 @@ describe("Process contract", () => {
             )
             await tx.wait()
 
-            processIdExpected = await contractInstance.getProcessId(randomAccount1.address, 1, DEFAULT_NAMESPACE)
+            processIdExpected = await contractInstance.getProcessId(randomAccount1.address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             processIdActual = await contractInstance.getNextProcessId(randomAccount1.address, DEFAULT_NAMESPACE)
             expect(processIdExpected).to.eq(processIdActual)
 
@@ -276,7 +315,7 @@ describe("Process contract", () => {
             )
             await tx.wait()
 
-            processIdExpected = await contractInstance.getProcessId(randomAccount2.address, 1, DEFAULT_NAMESPACE)
+            processIdExpected = await contractInstance.getProcessId(randomAccount2.address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             processIdActual = await contractInstance.getNextProcessId(randomAccount2.address, DEFAULT_NAMESPACE)
             expect(processIdExpected).to.eq(processIdActual)
         })
@@ -465,7 +504,7 @@ describe("Process contract", () => {
             await tx.wait()
 
             let count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
+            let processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
 
@@ -527,7 +566,7 @@ describe("Process contract", () => {
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace)
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace, DEFAULT_CHAIN_ID)
 
             const processData2 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
 
@@ -590,7 +629,7 @@ describe("Process contract", () => {
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace)
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace, DEFAULT_CHAIN_ID)
 
             const processData3 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
 
@@ -641,7 +680,7 @@ describe("Process contract", () => {
             await tx.wait()
 
             let count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             const signature1 = await contractInstance.getParamsSignature(processId)
             expect(signature1).to.eq("0x1234567890123456789012345678901234567890123456789012345678901234")
@@ -686,7 +725,7 @@ describe("Process contract", () => {
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace)
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace, DEFAULT_CHAIN_ID)
 
             const signature2 = await contractInstance.getParamsSignature(processId)
             expect(signature2).to.eq(newParamsSignature)
@@ -731,7 +770,7 @@ describe("Process contract", () => {
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace)
+            processId = await contractInstance.getProcessId(entityAccount.address, count - 1, newNamespace, DEFAULT_CHAIN_ID)
 
             const signature3 = await contractInstance.getParamsSignature(processId)
             expect(signature3).to.eq(newParamsSignature)
@@ -937,7 +976,7 @@ describe("Process contract", () => {
 
         it("should emit an event", async () => {
             expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(1)
-            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One has already been created by the builder
 
@@ -983,7 +1022,7 @@ describe("Process contract", () => {
 
         it("should create paused processes by default", async () => {
             contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: false })).build()
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // one is already created by the builder
 
@@ -993,7 +1032,7 @@ describe("Process contract", () => {
 
         it("should create processes in ready status when autoStart is set", async () => {
             contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: true })).build()
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
             expect(processData1.status.value).to.eq(ProcessStatus.READY, "The process should be ready")
@@ -1003,7 +1042,7 @@ describe("Process contract", () => {
             // interruptible
             let mode = ProcessMode.make({ autoStart: true, interruptible: true })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1032,7 +1071,7 @@ describe("Process contract", () => {
                 // non-interruptible
                 let mode = ProcessMode.make({ autoStart: false, interruptible: false })
                 contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                 // one is already created by the builder
 
                 const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1099,7 +1138,7 @@ describe("Process contract", () => {
                 // non-interruptible
                 let mode = ProcessMode.make({ autoStart: true, interruptible: false })
                 contractInstance = await new ProcessBuilder().withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                 // one is already created by the builder
 
                 const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1192,7 +1231,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1218,7 +1257,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1247,7 +1286,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1282,7 +1321,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1317,7 +1356,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1347,7 +1386,7 @@ describe("Process contract", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                         // one is already created by the builder
 
                         const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1446,7 +1485,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1475,7 +1514,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1501,7 +1540,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1536,7 +1575,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1571,7 +1610,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1601,7 +1640,7 @@ describe("Process contract", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                         // one is already created by the builder
 
                         const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1700,7 +1739,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1780,7 +1819,7 @@ describe("Process contract", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                         // one is already created by the builder
 
                         const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1866,7 +1905,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).build()
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1946,7 +1985,7 @@ describe("Process contract", () => {
                         // interruptible
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                         // one is already created by the builder
 
                         const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2035,7 +2074,7 @@ describe("Process contract", () => {
                     // interruptible
                     let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                     contractInstance = await new ProcessBuilder().withMode(mode).withOracle(authorizedOracleAccount1.address).build() as any
-                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                    const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                     // one is already created by the builder
 
                     const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2118,7 +2157,7 @@ describe("Process contract", () => {
                         let mode = ProcessMode.make({ autoStart: false, interruptible: true })
                         contractInstance = await new ProcessBuilder().withMode(mode).withOracle(authorizedOracleAccount1.address).build() as any
 
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                         // one is already created by the builder
 
                         const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2209,7 +2248,7 @@ describe("Process contract", () => {
                     for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
                         let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                         contractInstance = await new ProcessBuilder().withNamespaceInstance(namespaceAddress).withMode(mode).build()
-                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                        const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                         // one is already created by the builder
 
                         const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2256,7 +2295,7 @@ describe("Process contract", () => {
             ]
             for (let scenario of scenarios) {
                 const contractInstance = await new ProcessBuilder().withMode(scenario.mode).build()
-                const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
                 // One has already been created by the builder
 
@@ -2493,7 +2532,7 @@ describe("Process contract", () => {
                 .withQuestionCount(5)
                 .build()
 
-            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One has already been created by the builder
 
@@ -2517,7 +2556,7 @@ describe("Process contract", () => {
                 .withQuestionCount(2)
                 .build()
 
-            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One has already been created by the builder
 
@@ -2559,7 +2598,7 @@ describe("Process contract", () => {
         it("Should keep the census read-only by default", async () => {
             let mode = ProcessMode.make({ autoStart: true, dynamicCensus: false })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -2585,7 +2624,7 @@ describe("Process contract", () => {
 
             mode = ProcessMode.make({ autoStart: false, dynamicCensus: false })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData2 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -2611,7 +2650,7 @@ describe("Process contract", () => {
         it("Should allow to update the census in dynamic census mode", async () => {
             let mode = ProcessMode.make({ autoStart: true, dynamicCensus: true })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -2631,7 +2670,7 @@ describe("Process contract", () => {
 
             mode = ProcessMode.make({ autoStart: false, dynamicCensus: true })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData2 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -2651,7 +2690,7 @@ describe("Process contract", () => {
         it("Should only allow the creator to update the census", async () => {
             let mode = ProcessMode.make({ autoStart: true, dynamicCensus: true })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2681,7 +2720,7 @@ describe("Process contract", () => {
             // 1 - ENDED
             let mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -2711,7 +2750,7 @@ describe("Process contract", () => {
 
             mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
             contractInstance = await new ProcessBuilder().withMode(mode).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData2 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -2741,7 +2780,7 @@ describe("Process contract", () => {
 
             mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
             contractInstance = await new ProcessBuilder().withMode(mode).withOracle(authorizedOracleAccount1.address).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             // one is already created by the builder
 
             const processData4 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
@@ -2773,7 +2812,7 @@ describe("Process contract", () => {
 
         it("should emit an event", async () => {
             const contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ dynamicCensus: true })).build()
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One has already been created by the builder
 
@@ -2830,7 +2869,7 @@ describe("Process contract", () => {
             const namespaceAddress = await contractInstance.namespaceAddress()
             expect(namespaceAddress).to.match(/^0x[0-9a-fA-F]{40}$/)
 
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One is already created by the builder
 
@@ -2895,7 +2934,7 @@ describe("Process contract", () => {
 
         it("should not be accepted when the process is canceled", async () => {
             contractInstance = await new ProcessBuilder().withMode(ProcessMode.make({ interruptible: true })).withOracle(authorizedOracleAccount1.address).build()
-            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One is already created by the builder
 
@@ -2922,7 +2961,7 @@ describe("Process contract", () => {
         it("should retrieve the submited results", async () => {
             contractInstance = await new ProcessBuilder().withOracle(authorizedOracleAccount1.address).build()
 
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One is already created by the builder
 
@@ -2944,7 +2983,7 @@ describe("Process contract", () => {
             for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
                 let mode = ProcessMode.make({ autoStart: true, interruptible: true })
                 contractInstance = await new ProcessBuilder().withNamespaceInstance(namespaceAddress).withMode(mode).build()
-                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+                const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                 // one is already created by the builder
 
                 const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2983,7 +3022,7 @@ describe("Process contract", () => {
         it("should prevent publishing twice", async () => {
             contractInstance = await new ProcessBuilder().withOracle(authorizedOracleAccount1.address).build()
 
-            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // One is already created by the builder
 
@@ -3023,7 +3062,7 @@ describe("Process contract", () => {
         it("should emit an event", async () => {
             contractInstance = await new ProcessBuilder().withOracle(authorizedOracleAccount1.address).build()
 
-            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+            const processId1 = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
             // one is already created by the builder
 

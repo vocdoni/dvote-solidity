@@ -6,7 +6,7 @@ import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
 import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY } from "../builders/process"
+import ProcessBuilder, { DEFAULT_CHAIN_ID, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
 import TokenStorageProofBuilder from "../builders/token-storage-proof"
 
@@ -26,6 +26,7 @@ let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
 const emptyArray: Array<number> = []
+const ethChainId = 0
 
 addCompletionHooks()
 
@@ -42,7 +43,7 @@ describe("Chainable Process contract", () => {
         tx = null
 
         contractInstance = await new ProcessBuilder().build()
-        processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE)
+        processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
     })
 
     it("should fail deploying if the predecessor address is not a contract", async () => {
@@ -52,7 +53,7 @@ describe("Chainable Process contract", () => {
         const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
 
         try {
-            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, storageProofAddress) as Contract & ProcessContractMethods
+            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -61,7 +62,7 @@ describe("Chainable Process contract", () => {
         }
 
         try {
-            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, storageProofAddress) as Contract & ProcessContractMethods
+            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -76,7 +77,7 @@ describe("Chainable Process contract", () => {
             const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory.deploy(nullAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
+            const localInstance1: Contract & ProcessContractMethods = await contractFactory.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             expect(localInstance1).to.be.ok
             expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -97,7 +98,7 @@ describe("Chainable Process contract", () => {
 
             // Try to deploy with ourselves as the parent
             try {
-                await contractFactory.deploy(nextContractDeployAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
+                await contractFactory.deploy(nextContractDeployAddress, namespaceInstance1.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -117,7 +118,7 @@ describe("Chainable Process contract", () => {
             // create manually
             const namespaceInstance1 = await new NamespaceBuilder().build()
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
+            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -147,7 +148,7 @@ describe("Chainable Process contract", () => {
             // create manually
             const namespaceInstance1 = await new NamespaceBuilder().build()
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
+            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -165,8 +166,8 @@ describe("Chainable Process contract", () => {
             expect(await processInstanceNew.predecessorAddress()).to.eq(processInstanceOld.address)
 
             for (let idx of [0, 1, 2]) {
-                const processId1 = await processInstanceOld.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE)
-                const processId2 = await processInstanceNew.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE)
+                const processId1 = await processInstanceOld.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+                const processId2 = await processInstanceNew.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
                 expect(processId1).to.eq(processId2)
 
                 // fetch from the new instance
@@ -192,7 +193,7 @@ describe("Chainable Process contract", () => {
             expect((await processInstanceNew.activationBlock()).toNumber()).to.be.gt(0)
 
             for (let idx of [0, 1, 2]) {
-                const processId = await processInstanceOld.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE)
+                const processId = await processInstanceOld.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
 
                 // Check the process holder
                 expect(await processInstanceNew.getCreationInstance(processId)).to.eq(processInstanceOld.address)
@@ -382,7 +383,7 @@ describe("Chainable Process contract", () => {
             // create manually
             const namespaceInstance1 = await new NamespaceBuilder().build()
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, storageProofAddress) as Contract & ProcessContractMethods
+            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, storageProofAddress, ethChainId) as Contract & ProcessContractMethods
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)

@@ -12,7 +12,7 @@ import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/
 // DEFAULT VALUES
 export const DEFAULT_PREDECESSOR_INSTANCE_ADDRESS = "0x0000000000000000000000000000000000000000"
 export const DEFAULT_NAMESPACE = 0
-export const DEFAULT_CHAIN_ID = "vochain"
+export const DEFAULT_CHAIN_ID = 0
 export const DEFAULT_PROCESS_MODE = ProcessMode.make()
 export const DEFAULT_ENVELOPE_TYPE = ProcessEnvelopeType.make()
 export const DEFAULT_CENSUS_ORIGIN = ProcessCensusOrigin.OFF_CHAIN_TREE
@@ -56,6 +56,7 @@ export default class ProcessBuilder {
     namespace: number = DEFAULT_NAMESPACE
     namespaceAddress: string
     tokenStorageProofAddress: string
+    ethChainId: number = DEFAULT_CHAIN_ID
     oracleAddress: string
     paramsSignature: string = DEFAULT_PARAMS_SIGNATURE
 
@@ -101,7 +102,7 @@ export default class ProcessBuilder {
         // Process itself
         const contractFactory = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
 
-        let contractInstance = await contractFactory.deploy(this.predecessorInstanceAddress, namespaceAddress, tokenStorageProofAddress) as Contract & ProcessContractMethods
+        let contractInstance = await contractFactory.deploy(this.predecessorInstanceAddress, namespaceAddress, tokenStorageProofAddress, this.ethChainId) as Contract & ProcessContractMethods
 
         contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
 
@@ -207,6 +208,10 @@ export default class ProcessBuilder {
     }
     withNamespaceInstance(namespaceAddress: string) {
         this.namespaceAddress = namespaceAddress
+        return this
+    }
+    withChainId(chainId: number) {
+        this.ethChainId = chainId
         return this
     }
     withOracle(oracleAddress: string) {
