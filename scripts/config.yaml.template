@@ -1,0 +1,57 @@
+vocdoni:
+  environment: dev
+  # environment: stg
+  # environment: prod
+features:
+  ensRegistry: false  # which contracts to deploy
+  ensResolver: false
+  processes: true
+  namespaces: true
+  proofs:
+    erc20: true
+  setDomains: true   # update the ENS addresses
+contracts:
+  # if already deployed, set the addresses here
+  current:
+    # ## Sokol
+    # ensRegistry: "0xDb6C74071116D17a47D9c191cbE6d640111Ee5C2"
+
+    ## XDAI
+    ensRegistry: "0x00cEBf9E1E81D3CC17fbA0a49306EBA77a8F26cD"
+    
+    ## XDAI prod
+    ensPublicResolver: "0x80629aF85C5623fDFDD3744c3192824be72B06F6"
+    processes: "0x2B922535a60F060899d7Aab91411D92520B82D5e"
+    namespaces: "0x03A362F704cd74f0db86e14f3a88683A45A6701f"
+    proofs:
+      erc20: "0xf9F082ff2221de00f07593e4b89d8117A4BAb6D1"
+    
+    # ## XDAI stg
+    # ensPublicResolver: "0x2384D1160CC3F05Cc97605aeA860B23A6EB17b0C"
+    # processes: "0xB41A365ca0D4e427c941FB406Fb75C412d6C23e0"
+    # namespaces: "0x6feD6cCF461e936F3120DBEEa998690B17CBa55f"
+    # proofs:
+    #   erc20: "0xE86F80E8893070737Ca23C0a105bEBdBf3802Bc2"
+    
+    # ## XDAI dev
+    # ensPublicResolver: "0x1D68cfb6f1e8cB6413c69410fbf9F35B6dC586ca"
+    # processes: "0x9Ba9A76D184A975BCA6802cD777205472aAC449A"
+    # namespaces: "0x751D168E1b9c5CCA87f295DE14203CA1BBE0951C"
+    # proofs:
+    #   erc20: "0x8bc59598b6b92902906FD8AA249b30931A2cF752"
+ethereum:
+  networkId: xdai
+  chainId: 100
+  # networkId: sokol
+  # chainId: 77
+  # networkId: goerli
+  # chainId: 5
+  endpoint: https://dai.poa.network
+  # endpoint: https://sokol.poa.network
+  # endpoint: http://127.0.0.1:8545
+wallet:
+  # privateKey is used when it is set. Otherwise, mnemonic and hdPath are used
+  privateKey:
+  mnemonic: myth like bonus scare over problem client lizard pioneer submit female collect
+  # mnemonic: perfect kite link property simple eight welcome spring enforce universe barely cargo
+  hdPath: m/44'/60'/0'/0/0

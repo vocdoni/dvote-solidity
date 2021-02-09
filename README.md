@@ -569,9 +569,31 @@ Feel free to contribute any additional test cases that you consider necessary.
 
 ## Deployments
 
+See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` into `config.yaml` and set your own values.
+
 ### xDAI
 
-This network currently features an old version. Expect it to be soon updated.
+- ENS registry:
+  - Address: `0x00cEBf9E1E81D3CC17fbA0a49306EBA77a8F26cD`
+- Domains:
+  - Production
+    - `entities.vocdoni.eth`
+      - `0x80629aF85C5623fDFDD3744c3192824be72B06F6`
+    - `processes.vocdoni.eth`
+    - `namespaces.vocdoni.eth`
+    - `erc20.proofs.vocdoni.eth`
+  - Staging
+    - `entities.stg.vocdoni.eth`
+      - `0x2384D1160CC3F05Cc97605aeA860B23A6EB17b0C`
+    - `processes.stg.vocdoni.eth`
+    - `namespaces.stg.vocdoni.eth`
+    - `erc20.proofs.stg.vocdoni.eth`
+  - Development
+    - `entities.dev.vocdoni.eth`
+      - `0x1D68cfb6f1e8cB6413c69410fbf9F35B6dC586ca`
+    - `processes.dev.vocdoni.eth`
+    - `namespaces.dev.vocdoni.eth`
+    - `erc20.proofs.dev.vocdoni.eth`
 
 ### Sokol
 
