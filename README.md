@@ -569,6 +569,8 @@ Feel free to contribute any additional test cases that you consider necessary.
 
 ## Deployments
 
+See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` into `config.yaml` and set your own values.
+
 ### xDAI
 
 - ENS registry:
@@ -582,11 +584,13 @@ Feel free to contribute any additional test cases that you consider necessary.
     - `erc20.proofs.vocdoni.eth`
   - Staging
     - `entities.stg.vocdoni.eth`
+      - `0x2384D1160CC3F05Cc97605aeA860B23A6EB17b0C`
     - `processes.stg.vocdoni.eth`
     - `namespaces.stg.vocdoni.eth`
     - `erc20.proofs.stg.vocdoni.eth`
   - Development
     - `entities.dev.vocdoni.eth`
+      - `0x1D68cfb6f1e8cB6413c69410fbf9F35B6dC586ca`
     - `processes.dev.vocdoni.eth`
     - `namespaces.dev.vocdoni.eth`
     - `erc20.proofs.dev.vocdoni.eth`

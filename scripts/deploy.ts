@@ -67,7 +67,7 @@ async function deployEnsContracts() {
     if (config.features.ensResolver) {
         // ENS Public resolver
         const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
-        const ensPublicResolverContract = await ensPublicResolverFactory.deploy("0x0000000000000000000000000000000000000000", transactionOptions)
+        const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistry, transactionOptions)
         const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
         ensPublicResolver = ensPublicResolverInstance.address
 
@@ -96,6 +96,7 @@ async function deployCoreContracts() {
         const tokenStorageProofContract = await tokenStorageProofFactory.deploy(transactionOptions)
         const tokenStorageProofInstance = await tokenStorageProofContract.deployed() as Contract & TokenStorageProofContractMethods
         erc20Proofs = tokenStorageProofInstance.address
+
         console.log("ERC20 Token Storage Proof deployed at", erc20Proofs)
     }
     else {
@@ -110,6 +111,7 @@ async function deployCoreContracts() {
         const namespaceContract = await namespaceFactory.deploy(transactionOptions)
         const namespaceInstance = await namespaceContract.deployed() as Contract & NamespaceContractMethods
         namespaces = namespaceInstance.address
+
         console.log("Namespace deployed at", namespaces)
     }
     else {
@@ -126,6 +128,8 @@ async function deployCoreContracts() {
         const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
         const processContract = await processFactory.deploy(config.contracts.current.processes, namespaces, erc20Proofs, config.ethereum.chainId, transactionOptions)
         const processInstance = await processContract.deployed() as Contract & ProcessContractMethods
+        processes = processInstance.address
+
         console.log("Process deployed at", processInstance.address)
         console.log(" - Predecessor:", config.contracts.current.processes)
         console.log(" - ERC20 Storage Proofs:", erc20Proofs)
@@ -230,7 +234,7 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     console.log("Domain addresses")
 
     // set the addresses
-    if (ensPublicResolverInstance.address != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
+    if (contractAddresses.ensPublicResolver != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
         tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.ensPublicResolver, transactionOptions)
         await tx.wait()
     }
@@ -266,16 +270,22 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     // set the bootnode URL on the entity of Vocdoni
     const BOOTNODES_KEY = "vnd.vocdoni.boot-nodes"
     const entityId = ensHashAddress(wallet.address)
-    tx = await ensPublicResolverInstance.setText(entityId, BOOTNODES_KEY, "https://bootnodes.vocdoni.net/gateways.json", transactionOptions)
-    await tx.wait()
+    let uri = "https://bootnodes.vocdoni.net/gateways.json"
+    if (config.vocdoni.environment != "prod") {
+        uri = "https://bootnodes.vocdoni.net/gateways." + config.vocdoni.environment + ".json"
+    }
+    if (uri != await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY)) {
+        tx = await ensPublicResolverInstance.setText(entityId, BOOTNODES_KEY, uri, transactionOptions)
+        await tx.wait()
+    }
 
     console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY))
 }
 
 /** Creates a (sub) domain within parentNode and returns the registered node hash */
 async function registerEnsNodeOwner(name: string, parentDomain: string, parentNode: string, ensRegistryInstance: Contract & EnsRegistryContractMethods): Promise<string> {
-    const parentParticles = parentDomain?.length ? parentDomain.split(".") : []
-    const fullDomainName = [name].concat(parentParticles).join(".")
+    const suffixItems = parentDomain?.length ? parentDomain.split(".") : []
+    const fullDomainName = [name].concat(suffixItems).join(".")
     const ensNode = namehash.hash(fullDomainName)
 
     if (wallet.address == await ensRegistryInstance.owner(ensNode)) return ensNode
