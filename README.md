@@ -87,6 +87,10 @@ If you use Typescript, you may need to add `"resolveJsonModule": true` in your `
 
 Then use a client library to attach to an instance or deploy your own:
 
+### Golang
+
+Golang bindings for smart-contracts can be generated using `scripts/generate-contract-bindings.sh`. You will need the go-ethereum [`abigen`](https://github.com/ethereum/go-ethereum/tree/master/cmd/abigen).
+
 ### JavaScript (ethers.js)
 
 ```javascript
