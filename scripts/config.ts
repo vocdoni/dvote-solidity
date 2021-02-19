@@ -12,6 +12,7 @@ type Config = {
     features: {
         ensRegistry: boolean
         ensResolver: boolean
+        entityResolver: boolean
         processes: boolean
         namespaces: boolean
         proofs: {
@@ -26,6 +27,8 @@ type Config = {
             ensRegistry?: string
             /** The address of the ENS public resolver contract. If empty or 0x0, a new one has to be deployed. */
             ensPublicResolver: string
+            /** The address of the entity resolver contract. If empty or 0x0, a new one has to be deployed. */
+            entityResolver: string
             /** The current address of the processes contract. If empty, a version without a predecessor has to be deployed. */
             processes: string
             /** The current address of the namespaces contract. If set, the current version will be kept and the process contract will be deployed with this address */
@@ -73,6 +76,7 @@ export function getConfig(): Config {
     assert(typeof config.vocdoni.environment == "string", "config.yaml > vocdoni.environment should be a string")
     assert(typeof config.features.ensRegistry == "boolean", "config.yaml > features.ensRegistry should be a boolean")
     assert(typeof config.features.ensResolver == "boolean", "config.yaml > features.ensResolver should be a boolean")
+    assert(typeof config.features.entityResolver == "boolean", "config.yaml > features.entityResolver should be a boolean")
     assert(typeof config.features.processes == "boolean", "config.yaml > features.processes should be a boolean")
     assert(typeof config.features.namespaces == "boolean", "config.yaml > features.namespaces should be a boolean")
     assert(typeof config.features.proofs == "object", "config.yaml > features.proofs should be an object")
@@ -81,6 +85,7 @@ export function getConfig(): Config {
     assert(typeof config.contracts.current == "object", "config.yaml > contracts.current should be an object")
     assert(typeof config.contracts.current.ensRegistry == "string", "config.yaml > contracts.current.ensRegistry should be a string")
     assert(typeof config.contracts.current.ensPublicResolver == "string", "config.yaml > contracts.current.ensPublicResolver should be a string")
+    assert(typeof config.contracts.current.entityResolver == "string", "config.yaml > contracts.current.entityResolver should be a string")
     assert(typeof config.contracts.current.processes == "string", "config.yaml > contracts.current.processes should be a string")
     assert(typeof config.contracts.current.namespaces == "string", "config.yaml > contracts.current.namespaces should be a string")
     assert(typeof config.contracts.current.proofs == "object", "config.yaml > contracts.current.proofs should be an object")

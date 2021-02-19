@@ -18,11 +18,21 @@ const config = getConfig()
 const transactionOptions = {} as any
 let rpcParams = undefined
 
+// IMPORTANT INFORMATION
+// On POA Network based chains there is not an official ENS deployment. The EntityResolver contract is used as the PublicResolver.
+// On most of the Ethereum official networks (Mainnet, Goerli ...) there is an official ENS deployment. The official PublicResolver is used
+// as the general resolver but the EntityResolver is used as a key-value for storing text beucause only the owner of a resolver can set text records,
+// and unless you have the owner address of the PublicResolver there is not way to set the mentioned text record.
+
 // Overriding the gas price for xDAI and Sokol networks
 if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol") {
     transactionOptions.gasPrice = utils.parseUnits("1", "gwei")
     rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: "0x0000000000000000000000000000000000000000" }
 }
+
+// default registry and resolver for official ENS deployments
+const ENSDefaultRegistry = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+const ENSDefaultPublicResolver = "0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329"
 
 const provider = new JsonRpcProvider(config.ethereum.endpoint, rpcParams)
 const wallet = config.wallet.privateKey ?
@@ -32,6 +42,9 @@ const wallet = config.wallet.privateKey ?
 // MAIN CODE
 
 async function main() {
+    if (config.ethereum.networkId == "mainnet") {
+        console.log("\n CAUTION! YOU ARE USING ETHEREUM MAINNET! \n")
+    }
     await provider.detectNetwork()
 
     // Deploy
@@ -47,7 +60,7 @@ async function main() {
 }
 
 async function deployEnsContracts() {
-    let ensRegistry: string, ensPublicResolver: string
+    let ensRegistry: string, ensPublicResolver: string, entityResolver: string
 
     const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
 
@@ -70,7 +83,6 @@ async function deployEnsContracts() {
         const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistry, transactionOptions)
         const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
         ensPublicResolver = ensPublicResolverInstance.address
-
         console.log("ENS Public Resolver deployed at", ensPublicResolver)
     }
     else {
@@ -78,15 +90,39 @@ async function deployEnsContracts() {
         console.log("Using the existing ENS Public Resolver at", ensPublicResolver)
     }
 
+    // If Goerli or Mainnet deploy the public resolver as the entity resolver. The entity resolver is just used as a key-value
+    // while the public resolver is used as a global resolver.
+    if (config.ethereum.networkId == "goerli" || config.ethereum.networkId == "mainnet") {
+        ensRegistry = ENSDefaultRegistry
+        ensPublicResolver = ENSDefaultPublicResolver
+        if (config.features.entityResolver) {
+            // Entity resolver
+            const entityResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
+            const entityResolverContract = await entityResolverFactory.deploy(ensRegistry, transactionOptions)
+            const entityResolverInstance = await entityResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
+            entityResolver = entityResolverInstance.address
+
+            console.log("EntityResolver deployed at", entityResolver)
+        }
+        else {
+            entityResolver = config.contracts.current.entityResolver
+            console.log("Using the existing entityResolver at", entityResolver)
+        }
+    } else {
+        console.log("Using the existing publicResolver as entityResolver at", entityResolver)
+        entityResolver = ensPublicResolver
+    }
+
     return {
         ensRegistry,
-        ensPublicResolver
+        ensPublicResolver,
+        entityResolver
     }
 }
 
 async function deployCoreContracts() {
     let processes: string, namespaces: string, erc20Proofs: string
-
+    
     console.log()
     console.log("Core contract deployment")
 
@@ -121,6 +157,9 @@ async function deployCoreContracts() {
     }
 
     if (config.features.processes) {
+        if (config.contracts.current.processes == "") {
+            config.contracts.current.processes = "0x0000000000000000000000000000000000000000"
+        }
         console.log("\nIMPORTANT:\nMake sure that the process contract predecessor is the one you expect:\n" + config.contracts.current.processes + "\n")
         await new Promise(resolve => setTimeout(resolve, 10 * 1500))
 
@@ -137,7 +176,6 @@ async function deployCoreContracts() {
     }
     else {
         processes = config.contracts.current.processes
-
         console.log("Using the existing processes at", processes)
     }
 
@@ -150,13 +188,21 @@ async function deployCoreContracts() {
     }
 }
 
-async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPublicResolver: string, processes: string, namespaces: string, proofs: { erc20Proofs: string } }) {
+async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPublicResolver: string, entityResolver: string, processes: string, namespaces: string, proofs: { erc20Proofs: string } }) {
     if (!config.features.setDomains) return
     else if (provider.network.ensAddress != "0x0000000000000000000000000000000000000000"
         || !contractAddresses.ensRegistry) {
         console.log("NOTE: the deployed contracts will not be visible until their ENS records are updated")
         console.log("See https://app.ens.domains/search/vocdoni")
         return
+    }
+
+    let entityResolverFactory
+    let entityResolverInstance
+    // if goerli or mainnet use public ENS
+    if (config.ethereum.networkId == "goerli" || config.ethereum.networkId == "mainnet") {
+        entityResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
+        entityResolverInstance = entityResolverFactory.attach(contractAddresses.entityResolver) as Contract & EnsPublicResolverContractMethods
     }
 
     const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
@@ -169,17 +215,25 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     console.log("Domain owner")
 
     const rootNode = namehash.hash("") // 0x0000000000000000000000000000000000000000000000000000000000000000
-
-    // Check that the root is registered correctly
-    if ((await ensRegistryInstance.owner(rootNode)) != wallet.address) {
-        const tx = await ensRegistryInstance.setOwner(rootNode, wallet.address)
-        await tx.wait()
+    
+    let vocdoniEthNode: string
+    // if sokol or xdai set registry owner and register .eth TLD and vocdoni.eth domain
+    if (config.ethereum.networkId != "goerli" && config.ethereum.networkId != "mainnet") {
+        // Check that the root is registered correctly
+        if ((await ensRegistryInstance.owner(rootNode)) != wallet.address) {
+            const tx = await ensRegistryInstance.setOwner(rootNode, wallet.address)
+            await tx.wait()
+        }
+        const rootOwner = await ensRegistryInstance.owner(rootNode)
+        console.log("Root owner", rootOwner)
+        const ethNode = await registerEnsNodeOwner("eth", "", rootNode, ensRegistryInstance)
+        vocdoniEthNode = await registerEnsNodeOwner("vocdoni", "eth", ethNode, ensRegistryInstance)
+    } else {
+        // show vocdoni.eth owner 
+        vocdoniEthNode = namehash.hash("vocdoni.eth")
+        const rootOwner = await ensRegistryInstance.owner(rootNode)
+        console.log("Root owner", rootOwner)
     }
-    const rootOwner = await ensRegistryInstance.owner(rootNode)
-    console.log("Root owner", rootOwner)
-
-    const ethNode = await registerEnsNodeOwner("eth", "", rootNode, ensRegistryInstance)
-    const vocdoniEthNode = await registerEnsNodeOwner("vocdoni", "eth", ethNode, ensRegistryInstance)
 
     let entitiesVocdoniEthNode: string, processesVocdoniEthNode: string, namespacesVocdoniEthNode: string, proofsVocdoniEthNode: string, erc20ProofsVocdoniEthNode: string
 
@@ -234,9 +288,16 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     console.log("Domain addresses")
 
     // set the addresses
-    if (contractAddresses.ensPublicResolver != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.ensPublicResolver, transactionOptions)
-        await tx.wait()
+    if (config.ethereum.networkId == "goerli" || config.ethereum.networkId == "mainnet") {
+        if (contractAddresses.ensPublicResolver != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
+            tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.entityResolver, transactionOptions)
+            await tx.wait()
+        }
+    } else {
+        if (contractAddresses.ensPublicResolver != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
+            tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.ensPublicResolver, transactionOptions)
+            await tx.wait()
+        }
     }
     if (contractAddresses.processes != await ensPublicResolverInstance["addr(bytes32)"](processesVocdoniEthNode)) {
         tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](processesVocdoniEthNode, contractAddresses.processes, transactionOptions)
@@ -274,12 +335,25 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     if (config.vocdoni.environment != "prod") {
         uri = "https://bootnodes.vocdoni.net/gateways." + config.vocdoni.environment + ".json"
     }
-    if (uri != await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY)) {
-        tx = await ensPublicResolverInstance.setText(entityId, BOOTNODES_KEY, uri, transactionOptions)
-        await tx.wait()
+     // if goerli or mainnet use public ENS and set text to the entityResolver contract
+    if (config.ethereum.networkId == "goerli" || config.ethereum.networkId == "mainnet") {
+        if (uri != await entityResolverInstance.text(entityId, BOOTNODES_KEY)) {
+            tx = await entityResolverInstance.setText(entityId, BOOTNODES_KEY, uri, transactionOptions)
+            await tx.wait()
+        }
+    } else {
+        // if sokol or xdai use the public resolver as the entityResolver
+        if (uri != await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY)) {
+            tx = await ensPublicResolverInstance.setText(entityId, BOOTNODES_KEY, uri, transactionOptions)
+            await tx.wait()
+        }
     }
 
-    console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY))
+    if (config.ethereum.networkId == "goerli" || config.ethereum.networkId == "mainnet") {
+        console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await entityResolverInstance.text(entityId, BOOTNODES_KEY))
+    } else {
+        console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY))
+    }
 }
 
 /** Creates a (sub) domain within parentNode and returns the registered node hash */

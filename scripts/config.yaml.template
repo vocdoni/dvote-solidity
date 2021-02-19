@@ -5,6 +5,7 @@ vocdoni:
 features:
   ensRegistry: false  # which contracts to deploy
   ensResolver: false
+  entityResolver: false
   processes: true
   namespaces: true
   proofs:
@@ -39,6 +40,15 @@ contracts:
     # namespaces: "0x751D168E1b9c5CCA87f295DE14203CA1BBE0951C"
     # proofs:
     #   erc20: "0x8bc59598b6b92902906FD8AA249b30931A2cF752"
+
+    # ## Goerli dev
+    # ensRegistry: "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+    # ensPublicResolver: "0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329"
+    # entityResolver: "0x99024a2fA351C3B1f6AA069F120329d980Fc95Ed"
+    # processes: "0xE5bd57D816f750F635d26A86762C7397f42bBfE4"
+    # namespaces: "0x6995bA456A78952d7EB5F68E38C7ed568A17E061"
+    # proofs:
+    #   erc20: "0xf7F1C393ba4955499c49a94dD818F6F21Eb439C4"
 ethereum:
   networkId: xdai
   chainId: 100
