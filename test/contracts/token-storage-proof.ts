@@ -140,6 +140,8 @@ describe("StorageProofTest contract", () => {
         contractInstance = await new TokenStorageProofBuilder().build()
 
         expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
+        expect(await contractInstance.tokenCount()).to.eq(0)
+        expect(() => contractInstance.tokenAddresses(0)).to.throw
 
         const blockNumber = await contractInstance.provider.getBlockNumber()
         await contractInstance.connect(deployAccount.wallet).registerToken(
@@ -152,5 +154,7 @@ describe("StorageProofTest contract", () => {
         )
 
         expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(true)
+        expect(await contractInstance.tokenCount()).to.eq(1)
+        expect(await contractInstance.tokenAddresses(0)).to.deep.eq(dummyTokenInstance.address)
     })
 })
