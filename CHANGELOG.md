@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 0.15.0
+
+- Allowing to retrieve and count registered ERC20 tokens
+
 ## 0.14.0
 
 - Adding the chainID as a process contract parameter, so that process ID's do not collide if multiple chains host the same entity
