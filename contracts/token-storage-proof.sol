@@ -23,7 +23,8 @@ contract TokenStorageProof is ITokenStorageProof {
     }
 
     mapping(address => ERC20Token) public tokens;
-    address[] public tokenList;
+    address[] public tokenAddresses;
+    uint32 public tokenCount = 0;
 
     function isRegistered(address ercTokenAddress) public view override returns (bool) {
         require(ercTokenAddress != address(0x0), "Invalid address");
@@ -83,7 +84,8 @@ contract TokenStorageProof is ITokenStorageProof {
         ERC20Token storage newToken = tokens[tokenAddress];
         newToken.registered = true;
         newToken.balanceMappingPosition = balanceMappingPosition;
-        tokenList.push(tokenAddress);
+        tokenAddresses.push(tokenAddress);
+        tokenCount = tokenCount + 1;
 
         emit TokenRegistered(tokenAddress, msg.sender);
     }
