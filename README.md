@@ -616,20 +616,23 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
 
 ### Goerli
 
-- ENS Resolver:
-  - Address: `0xA5d5A4a1636F358a4E95119EB8E59455bCf368C7`
-  - Domain: `entities.vocdoni.eth`
-- Process:
-  - Address: `0x9dB7d8632DD1BCea307eB3868FC1434d079242F9`
-  - Domain: `processes.vocdoni.eth`
-  - Predecessor: `0x29270b266B097990423c2E8deFE36c5dC2fD3420`
-- Token Storage Proofs:
-  - ERC20
-    - Address: `0x30963184f2Bcc3a59c1365231eBbbDA8B3B92782`
-    - Domain: `erc20.proofs.vocdoni.eth`
-- Namespace:
-  - Address: `0x4a82b6ca00D36319eb2c2A56aB097912eb25A113`
-  - Domain: `namespaces.vocdoni.eth`
+- ENS registry:
+  - Address: `0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`
+- ENS public resolver:
+  - Address: `0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329`
+- Domains:
+  - Staging
+    - `entities.stg.vocdoni.eth`
+      - `0x29D9D38409A8475df3cBc6Ec131205f8BD23b96f`
+    - `processes.stg.vocdoni.eth`
+    - `namespaces.stg.vocdoni.eth`
+    - `erc20.proofs.stg.vocdoni.eth`
+  - Development
+    - `entities.dev.vocdoni.eth`
+      - `0x99024a2fA351C3B1f6AA069F120329d980Fc95Ed`
+    - `processes.dev.vocdoni.eth`
+    - `namespaces.dev.vocdoni.eth`
+    - `erc20.proofs.dev.vocdoni.eth`
 
 ## Development
 

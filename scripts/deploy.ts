@@ -3,7 +3,13 @@ import { keccak256 } from "web3-utils"
 import { ensHashAddress, EnsPublicResolverContractMethods, EnsRegistryContractMethods, NamespaceContractMethods, ProcessContractMethods, TokenStorageProofContractMethods } from "../lib"
 import { getConfig } from "./config"
 import * as namehash from "eth-ens-namehash"
+import * as readline from 'readline'
+
 const { JsonRpcProvider } = providers
+
+// Global ENS registry and resolver for official ENS deployments (mainnet, goerli)
+const ENS_GLOBAL_REGISTRY = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+const ENS_GLOBAL_PUBLIC_RESOLVER = "0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329"
 
 const { abi: ENSRegistryAbi, bytecode: ENSRegistryBytecode } = require("../build/ens-registry.json")
 const { abi: ENSPublicResolverAbi, bytecode: ENSPublicResolverBytecode } = require("../build/ens-public-resolver.json")
@@ -18,69 +24,137 @@ const config = getConfig()
 const transactionOptions = {} as any
 let rpcParams = undefined
 
+// IMPORTANT INFORMATION
+// On POA Network based chains there is not an official ENS deployment. The EntityResolver contract is used as the PublicResolver.
+// On most of the Ethereum official networks (Mainnet, Goerli ...) there is an official ENS deployment. The official PublicResolver is used
+// as the general resolver but the EntityResolver is used as a key-value for storing text beucause only the owner of a resolver can set text records,
+// and unless you have the owner address of the PublicResolver there is not way to set the mentioned text record.
+
 // Overriding the gas price for xDAI and Sokol networks
-if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol") {
+if (config.ethereum.networkId == "xdai") {
     transactionOptions.gasPrice = utils.parseUnits("1", "gwei")
-    rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: "0x0000000000000000000000000000000000000000" }
+    rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: config.contracts.xdai.ensRegistry }
+}
+else if (config.ethereum.networkId == "sokol") {
+    transactionOptions.gasPrice = utils.parseUnits("1", "gwei")
+    rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: config.contracts.sokol.ensRegistry }
+}
+else {
+    rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: ENS_GLOBAL_REGISTRY }
 }
 
-const provider = new JsonRpcProvider(config.ethereum.endpoint, rpcParams)
+const provider = new JsonRpcProvider(config.ethereum.web3Endpoint, rpcParams)
 const wallet = config.wallet.privateKey ?
     new Wallet(config.wallet.privateKey).connect(provider) :
     Wallet.fromMnemonic(config.wallet.mnemonic, config.wallet.hdPath).connect(provider)
 
+const ENS_DOMAIN_SUFFIX = config.vocdoni.environment == "prod" ?
+    ".vocdoni.eth" :
+    `.${config.vocdoni.environment}.vocdoni.eth`
+
 // MAIN CODE
 
 async function main() {
+    if (config.ethereum.networkId == "mainnet") {
+        console.log("\n⚠️  WARNING: YOU ARE USING ETHEREUM MAINNET\n")
+    }
     await provider.detectNetwork()
 
-    // Deploy
-    console.log("Deploying from", wallet.address, "\n")
+    console.log("\nℹ️  Deployment summary:")
+    console.log("- Vocdoni environment", config.vocdoni.environment)
+    console.log("- Network ID", config.ethereum.networkId)
+    console.log("- Chain ID", config.ethereum.chainId)
+    console.log("- Web3 endpoint", config.ethereum.web3Endpoint)
+    console.log("- Deploying from", wallet.address)
+    if (!await confirmStep("\nDo you want to continue?")) process.exit(1)
 
+    // Deploy
     const ensAddrs = await deployEnsContracts()
     const coreAddrs = await deployCoreContracts()
 
+    const currentAddresses = {
+        processes: await provider.resolveName("processes" + ENS_DOMAIN_SUFFIX)
+    }
+
     await setEnsDomainNames({ ...ensAddrs, ...coreAddrs })
-    await activateSuccessors({ ...ensAddrs, ...coreAddrs })
+    await activateSuccessors({ processes: { old: currentAddresses.processes, new: coreAddrs.processes } })
 
     console.log("\nDone")
 }
 
 async function deployEnsContracts() {
-    let ensRegistry: string, ensPublicResolver: string
+    let ensRegistry: string, ensPublicResolver: string, entityResolver: string
+    console.log()
+    console.log("ENS contracts")
 
-    const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
+    // Deploy the ENS registry and resolver (if relevant)
+    if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol") {
+        const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
 
-    if (config.features.ensRegistry) {
-        const ensRegistryContract = await ensRegistryFactory.deploy(transactionOptions)
-        const ensRegistryInstance = await ensRegistryContract.deployed() as Contract & EnsRegistryContractMethods
-        ensRegistry = ensRegistryInstance.address
+        if (config.features.ensRegistry) {
+            const ensRegistryContract = await ensRegistryFactory.deploy(transactionOptions)
+            const ensRegistryInstance = await ensRegistryContract.deployed() as Contract & EnsRegistryContractMethods
+            ensRegistry = ensRegistryInstance.address
 
-        console.log("ENS Registry deployed at", ensRegistry)
+            console.log("✅ ENS Registry deployed at", ensRegistry)
+        }
+        else {
+            ensRegistry = config.contracts[config.ethereum.networkId].ensRegistry
+
+            console.log("ℹ️  Using the existing ENS registry", ensRegistry)
+        }
+
+        if (config.features.ensResolver) {
+            // ENS Public resolver
+            const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
+            const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistry, transactionOptions)
+            const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
+            ensPublicResolver = ensPublicResolverInstance.address
+            console.log("✅ ENS Public Resolver deployed at", ensPublicResolver)
+        }
+        else {
+            ensPublicResolver = config.contracts[config.ethereum.networkId].ensResolver
+
+            console.log("ℹ️  Using the existing ENS Public Resolver at", ensPublicResolver)
+        }
     }
     else {
-        ensRegistry = config.contracts.current.ensRegistry
-
-        console.log("Using the existing ENS registry", ensRegistry)
+        // Mainnet / Goerli: Simply use the global contracts
+        ensRegistry = ENS_GLOBAL_REGISTRY
+        ensPublicResolver = ENS_GLOBAL_PUBLIC_RESOLVER
     }
 
-    if (config.features.ensResolver) {
-        // ENS Public resolver
-        const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
-        const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistry, transactionOptions)
-        const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
-        ensPublicResolver = ensPublicResolverInstance.address
+    // If Goerli or Mainnet deploy the public resolver as the entity resolver. The entity resolver is just used as a key-value
+    // while the public resolver is used as a global resolver.
+    if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol") {
+        // Simply use the resolver already available
+        entityResolver = ensPublicResolver
 
-        console.log("ENS Public Resolver deployed at", ensPublicResolver)
+        console.log("ℹ️  Using the existing ensPublicResolver as entityResolver at", entityResolver)
     }
     else {
-        ensPublicResolver = config.contracts.current.ensPublicResolver
-        console.log("Using the existing ENS Public Resolver at", ensPublicResolver)
+        // Mainnet / Goerli: Deploy if needed
+        if (config.features.entityResolver) {
+            // Entity resolver
+            const entityResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
+            const entityResolverContract = await entityResolverFactory.deploy(ensRegistry, transactionOptions)
+            const entityResolverInstance = await entityResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
+            entityResolver = entityResolverInstance.address
+
+            console.log("✅ Entity Resolver deployed at", entityResolver)
+        }
+        else {
+            // Using the current domain address
+            entityResolver = await provider.resolveName("entities" + ENS_DOMAIN_SUFFIX)
+
+            console.log("ℹ️  Using the existing entityResolver at", entityResolver)
+        }
     }
 
     return {
         ensRegistry,
-        ensPublicResolver
+        ensPublicResolver,
+        entityResolver
     }
 }
 
@@ -91,18 +165,21 @@ async function deployCoreContracts() {
     console.log("Core contract deployment")
 
     if (config.features.proofs.erc20) {
+        console.warn("\n⚠️  IMPORTANT:\nBy deploying a new ERC20 storage proofs contract, the currently registered tokens may become unavailable.")
+        if (!await confirmStep("Do you want to continue?")) process.exit(1)
+
         // ERC Storage Proof
         const tokenStorageProofFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofBytecode, wallet)
         const tokenStorageProofContract = await tokenStorageProofFactory.deploy(transactionOptions)
         const tokenStorageProofInstance = await tokenStorageProofContract.deployed() as Contract & TokenStorageProofContractMethods
         erc20Proofs = tokenStorageProofInstance.address
 
-        console.log("ERC20 Token Storage Proof deployed at", erc20Proofs)
+        console.log("✅ ERC20 Token Storage Proof deployed at", erc20Proofs)
     }
     else {
-        erc20Proofs = config.contracts.current.proofs.erc20
+        erc20Proofs = await provider.resolveName("erc20.proofs" + ENS_DOMAIN_SUFFIX)
 
-        console.log("Using the existing ERC20 storage proofs at", erc20Proofs)
+        console.log("ℹ️  Using the existing ERC20 storage proofs at", erc20Proofs)
     }
 
     if (config.features.namespaces) {
@@ -112,33 +189,47 @@ async function deployCoreContracts() {
         const namespaceInstance = await namespaceContract.deployed() as Contract & NamespaceContractMethods
         namespaces = namespaceInstance.address
 
-        console.log("Namespace deployed at", namespaces)
+        console.log("✅ Namespace deployed at", namespaces)
     }
     else {
-        namespaces = config.contracts.current.namespaces
+        namespaces = await provider.resolveName("namespaces" + ENS_DOMAIN_SUFFIX)
 
-        console.log("Using the existing namespaces at", namespaces)
+        console.log("ℹ️  Using the existing namespaces at", namespaces)
     }
 
-    if (config.features.processes) {
-        console.log("\nIMPORTANT:\nMake sure that the process contract predecessor is the one you expect:\n" + config.contracts.current.processes + "\n")
-        await new Promise(resolve => setTimeout(resolve, 10 * 1500))
+    const someProofsContractchanged = config.features.proofs.erc20
+    let currentProcessesContractAddress = await provider.resolveName("processes" + ENS_DOMAIN_SUFFIX)
+    if (config.features.processes || someProofsContractchanged) {
+        let predecessorContractAddress = currentProcessesContractAddress
+        if (predecessorContractAddress == "" || predecessorContractAddress == "0x0") {
+            predecessorContractAddress = "0x0000000000000000000000000000000000000000"
+        }
+        if (predecessorContractAddress == "0x0000000000000000000000000000000000000000") {
+            console.warn("\n⚠️  IMPORTANT: You are about to deploy a root processes contract with no predecessor.")
+        }
+        else if (someProofsContractchanged) {
+            console.warn("\n⚠️  IMPORTANT: A new processes instance will be deployed because a proofs contract has just been deployed.")
+            console.warn("The new processes instance will have " + predecessorContractAddress + " as the predecessor.")
+        }
+        else {
+            console.warn("\n⚠️  IMPORTANT: You are about to deploy a processes contract with " + predecessorContractAddress + " as the predecessor.")
+        }
+        if (!await confirmStep("Do you want to continue?")) process.exit(1)
 
         // Process
         const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
-        const processContract = await processFactory.deploy(config.contracts.current.processes, namespaces, erc20Proofs, config.ethereum.chainId, transactionOptions)
+        const processContract = await processFactory.deploy(predecessorContractAddress, namespaces, erc20Proofs, config.ethereum.chainId, transactionOptions)
         const processInstance = await processContract.deployed() as Contract & ProcessContractMethods
         processes = processInstance.address
 
-        console.log("Process deployed at", processInstance.address)
-        console.log(" - Predecessor:", config.contracts.current.processes)
-        console.log(" - ERC20 Storage Proofs:", erc20Proofs)
-        console.log(" - Namespace:", namespaces)
+        console.log("✅ Process deployed at", processInstance.address)
+        console.log("  - Predecessor:", predecessorContractAddress)
+        console.log("  - Namespace:", namespaces)
+        console.log("  - ERC20 Storage Proofs:", erc20Proofs)
     }
     else {
-        processes = config.contracts.current.processes
-
-        console.log("Using the existing processes at", processes)
+        processes = currentProcessesContractAddress
+        console.log("ℹ️  Using the existing processes at", processes)
     }
 
     return {
@@ -150,9 +241,9 @@ async function deployCoreContracts() {
     }
 }
 
-async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPublicResolver: string, processes: string, namespaces: string, proofs: { erc20Proofs: string } }) {
-    if (!config.features.setDomains) return
-    else if (provider.network.ensAddress != "0x0000000000000000000000000000000000000000"
+async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPublicResolver: string, entityResolver: string, processes: string, namespaces: string, proofs: { erc20Proofs: string } }) {
+    if (!config.features.setDomains) return console.log("Skipping domain registration")
+    else if (provider.network.ensAddress == "0x0000000000000000000000000000000000000000"
         || !contractAddresses.ensRegistry) {
         console.log("NOTE: the deployed contracts will not be visible until their ENS records are updated")
         console.log("See https://app.ens.domains/search/vocdoni")
@@ -162,24 +253,38 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
     const ensRegistryInstance = ensRegistryFactory.attach(contractAddresses.ensRegistry) as Contract & EnsRegistryContractMethods
 
-    const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
-    const ensPublicResolverInstance = ensPublicResolverFactory.attach(contractAddresses.ensPublicResolver) as Contract & EnsPublicResolverContractMethods
+    const ensResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
+    const ensPublicResolverInstance = ensResolverFactory.attach(contractAddresses.ensPublicResolver) as Contract & EnsPublicResolverContractMethods
+
+    const entityResolverInstance = config.ethereum.networkId != "xdai" && config.ethereum.networkId != "sokol" ?
+        // use our own entity resolver
+        ensResolverFactory.attach(contractAddresses.entityResolver) as Contract & EnsPublicResolverContractMethods :
+        // reuse the global resolver  we deployed
+        ensResolverFactory.attach(contractAddresses.ensPublicResolver) as Contract & EnsPublicResolverContractMethods
 
     console.log()
     console.log("Domain owner")
 
     const rootNode = namehash.hash("") // 0x0000000000000000000000000000000000000000000000000000000000000000
 
-    // Check that the root is registered correctly
-    if ((await ensRegistryInstance.owner(rootNode)) != wallet.address) {
-        const tx = await ensRegistryInstance.setOwner(rootNode, wallet.address)
-        await tx.wait()
+    let vocdoniEthNode: string
+    // if sokol or xdai set registry owner and register .eth TLD and vocdoni.eth domain
+    if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol") {
+        // Check that the root is registered correctly
+        if ((await ensRegistryInstance.owner(rootNode)) != wallet.address) {
+            const tx = await ensRegistryInstance.setOwner(rootNode, wallet.address)
+            await tx.wait()
+        }
+        const rootOwner = await ensRegistryInstance.owner(rootNode)
+        console.log("Root owner", rootOwner)
+        const ethNode = await registerEnsNodeOwner("eth", "", rootNode, ensRegistryInstance)
+        vocdoniEthNode = await registerEnsNodeOwner("vocdoni", "eth", ethNode, ensRegistryInstance)
+    } else {
+        // show vocdoni.eth owner 
+        vocdoniEthNode = namehash.hash("vocdoni.eth")
+        const rootOwner = await ensRegistryInstance.owner(rootNode)
+        console.log("Root owner", rootOwner)
     }
-    const rootOwner = await ensRegistryInstance.owner(rootNode)
-    console.log("Root owner", rootOwner)
-
-    const ethNode = await registerEnsNodeOwner("eth", "", rootNode, ensRegistryInstance)
-    const vocdoniEthNode = await registerEnsNodeOwner("vocdoni", "eth", ethNode, ensRegistryInstance)
 
     let entitiesVocdoniEthNode: string, processesVocdoniEthNode: string, namespacesVocdoniEthNode: string, proofsVocdoniEthNode: string, erc20ProofsVocdoniEthNode: string
 
@@ -234,8 +339,11 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     console.log("Domain addresses")
 
     // set the addresses
-    if (contractAddresses.ensPublicResolver != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.ensPublicResolver, transactionOptions)
+    if (contractAddresses.entityResolver != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
+        console.log("\n⚠️  WARNING: By updating 'entities" + ENS_DOMAIN_SUFFIX + "', the existing entities will become unreachable.")
+        if (!await confirmStep("Do you REALLY want to continue?")) process.exit(1)
+
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.entityResolver, transactionOptions)
         await tx.wait()
     }
     if (contractAddresses.processes != await ensPublicResolverInstance["addr(bytes32)"](processesVocdoniEthNode)) {
@@ -251,18 +359,10 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
         await tx.wait()
     }
 
-    if (config.vocdoni.environment == "prod") {
-        console.log("'entities.vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode))
-        console.log("'processes.vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](processesVocdoniEthNode))
-        console.log("'erc20.proofs.vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](erc20ProofsVocdoniEthNode))
-        console.log("'namespaces.vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](namespacesVocdoniEthNode))
-    } else {
-        const e = config.vocdoni.environment
-        console.log("'entities." + e + ".vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode))
-        console.log("'processes." + e + ".vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](processesVocdoniEthNode))
-        console.log("'erc20.proofs." + e + ".vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](erc20ProofsVocdoniEthNode))
-        console.log("'namespaces." + e + ".vocdoni.eth' address", await ensPublicResolverInstance["addr(bytes32)"](namespacesVocdoniEthNode))
-    }
+    console.log("'entities" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode))
+    console.log("'processes" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](processesVocdoniEthNode))
+    console.log("'erc20.proofs" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](erc20ProofsVocdoniEthNode))
+    console.log("'namespaces" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](namespacesVocdoniEthNode))
 
     console.log()
     console.log("Bootnode key")
@@ -274,12 +374,14 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     if (config.vocdoni.environment != "prod") {
         uri = "https://bootnodes.vocdoni.net/gateways." + config.vocdoni.environment + ".json"
     }
-    if (uri != await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY)) {
-        tx = await ensPublicResolverInstance.setText(entityId, BOOTNODES_KEY, uri, transactionOptions)
+
+    // Set the bootnode text field on the entity resolver
+    if (uri != await entityResolverInstance.text(entityId, BOOTNODES_KEY)) {
+        tx = await entityResolverInstance.setText(entityId, BOOTNODES_KEY, uri, transactionOptions)
         await tx.wait()
     }
 
-    console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await ensPublicResolverInstance.text(entityId, BOOTNODES_KEY))
+    console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await entityResolverInstance.text(entityId, BOOTNODES_KEY))
 }
 
 /** Creates a (sub) domain within parentNode and returns the registered node hash */
@@ -303,13 +405,37 @@ async function registerEnsNodeOwner(name: string, parentDomain: string, parentNo
 }
 
 /** Connect to the old contract, deactivate it and activate the new one */
-async function activateSuccessors(contractAddresses: { ensRegistry: string, ensPublicResolver: string, processes: string, namespaces: string, proofs: { erc20Proofs: string } }) {
-    if (config.features.processes && config.contracts.current.processes != "0x0000000000000000000000000000000000000000") {
-        console.log("Activating the process contract successor from"), config.contracts.current.processes
-        const predecessor = new Contract(config.contracts.current.processes, VotingProcessAbi, wallet) as Contract & ProcessContractMethods
-        const tx = await predecessor.activateSuccessor(contractAddresses.processes)
-        await tx.wait()
+async function activateSuccessors({ processes }: { processes: { old: string, new: string } }) {
+    console.log()
+    console.log("Successor activation")
+
+    if (!config.features.setDomains) {
+        console.error("Cannot activate a processes contract successor if the ENS records will not be updated. Otherwise, the new contract would be unreachable and the current one would be locked.")
+        return
     }
+    else if (!processes.old || processes.old == "0x0" || processes.old == "0x0000000000000000000000000000000000000000") return
+    else if (processes.old == processes.new) return console.log("No need to activate a successor processes contract (unchanged)")
+
+    console.log("ℹ️  Activating the process contract successor from", processes.old)
+    const predecessor = new Contract(processes.old, VotingProcessAbi, wallet) as Contract & ProcessContractMethods
+    const tx = await predecessor.activateSuccessor(processes.new)
+    await tx.wait()
+}
+
+// HELPERS
+
+function confirmStep(question: string): Promise<boolean> {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+        rl.question(question + " (y/N) ", (answer) => {
+            rl.close()
+            resolve(answer == "y" || answer == "Y" || answer == "Yes" || answer == "yes")
+        })
+    })
 }
 
 
