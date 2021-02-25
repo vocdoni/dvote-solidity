@@ -66,7 +66,7 @@ const configSchema = yup.object({
     }),
     ethereum: yup.object({
         /** The Ethereum network ID being used */
-        networkId: yup.string().oneOf(["mainnet", "goerli", "xdai", "sokol"]).required(),
+        networkId: yup.string().oneOf(["mainnet", "goerli", "xdai", "sokol", "unknown"]).required(),
         /** The Ethereum chain ID being used */
         chainId: yup.number().min(0).required(),
         /** The Web3 endpoint to use for deploying the contracts */

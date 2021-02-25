@@ -25,6 +25,8 @@ ethereum:
   # chainId: 77
   # networkId: goerli
   # chainId: 5
+  # networkId: unknown
+  # chainId: 31337
   web3Endpoint: https://dai.poa.network
   # web3Endpoint: https://sokol.poa.network
   # web3Endpoint: http://127.0.0.1:8545
