@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "fs"
 import * as YAML from 'yaml'
-import yup from "yup"
+import * as yup from "yup"
 
 const CONFIG_PATH = __dirname + "/config.yaml"
 

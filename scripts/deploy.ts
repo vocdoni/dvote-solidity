@@ -3,6 +3,7 @@ import { keccak256 } from "web3-utils"
 import { ensHashAddress, EnsPublicResolverContractMethods, EnsRegistryContractMethods, NamespaceContractMethods, ProcessContractMethods, TokenStorageProofContractMethods } from "../lib"
 import { getConfig } from "./config"
 import * as namehash from "eth-ens-namehash"
+import * as readline from 'readline'
 
 const { JsonRpcProvider } = providers
 
@@ -52,7 +53,7 @@ const ENS_DOMAIN_SUFFIX = config.vocdoni.environment == "prod" ?
 
 async function main() {
     if (config.ethereum.networkId == "mainnet") {
-        console.log("\n CAUTION! YOU ARE USING ETHEREUM MAINNET! \n")
+        console.log("\nWARNING: YOU ARE USING ETHEREUM MAINNET\n")
     }
     await provider.detectNetwork()
 
@@ -153,6 +154,9 @@ async function deployCoreContracts() {
     console.log("Core contract deployment")
 
     if (config.features.proofs.erc20) {
+        console.warn("\nIMPORTANT:\nBy deploying a new ERC20 storage proofs contract, the currently registered tokens may become unavailable.")
+        if (!await confirmStep("Do you want to continue?")) process.exit(1)
+
         // ERC Storage Proof
         const tokenStorageProofFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofBytecode, wallet)
         const tokenStorageProofContract = await tokenStorageProofFactory.deploy(transactionOptions)
@@ -189,8 +193,17 @@ async function deployCoreContracts() {
         if (predecessorContractAddress == "" || predecessorContractAddress == "0x0") {
             predecessorContractAddress = "0x0000000000000000000000000000000000000000"
         }
-        console.log("\nIMPORTANT:\nMake sure that the processes contract predecessor is the one you expect:\n" + predecessorContractAddress + "\n")
-        await new Promise(resolve => setTimeout(resolve, 10 * 1500))
+        if (predecessorContractAddress == "0x0000000000000000000000000000000000000000") {
+            console.warn("\nIMPORTANT: You are about to deploy a root processes contract with no predecessor.")
+        }
+        else if (someProofsContractchanged) {
+            console.warn("\nIMPORTANT: A new processes instance will be deployed because a proofs contract has just been deployed.")
+            console.warn("The new processes instance will have " + predecessorContractAddress + " as the predecessor.")
+        }
+        else {
+            console.warn("\nIMPORTANT: You are about to deploy a processes contract with " + predecessorContractAddress + " as the predecessor.")
+        }
+        if (!await confirmStep("Do you want to continue?")) process.exit(1)
 
         // Process
         const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
@@ -390,6 +403,22 @@ async function activateSuccessors({ processes }: { processes: { old: string, new
     const predecessor = new Contract(processes.old, VotingProcessAbi, wallet) as Contract & ProcessContractMethods
     const tx = await predecessor.activateSuccessor(processes.new)
     await tx.wait()
+}
+
+// HELPERS
+
+function confirmStep(question: string): Promise<boolean> {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+        rl.question(question + " (y/N) ", (answer) => {
+            rl.close()
+            resolve(answer == "y" || answer == "Y" || answer == "Yes" || answer == "yes")
+        })
+    })
 }
 
 
