@@ -340,6 +340,9 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
 
     // set the addresses
     if (contractAddresses.entityResolver != await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode)) {
+        console.log("\n⚠️  WARNING: By updating 'entities" + ENS_DOMAIN_SUFFIX + "', the existing entities will become unreachable.")
+        if (!await confirmStep("Do you REALLY want to continue?")) process.exit(1)
+
         tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.entityResolver, transactionOptions)
         await tx.wait()
     }
