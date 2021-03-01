@@ -1,5 +1,5 @@
 import * as EnsRegistry from "./ens-registry.json"
-import * as EnsPublicResolver from "./ens-public-resolver.json"
+import * as EnsPublicResolver from "./ens-resolver.json"
 import * as Process from "./processes.json"
 import * as TokenStorageProof from "./token-storage-proof.json"
 import * as Namespace from "./namespaces.json"

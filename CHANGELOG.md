@@ -5,6 +5,10 @@
 - The process contract is now payable
 - A price can be defined for every process that is created (to prevent spam)
 - The processes contract now has a `withdraw` function, callable by the owner
+- Split the Namespaces contract into Namespaces and Genesis
+  - The Genesis contract acts as a global register of Chains (chain ID, genesis, oracles, validators)
+  - The Namespaces contract acts as a global register where process contracts register themselves
+- The Processes contract has been adapted to the new Namespaces contract
 
 ## 0.15.0
 

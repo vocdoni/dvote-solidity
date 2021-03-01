@@ -4,10 +4,9 @@ pragma solidity >=0.6.0 <0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./base.sol"; // Base contracts (Chained, Owned)
-import "./interfaces.sol"; // Common interface for retro compatibility
+import "./common.sol"; // Common interface for retro compatibility
 import "./lib.sol"; // Helpers
 import "./vendor/openzeppelin/token/ERC20/IERC20.sol";
-
 
 contract Processes is IProcessStore, Chained {
     using SafeUint8 for uint8;
@@ -58,7 +57,7 @@ contract Processes is IProcessStore, Chained {
 
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
-    uint64 chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
+    uint32 chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
     uint256 public processPrice; // Price for creating a voting process
 
     // DATA STRUCTS
@@ -138,8 +137,8 @@ contract Processes is IProcessStore, Chained {
 
     function getEntityProcessCount(address entityAddress)
         public
-        override
         view
+        override
         returns (uint256)
     {
         if (entityCheckpoints[entityAddress].length == 0) {
@@ -153,16 +152,16 @@ contract Processes is IProcessStore, Chained {
         }
 
         return
-            entityCheckpoints[entityAddress][entityCheckpoints[entityAddress]
-                .length - 1]
-                .index + 1;
+            entityCheckpoints[entityAddress][
+                entityCheckpoints[entityAddress].length - 1
+            ].index + 1;
     }
 
     /// @notice Get the next process ID to use for an entity
-    function getNextProcessId(address entityAddress, uint16 namespace)
+    function getNextProcessId(address entityAddress, uint32 namespace)
         public
-        override
         view
+        override
         returns (bytes32)
     {
         // From 0 to N-1, the next index is N
@@ -174,12 +173,17 @@ contract Processes is IProcessStore, Chained {
     function getProcessId(
         address entityAddress,
         uint256 processCountIndex,
-        uint16 namespace,
-        uint64 chainIdNumber
-    ) public override pure returns (bytes32) {
+        uint32 namespace,
+        uint32 chainIdNum
+    ) public pure override returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(entityAddress, processCountIndex, namespace, chainIdNumber)
+                abi.encodePacked(
+                    entityAddress,
+                    processCountIndex,
+                    namespace,
+                    chainIdNum
+                )
             );
     }
 
@@ -191,10 +195,13 @@ contract Processes is IProcessStore, Chained {
         address predecessor,
         address namespace,
         address tokenStorageProof,
-        uint64 chainIdNumber,
+        uint32 chainIdNumber,
         uint256 procPrice
     ) public {
         Chained.setUp(predecessor);
+
+        INamespaceStore nam = INamespaceStore(namespace);
+        nam.register(chainIdNum);
 
         require(ContractSupport.isContract(namespace), "Invalid namespace");
         require(
@@ -219,15 +226,16 @@ contract Processes is IProcessStore, Chained {
     /// @notice Retrieves all the stored fields for the given processId
     function get(bytes32 processId)
         public
-        override
         view
+        override
         returns (
             uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
             address entityAddress,
             string[3] memory metadata_censusRoot_censusUri, // [metadata, censusRoot, censusUri]
             uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
             Status status, // status
-            uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
+            uint8[5]
+                memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
             uint16[3] memory maxTotalCost_costExponent_namespace,
             uint256 evmBlockHeight
         )
@@ -274,8 +282,8 @@ contract Processes is IProcessStore, Chained {
     /// @notice Gets the signature of the process parameters, so that authentication can be performed on the Vochain as well
     function getParamsSignature(bytes32 processId)
         public
-        override
         view
+        override
         returns (bytes32)
     {
         if (processes[processId].entity == address(0x0)) {
@@ -294,8 +302,8 @@ contract Processes is IProcessStore, Chained {
     /// @notice Fetch the results of the given processId, if any
     function getResults(bytes32 processId)
         public
-        override
         view
+        override
         returns (uint32[][] memory tally, uint32 height)
     {
         if (processes[processId].entity == address(0x0)) {
@@ -316,8 +324,8 @@ contract Processes is IProcessStore, Chained {
     /// @notice This allows to know where to send update transactions, after a fork has occurred.
     function getCreationInstance(bytes32 processId)
         public
-        override
         view
+        override
         returns (address)
     {
         if (processes[processId].entity == address(0x0)) {
@@ -450,17 +458,20 @@ contract Processes is IProcessStore, Chained {
         }
 
         // Store the new process
-        bytes32 processId = getProcessId(
-            msg.sender,
-            prevCount,
-            maxTotalCost_costExponent_namespace[2],
-            chainId
-        );
+        bytes32 processId =
+            getProcessId(
+                msg.sender,
+                prevCount,
+                maxTotalCost_costExponent_namespace[2],
+                chainId
+            );
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
         processData.envelopeType = mode_envelopeType_censusOrigin[1];
-        processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
+        processData.censusOrigin = CensusOrigin(
+            mode_envelopeType_censusOrigin[2]
+        );
 
         processData.entity = msg.sender;
         processData.startBlock = startBlock_blockCount[0];
@@ -473,13 +484,17 @@ contract Processes is IProcessStore, Chained {
         processData.status = status;
         // processData.questionIndex = 0;
         processData
-            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
+            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            0
+        ];
         processData
             .maxCount = questionCount_maxCount_maxValue_maxVoteOverwrites[1];
         processData
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
-            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
+            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            3
+        ];
         processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
         processData.costExponent = maxTotalCost_costExponent_namespace[1];
         processData.namespace = maxTotalCost_costExponent_namespace[2];
@@ -539,8 +554,14 @@ contract Processes is IProcessStore, Chained {
         uint256 balance = IERC20(tokenContractAddress).balanceOf(msg.sender);
         require(balance > 0, "Insufficient funds");
 
-        require(bytes(metadata_censusRoot_censusUri[0]).length > 0, "No metadata");
-        require(bytes(metadata_censusRoot_censusUri[1]).length > 0, "No censusRoot");
+        require(
+            bytes(metadata_censusRoot_censusUri[0]).length > 0,
+            "No metadata"
+        );
+        require(
+            bytes(metadata_censusRoot_censusUri[1]).length > 0,
+            "No censusRoot"
+        );
         require(
             questionCount_maxCount_maxValue_maxVoteOverwrites[0] > 0,
             "No questionCount"
@@ -567,12 +588,13 @@ contract Processes is IProcessStore, Chained {
         checkpoint.index = prevCount;
 
         // Store the new process
-        bytes32 processId = getProcessId(
-            tokenContractAddress,
-            prevCount,
-            maxTotalCost_costExponent_namespace[2],
-            chainId
-        );
+        bytes32 processId =
+            getProcessId(
+                tokenContractAddress,
+                prevCount,
+                maxTotalCost_costExponent_namespace[2],
+                chainId
+            );
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
@@ -592,13 +614,17 @@ contract Processes is IProcessStore, Chained {
         processData.status = Status.READY;
         // processData.questionIndex = 0;
         processData
-            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
+            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            0
+        ];
         processData
             .maxCount = questionCount_maxCount_maxValue_maxVoteOverwrites[1];
         processData
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
-            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
+            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            3
+        ];
         processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
         processData.costExponent = maxTotalCost_costExponent_namespace[1];
         processData.namespace = maxTotalCost_costExponent_namespace[2];
@@ -628,8 +654,8 @@ contract Processes is IProcessStore, Chained {
         CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
             origin == CensusOrigin.OFF_CHAIN_TREE ||
-            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-            origin == CensusOrigin.OFF_CHAIN_CA,
+                origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+                origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 
@@ -694,8 +720,8 @@ contract Processes is IProcessStore, Chained {
         CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
             origin == CensusOrigin.OFF_CHAIN_TREE ||
-            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-            origin == CensusOrigin.OFF_CHAIN_CA,
+                origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+                origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 
@@ -754,8 +780,8 @@ contract Processes is IProcessStore, Chained {
         CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
             origin == CensusOrigin.OFF_CHAIN_TREE ||
-            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-            origin == CensusOrigin.OFF_CHAIN_CA,
+                origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+                origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 

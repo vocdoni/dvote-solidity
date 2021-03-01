@@ -12,8 +12,8 @@ interface IProcessStore {
 
     // GET
     function getEntityProcessCount(address entityAddress) external view returns (uint256);
-    function getNextProcessId(address entityAddress, uint16 namespace) external view returns (bytes32);
-    function getProcessId(address entityAddress, uint256 processCountIndex, uint16 namespace, uint64 chainId) external pure returns (bytes32);
+    function getNextProcessId(address entityAddress, uint32 namespace) external view returns (bytes32);
+    function getProcessId(address entityAddress, uint256 processCountIndex, uint32 namespace, uint32 chainId) external pure returns (bytes32);
     function get(bytes32 processId) external view returns (
         uint8[3] memory mode_envelopeType_censusOrigin,
         address entityAddress,
@@ -51,14 +51,14 @@ interface IProcessStore {
     // EVENTS
     event Activated(uint blockNumber);
     event ActivatedSuccessor(uint blockNumber, address successor);
-    event NewProcess(bytes32 processId, uint16 namespace);
-    event StatusUpdated(bytes32 processId, uint16 namespace, Status status);
+    event NewProcess(bytes32 processId, uint32 namespace);
+    event StatusUpdated(bytes32 processId, uint32 namespace, Status status);
     event QuestionIndexUpdated(
         bytes32 processId,
-        uint16 namespace,
+        uint32 namespace,
         uint8 newIndex
     );
-    event CensusUpdated(bytes32 processId, uint16 namespace);
+    event CensusUpdated(bytes32 processId, uint32 namespace);
     event ResultsAvailable(bytes32 processId);
     event ProcessPriceUpdated(uint256 processPrice);
     event Withdraw(address to, uint256 amount);
@@ -92,30 +92,38 @@ interface ITokenStorageProof {
     function getBalanceMappingPosition(address ercTokenAddress) external view returns (uint256);
 }
 
-/// @notice The `INamespaceStore` interface defines the standard methods that allow querying and updating the details of each namespace.
-interface INamespaceStore {
-    modifier onlyContractOwner virtual;
-
+/// @notice The `IGenesisStore` interface defines the standard methods that allow querying and updating the details of each namespace.
+interface IGenesisStore {
     // SETTERS
-    function setNamespace(uint16 namespace, string memory chainId, string memory genesis, string[] memory validators, address[] memory oracles) external;
-    function setChainId(uint16 namespace, string memory newChainId) external;
-    function setGenesis(uint16 namespace, string memory newGenesis) external;
-    function addValidator(uint16 namespace, string memory validatorPublicKey) external;
-    function removeValidator(uint16 namespace, uint256 idx, string memory validatorPublicKey) external;
-    function addOracle(uint16 namespace, address oracleAddress) external;
-    function removeOracle(uint16 namespace, uint256 idx, address oracleAddress) external;
+    function newChain(string memory genesis, string[] memory validators, address[] memory oracles) external;
+    function setGenesis(uint32 chainId, string memory newGenesis) external;
+    function addValidator(uint32 chainId, string memory validatorPublicKey) external;
+    function removeValidator(uint32 chainId, uint256 idx, string memory validatorPublicKey) external;
+    function addOracle(uint32 chainId, address oracleAddress) external;
+    function removeOracle(uint32 chainId, uint256 idx, address oracleAddress) external;
 
     // GETTERS
-    function getNamespace(uint16 namespace) external view returns (string memory chainId, string memory genesis, string[] memory validators, address[] memory oracles);
-    function isValidator(uint16 namespace, string memory validatorPublicKey) external view returns (bool);
-    function isOracle(uint16 namespace, address oracleAddress) external view returns (bool);
+    function get(uint32 chainId) view external returns ( string memory genesis, string[] memory validators, address[] memory oracles);
+    function isValidator(uint32 chainId, string memory validatorPublicKey) external view returns (bool);
+    function isOracle(uint32 chainId, address oracleAddress) external view returns (bool);
 
     // EVENTS
-    event NamespaceUpdated(uint16 namespace);
-    event ChainIdUpdated(string chainId, uint16 namespace);
-    event GenesisUpdated(string genesis, uint16 namespace);
-    event ValidatorAdded(string validatorPublicKey, uint16 namespace);
-    event ValidatorRemoved(string validatorPublicKey, uint16 namespace);
-    event OracleAdded(address oracleAddress, uint16 namespace);
-    event OracleRemoved(address oracleAddress, uint16 namespace);
+    event ChainRegistered(uint32 chainId);
+    event GenesisUpdated(string genesis, uint32 chainId);
+    event ValidatorAdded(string validatorPublicKey, uint32 chainId);
+    event ValidatorRemoved(string validatorPublicKey, uint32 chainId);
+    event OracleAdded(address oracleAddress, uint32 chainId);
+    event OracleRemoved(address oracleAddress, uint32 chainId);
+}
+
+/// @notice The `INamespaceStore` interface defines the standard methods that allow querying and updating the details of each namespace.
+interface INamespaceStore {
+    // SETTERS
+    function register(uint32 chainId) external returns(uint32);
+
+    // GETTERS
+    function getNamespace(uint32 namespace) external view returns (address processContract, uint32 chainId);
+
+    // EVENTS
+    event NamespaceRegistered(uint32 namespace);
 }
