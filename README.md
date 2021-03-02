@@ -68,10 +68,10 @@ See [the example](./-/tree/master/lib/example.js) on `/lib/example.js`
 To import the ABI and the bytecode:
 
 ```javascript
-const { EnsPublicResolver, Process, TokenStorageProof, Namespace } = require("dvote-solidity")
+const { EnsResolver, Process, TokenStorageProof, Namespace } = require("dvote-solidity")
 
-console.log(EnsPublicResolver.abi)
-console.log(EnsPublicResolver.bytecode)
+console.log(EnsResolver.abi)
+console.log(EnsResolver.bytecode)
 
 console.log(Process.abi)
 console.log(Process.bytecode)
@@ -90,11 +90,11 @@ Then use a client library to attach to an instance or deploy your own:
 ### JavaScript (ethers.js)
 
 ```javascript
-const { EnsPublicResolver, Process, TokenStorageProof, Namespace } = require("dvote-solidity")
+const { EnsResolver, Process, TokenStorageProof, Namespace } = require("dvote-solidity")
 const ethers = require("ethers")
 const config = { ... }
 
-const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = EnsPublicResolver
+const { abi: entityResolverAbi, bytecode: entityResolverByteCode } = EnsResolver
 const { abi: processAbi, bytecode: processByteCode } = Process
 const { abi: tokenStorageProofAbi, bytecode: tokenStorageProofByteCode } = TokenStorageProof
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = Namespace

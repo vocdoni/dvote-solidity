@@ -7,10 +7,11 @@
         "sourceMap": true,
         "target": "es6",
         "sourceRoot": "build",
+        "outDir": "build",
         "resolveJsonModule": true
     },
     "include": [
-        "build/index.ts"
+        "lib"
     ],
     "exclude": [
         "node_modules"

@@ -5,6 +5,9 @@ PROJECT_NAME=$(shell basename "$(PWD)")
 .DEFAULT_GOAL := help
 SOLC := ./node_modules/.bin/solcjs
 TSC := ./node_modules/.bin/tsc
+
+TS_SOURCES := $(wildcard lib/*.ts)
+JS_TARGETS = $(patsubst lib/%.ts, build/%.js, $(TS_SOURCES))
 VOTING_CONTRACTS = $(wildcard contracts/*.sol)
 ENS_CONTRACTS = $(wildcard contracts/vendor/registry/*.sol contracts/vendor/resolver/*.sol)
 
@@ -44,7 +47,7 @@ help:
 
 ## all: Compile the contract artifacts and generate the TypeScript type definitions
 
-all: node_modules js contract-output
+all: node_modules js contract-objects
 
 ## :
 
@@ -63,15 +66,15 @@ node_modules: package.json
 	@touch $@
 
 js: build/index.js
-contract-output: build/ens-registry.json build/ens-resolver.json build/processes.json build/genesis.json build/namespaces.json build/token-storage-proof.json build/token-storage-proof-test.json
+contract-objects: build/ens-registry.json build/ens-resolver.json build/processes.json build/genesis.json build/namespaces.json build/token-storage-proof.json build/token-storage-proof-test.json
 
 build:
 	@mkdir -p build
 	@touch $@
 
-build/index.js: build contract-output lib/index.ts
+$(JS_TARGETS): build contract-objects $(TS_SOURCES)
 	@echo "Building JS/TS artifacts"
-	cp lib/index.ts build
+	cp $(TS_SOURCES) build
 	$(TSC) --build tsconfig.json
 
 # Contract artifacts
