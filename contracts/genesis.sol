@@ -11,7 +11,7 @@ contract Genesis is IGenesisStore, Owned {
 
     struct ChainEntry {
         string genesis;
-        string[] validators; // Public key array
+        bytes32[] validators; // Public key array
         address[] oracles; // Oracles allowed to submit processes to the Vochain and publish results on the process contract
     }
     // Mapping chains[chainId] => ChainEntry
@@ -36,7 +36,7 @@ contract Genesis is IGenesisStore, Owned {
     /// @return The new chain ID that has been registered
     function newChain(
         string memory genesis,
-        string[] memory validators,
+        bytes32[] memory validators,
         address[] memory oracles
     ) public override onlyContractOwner returns (uint32) {
         ChainEntry storage entry = chains[chainCount];
@@ -67,7 +67,7 @@ contract Genesis is IGenesisStore, Owned {
         emit GenesisUpdated(newGenesis, chainId);
     }
 
-    function addValidator(uint32 chainId, string memory validatorPublicKey)
+    function addValidator(uint32 chainId, bytes32 validatorPublicKey)
         public
         override
         onlyContractOwner
@@ -82,13 +82,13 @@ contract Genesis is IGenesisStore, Owned {
     function removeValidator(
         uint32 chainId,
         uint256 idx,
-        string memory validatorPublicKey
+        bytes32 validatorPublicKey
     ) public override onlyContractOwner {
         uint256 currentLength = chains[chainId].validators.length;
         require(idx < currentLength, "Invalid index");
         // using `idx` to avoid searching/looping and using `validatorPublicKey` to enforce that the correct value is removed
         require(
-            equalStrings(chains[chainId].validators[idx], validatorPublicKey),
+            chains[chainId].validators[idx] == validatorPublicKey,
             "Index-key mismatch"
         );
         // swap with the last element from the list
@@ -141,7 +141,7 @@ contract Genesis is IGenesisStore, Owned {
         override
         returns (
             string memory genesis,
-            string[] memory validators,
+            bytes32[] memory validators,
             address[] memory oracles
         )
     {
@@ -156,16 +156,14 @@ contract Genesis is IGenesisStore, Owned {
         return chainCount;
     }
 
-    function isValidator(uint32 chainId, string memory validatorPublicKey)
+    function isValidator(uint32 chainId, bytes32 validatorPublicKey)
         public
         view
         override
         returns (bool)
     {
         for (uint256 i = 0; i < chains[chainId].validators.length; i++) {
-            if (
-                equalStrings(chains[chainId].validators[i], validatorPublicKey)
-            ) {
+            if (chains[chainId].validators[i] == validatorPublicKey) {
                 return true;
             }
         }

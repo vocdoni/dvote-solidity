@@ -12,7 +12,7 @@ VOTING_CONTRACTS = $(wildcard contracts/*.sol)
 ENS_CONTRACTS = $(wildcard contracts/vendor/registry/*.sol contracts/vendor/resolver/*.sol)
 
 # Declare new contract artifacts on `build/solc` here
-ARTIFACT_BASE_NAMES = contracts_vendor_registry_ENSRegistry_sol_ENSRegistry contracts_vendor_resolver_PublicResolver_sol_PublicResolver contracts_processes_sol_Processes contracts_genesis_sol_Genesis contracts_namespaces_sol_Namespaces contracts_token-storage-proof_sol_TokenStorageProof contracts_token-storage-proof-test_sol_TokenStorageProofTest
+ARTIFACT_BASE_NAMES = contracts_vendor_registry_ENSRegistry_sol_ENSRegistry contracts_vendor_resolver_PublicResolver_sol_PublicResolver contracts_genesis_sol_Genesis contracts_namespaces_sol_Namespaces contracts_processes_sol_Processes contracts_token-storage-proof_sol_TokenStorageProof contracts_token-storage-proof-test_sol_TokenStorageProofTest
 
 SOLC_ABI_ARTIFACTS := $(patsubst %, build/solc/%.abi, $(ARTIFACT_BASE_NAMES))
 SOLC_BIN_ARTIFACTS := $(patsubst %, build/solc/%.bin, $(ARTIFACT_BASE_NAMES))
@@ -21,9 +21,9 @@ SOLC_ARTIFACT_PREFIXES := $(patsubst %, build/solc/%, $(ARTIFACT_BASE_NAMES))
 # Add new contract entries here
 ENS_REGISTRY_ARTIFACT_PREFIX = $(filter %_sol_ENSRegistry, $(SOLC_ARTIFACT_PREFIXES))
 ENS_RESOLVER_ARTIFACT_PREFIX = $(filter %_sol_PublicResolver, $(SOLC_ARTIFACT_PREFIXES))
-PROCESSES_ARTIFACT_PREFIX = $(filter %_sol_Processes, $(SOLC_ARTIFACT_PREFIXES))
 GENESIS_ARTIFACT_PREFIX = $(filter %_sol_Genesis, $(SOLC_ARTIFACT_PREFIXES))
 NAMESPACES_ARTIFACT_PREFIX = $(filter %_sol_Namespaces, $(SOLC_ARTIFACT_PREFIXES))
+PROCESSES_ARTIFACT_PREFIX = $(filter %_sol_Processes, $(SOLC_ARTIFACT_PREFIXES))
 TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProof, $(SOLC_ARTIFACT_PREFIXES))
 TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProofTest, $(SOLC_ARTIFACT_PREFIXES))
 

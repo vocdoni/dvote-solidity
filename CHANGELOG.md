@@ -9,7 +9,9 @@
   - The Genesis contract acts as a global register of Chains (chain ID, genesis, oracles, validators)
   - The Namespaces contract acts as a global register where process contracts register themselves
 - The Processes contract has been adapted to the new Namespaces contract
-- `EnsPublicResolver` is now renamed to `EnsResolver`
+- The `Processes` method `setResults` and `getResults` are now part of a future contract `Results`
+- `EnsPublicResolver` is now renamed to `EnsResolver` in TypeScript
+- Validators now have a `bytes32` data type
 
 ## 0.15.0
 

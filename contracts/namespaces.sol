@@ -7,67 +7,29 @@ import "./base.sol";
 import "./common.sol";
 import "./lib.sol";
 
-contract Namespaces is INamespaceStore, Owned {
+contract Namespaces is INamespaceStore {
     // GLOBAL DATA
 
-    struct NamespaceEntry {
-        address processContract; // The contract associated to this namespace
-        uint32 chainId; // See Genesis > chains[chainId]
-    }
-    address genesisContract;
-    mapping(uint32 => NamespaceEntry) internal namespaces;
+    // The contract associated to each namespaceId
+    mapping(uint32 => address) public namespaces;
     uint32 public namespaceCount;
 
     // GLOBAL METHODS
 
-    /// @notice Creates a namespace contract associated with the given genesis instance
-    constructor(address genesis) public {
-        require(ContractSupport.isContract(genesis), "Not a contract");
-        genesisContract = genesis;
-    }
-
-    /// @notice Registers the (processes) contract calling this function into a new namespace, assigning it to the given chainId.
-    /// @return The new namespace ID that has been registered
-    function register(uint32 chainId) public override returns (uint32) {
+    /**
+     * Registers the (processes) contract calling this function into a new namespace, assigning it to the given chainId.
+     * Returns the new namespace ID that has been registered
+     */
+    function register() public override returns (uint32 result) {
         require(
             ContractSupport.isContract(msg.sender),
             "Caller must be a contract"
         );
-        require(
-            chainId < IGenesisStore(genesisContract).getChainCount(),
-            "No such chainId"
-        );
 
-        NamespaceEntry storage entry = namespaces[namespaceCount];
-        entry.processContract = msg.sender;
-        entry.chainId = chainId;
+        namespaces[namespaceCount] = msg.sender;
         emit NamespaceRegistered(namespaceCount);
+        result = namespaceCount;
 
         namespaceCount = namespaceCount + 1;
-        return namespaceCount - 1;
-    }
-
-    /// @notice Sets the genesis contract address
-    function setGenesis(address genesis) public override onlyContractOwner {
-        require(ContractSupport.isContract(genesis), "Not a contract");
-        genesisContract = genesis;
-    }
-
-    // GETTERS
-
-    function getNamespace(uint32 namespace)
-        public
-        view
-        override
-        returns (address processContract, uint32 chainId)
-    {
-        return (
-            namespaces[namespace].processContract,
-            namespaces[namespace].chainId
-        );
-    }
-
-    function getGenesisAddress() public view override returns (address) {
-        return genesisContract;
     }
 }

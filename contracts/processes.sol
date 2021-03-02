@@ -13,8 +13,22 @@ contract Processes is IProcessStore, Chained {
 
     // CONSTANTS AND ENUMS
     enum CensusOrigin {
-        __, OFF_CHAIN_TREE, OFF_CHAIN_TREE_WEIGHTED, OFF_CHAIN_CA, __4, __5, __6, __7, __8, __9,
-        __10, ERC20, ERC721, ERC1155, ERC777, MINI_ME
+        __,
+        OFF_CHAIN_TREE,
+        OFF_CHAIN_TREE_WEIGHTED,
+        OFF_CHAIN_CA,
+        __4,
+        __5,
+        __6,
+        __7,
+        __8,
+        __9,
+        __10,
+        ERC20,
+        ERC721,
+        ERC1155,
+        ERC777,
+        MINI_ME
     } // 256 items max
 
     /*
@@ -51,18 +65,14 @@ contract Processes is IProcessStore, Chained {
 
     // GLOBAL DATA
 
-    uint32 public chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
+    uint32 public ethChainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
+    address public resultsAddress; // The address of the contract that will hold the results of the processes from the current instance
     uint32 public namespaceId; // Index of the namespace where this contract has been assigned to
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
     uint256 public processPrice; // Price for creating a voting process
 
     // DATA STRUCTS
-    struct ProcessResults {
-        uint32[][] tally; // The tally for every question, option and value
-        uint32 height; // The amount of valid envelopes registered
-    }
-
     struct Process {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
@@ -98,7 +108,6 @@ contract Processes is IProcessStore, Chained {
         uint16 costExponent;
         uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
-        ProcessResults results; // results wraps the tally, the total number of votes, a list of signatures and a list of proofs
     }
 
     /// @notice An entry for each process created by an Entity.
@@ -112,19 +121,6 @@ contract Processes is IProcessStore, Chained {
 
     mapping(address => ProcessCheckpoint[]) internal entityCheckpoints; // Array of ProcessCheckpoint indexed by entity address
     mapping(bytes32 => Process) internal processes; // Mapping of all processes indexed by the Process ID
-
-    // MODIFIERS
-
-    /// @notice Fails if the msg.sender is not an authorired oracle
-    modifier onlyOracle() override {
-        // Only an Oracle within the chainId is valid
-        address genesis = INamespaceStore(namespaceAddress).getGenesisAddress();
-        require(
-            IGenesisStore(genesis).isOracle(chainId, msg.sender),
-            "Not oracle"
-        );
-        _;
-    }
 
     // HELPERS
 
@@ -160,7 +156,8 @@ contract Processes is IProcessStore, Chained {
     {
         // From 0 to N-1, the next index is N
         uint256 processCount = getEntityProcessCount(entityAddress);
-        return getProcessId(entityAddress, processCount, namespaceId, chainId);
+        return
+            getProcessId(entityAddress, processCount, namespaceId, ethChainId);
     }
 
     /// @notice Compute the process ID from the given parameters, salted with the contract chain ID
@@ -168,7 +165,7 @@ contract Processes is IProcessStore, Chained {
         address entityAddress,
         uint256 processCountIndex,
         uint32 namespaceIdNum,
-        uint32 chainIdNum
+        uint32 ethereumChainId
     ) public pure override returns (bytes32) {
         return
             keccak256(
@@ -176,7 +173,7 @@ contract Processes is IProcessStore, Chained {
                     entityAddress,
                     processCountIndex,
                     namespaceIdNum,
-                    chainIdNum
+                    ethereumChainId
                 )
             );
     }
@@ -189,22 +186,25 @@ contract Processes is IProcessStore, Chained {
         address predecessor,
         address namespace,
         address tokenStorageProof,
-        uint32 chainIdNumber,
-        uint256 procPrice
+        uint32 ethereumChainId,
+        uint256 procPrice,
+        address resultsAddr
     ) public {
         Chained.setUp(predecessor);
 
         require(ContractSupport.isContract(namespace), "Invalid namespace");
+        require(ContractSupport.isContract(resultsAddr), "Invalid results");
         require(
             ContractSupport.isContract(tokenStorageProof),
             "Invalid tokenStorageProof"
         );
 
-        namespaceId = INamespaceStore(namespace).register(chainIdNum);
+        namespaceId = INamespaceStore(namespace).register();
         namespaceAddress = namespace;
         tokenStorageProofAddress = tokenStorageProof;
-        chainId = chainIdNumber;
         processPrice = procPrice;
+        ethChainId = ethereumChainId;
+        resultsAddress = resultsAddr;
     }
 
     // GETTERS
@@ -279,27 +279,6 @@ contract Processes is IProcessStore, Chained {
         }
         Process storage proc = processes[processId];
         return proc.paramsSignature;
-    }
-
-    /// @notice Fetch the results of the given processId, if any
-    function getResults(bytes32 processId)
-        public
-        view
-        override
-        returns (uint32[][] memory tally, uint32 height)
-    {
-        if (processes[processId].entity == address(0x0)) {
-            // Not found locally
-            if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
-
-            // Ask the predecessor
-            // Note: The predecessor's method needs to follow the old version's signature
-            IProcessStore predecessor = IProcessStore(predecessorAddress);
-            return predecessor.getResults(processId);
-        }
-        // Found locally
-        ProcessResults storage results = processes[processId].results;
-        return (results.tally, results.height);
     }
 
     /// @notice Gets the address of the process instance where the given processId was originally created.
@@ -441,7 +420,7 @@ contract Processes is IProcessStore, Chained {
 
         // Store the new process
         bytes32 processId =
-            getProcessId(msg.sender, prevCount, namespaceId, chainId);
+            getProcessId(msg.sender, prevCount, namespaceId, ethChainId);
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
@@ -565,7 +544,7 @@ contract Processes is IProcessStore, Chained {
 
         // Store the new process
         bytes32 processId =
-            getProcessId(tokenContractAddress, prevCount, namespaceId, chainId);
+            getProcessId(tokenContractAddress, prevCount, namespaceId, ethChainId);
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
@@ -747,39 +726,6 @@ contract Processes is IProcessStore, Chained {
         processes[processId].censusUri = censusUri;
 
         emit CensusUpdated(processId, namespaceId);
-    }
-
-    function setResults(
-        bytes32 processId,
-        uint32[][] memory tally,
-        uint32 height
-    ) public override onlyOracle() {
-        require(height > 0, "No votes");
-
-        if (processes[processId].entity == address(0x0)) {
-            // Not found locally
-            if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
-            revert("Not found: Try on predecessor");
-        }
-
-        require(
-            tally.length == processes[processId].questionCount,
-            "Invalid length"
-        );
-
-        // cannot publish results on a canceled process or on a process
-        // that already has results
-        require(
-            processes[processId].status != Status.CANCELED &&
-                processes[processId].status != Status.RESULTS,
-            "Canceled or already set"
-        );
-
-        processes[processId].results.tally = tally;
-        processes[processId].results.height = height;
-        processes[processId].status = Status.RESULTS;
-
-        emit ResultsAvailable(processId);
     }
 
     function setProcessPrice(uint256 newPrice) public override onlyContractOwner {
