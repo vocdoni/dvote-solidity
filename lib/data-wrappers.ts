@@ -201,7 +201,6 @@ export class ProcessContractParameters {
     maxVoteOverwrites: number;
     maxTotalCost: number;
     costExponent: number;
-    namespace: number;
     evmBlockHeight: number;
     paramsSignature?: string;
 
@@ -226,8 +225,6 @@ export class ProcessContractParameters {
             throw new Error("Invalid maxTotalCost")
         else if (params.costExponent < 0 || params.costExponent > 65355)
             throw new Error("Invalid costExponent")
-        else if (params.namespace < 0 || params.namespace > 65355)
-            throw new Error("Invalid namespace")
         // evmBlockHeight > see below
         else if (!params.paramsSignature)
             throw new Error("Invalid paramsSignature")
@@ -274,7 +271,6 @@ export class ProcessContractParameters {
         result.maxVoteOverwrites = params.maxVoteOverwrites
         result.maxTotalCost = params.maxTotalCost
         result.costExponent = params.costExponent
-        result.namespace = params.namespace
         result.evmBlockHeight = params.evmBlockHeight || 0
         result.paramsSignature = params.paramsSignature
 
@@ -329,11 +325,10 @@ export class ProcessContractParameters {
         result.maxVoteOverwrites = params[5][4]
 
         if (!Array.isArray(params[6]) || params[6].length != 3 || params[6].some((item) => typeof item != "number"))
-            throw new Error("Invalid parameters maxTotalCost_costExponent_namespace list")
+            throw new Error("Invalid parameters maxTotalCost_costExponent list")
 
         result.maxTotalCost = params[6][0]
         result.costExponent = params[6][1]
-        result.namespace = params[6][2]
 
         if (typeof params[7] == "number") result.evmBlockHeight = params[7]
         else if (params[7] && params[7]._isBigNumber) result.evmBlockHeight = params[7].toNumber()
@@ -365,7 +360,7 @@ export class ProcessContractParameters {
                 this.maxValue,
                 this.maxVoteOverwrites
             ], // int questionCount_maxCount_maxValue_maxVoteOverwrites
-            [this.maxTotalCost, this.costExponent, this.namespace], // int maxTotalCost_costExponent_namespace
+            [this.maxTotalCost, this.costExponent], // int maxTotalCost_costExponent
             this.evmBlockHeight, // uint256 evmBlockHeight
             this.paramsSignature // String paramsSignature
         ]
@@ -390,7 +385,6 @@ export type IProcessCreateParams = {
     maxVoteOverwrites: number,
     maxTotalCost: number,
     costExponent: number,
-    namespace: number,
     evmBlockHeight?: number,
     paramsSignature: string
 }
