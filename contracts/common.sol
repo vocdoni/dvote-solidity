@@ -12,8 +12,8 @@ interface IProcessStore {
 
     // GET
     function getEntityProcessCount(address entityAddress) external view returns (uint256);
-    function getNextProcessId(address entityAddress, uint32 namespace) external view returns (bytes32);
-    function getProcessId(address entityAddress, uint256 processCountIndex, uint32 namespace, uint32 chainId) external pure returns (bytes32);
+    function getNextProcessId(address entityAddress) external view returns (bytes32);
+    function getProcessId(address entityAddress, uint256 processCountIndex, uint32 namespaceId, uint32 chainId) external pure returns (bytes32);
     function get(bytes32 processId) external view returns (
         uint8[3] memory mode_envelopeType_censusOrigin,
         address entityAddress,
@@ -21,7 +21,7 @@ interface IProcessStore {
         uint32[2] memory startBlock_blockCount,
         Status status,
         uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites,
-        uint16[3] memory maxTotalCost_costExponent_namespace,
+        uint16[2] memory maxTotalCost_costExponent,
         uint256 evmBlockHeight // EVM only
     );
     function getParamsSignature(bytes32 processId) external view returns (bytes32);
@@ -35,7 +35,7 @@ interface IProcessStore {
         string[3] memory metadata_censusRoot_censusUri,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
-        uint16[3] memory maxTotalCost_costExponent_namespace,
+        uint16[2] memory maxTotalCost_costExponent,
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) payable external;

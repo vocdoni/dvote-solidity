@@ -51,10 +51,10 @@ contract Processes is IProcessStore, Chained {
 
     // GLOBAL DATA
 
-    address public namespaceAddress; // Address of the namespace contract instance that holds the current state
+    uint32 public chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
     uint32 public namespaceId; // Index of the namespace where this contract has been assigned to
+    address public namespaceAddress; // Address of the namespace contract instance that holds the current state
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
-    uint32 chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
     uint256 public processPrice; // Price for creating a voting process
 
     // DATA STRUCTS
@@ -96,10 +96,6 @@ contract Processes is IProcessStore, Chained {
         // - 10000 => 1.0000
         // - 65535 => 6.5535
         uint16 costExponent;
-        // Self-assign to a certain namespace.
-        // This will determine the oracles that listen and react to it.
-        // Indirectly, it will also determine the Vochain that hosts this process.
-        uint16 namespace;
         uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
         ProcessResults results; // results wraps the tally, the total number of votes, a list of signatures and a list of proofs
@@ -151,11 +147,12 @@ contract Processes is IProcessStore, Chained {
         return
             entityCheckpoints[entityAddress][
                 entityCheckpoints[entityAddress].length - 1
-            ].index + 1;
+            ]
+                .index + 1;
     }
 
     /// @notice Get the next process ID to use for an entity
-    function getNextProcessId(address entityAddress, uint32 namespace)
+    function getNextProcessId(address entityAddress)
         public
         view
         override
@@ -163,14 +160,14 @@ contract Processes is IProcessStore, Chained {
     {
         // From 0 to N-1, the next index is N
         uint256 processCount = getEntityProcessCount(entityAddress);
-        return getProcessId(entityAddress, processCount, namespace, chainId);
+        return getProcessId(entityAddress, processCount, namespaceId, chainId);
     }
 
     /// @notice Compute the process ID from the given parameters, salted with the contract chain ID
     function getProcessId(
         address entityAddress,
         uint256 processCountIndex,
-        uint32 namespace,
+        uint32 namespaceIdNum,
         uint32 chainIdNum
     ) public pure override returns (bytes32) {
         return
@@ -178,7 +175,7 @@ contract Processes is IProcessStore, Chained {
                 abi.encodePacked(
                     entityAddress,
                     processCountIndex,
-                    namespace,
+                    namespaceIdNum,
                     chainIdNum
                 )
             );
@@ -225,7 +222,7 @@ contract Processes is IProcessStore, Chained {
             Status status, // status
             uint8[5]
                 memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
-            uint16[3] memory maxTotalCost_costExponent_namespace,
+            uint16[2] memory maxTotalCost_costExponent,
             uint256 evmBlockHeight
         )
     {
@@ -260,11 +257,7 @@ contract Processes is IProcessStore, Chained {
             proc.maxValue,
             proc.maxVoteOverwrites
         ];
-        maxTotalCost_costExponent_namespace = [
-            proc.maxTotalCost,
-            proc.costExponent,
-            proc.namespace
-        ];
+        maxTotalCost_costExponent = [proc.maxTotalCost, proc.costExponent];
         evmBlockHeight = proc.evmBlockHeight;
     }
 
@@ -339,7 +332,7 @@ contract Processes is IProcessStore, Chained {
         string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) public override payable onlyIfActive {
@@ -356,7 +349,7 @@ contract Processes is IProcessStore, Chained {
                 metadata_censusRoot_censusUri,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent_namespace,
+                maxTotalCost_costExponent,
                 paramsSignature
             );
         } else if (origin == CensusOrigin.ERC20) {
@@ -366,7 +359,7 @@ contract Processes is IProcessStore, Chained {
                 tokenContractAddress,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent_namespace,
+                maxTotalCost_costExponent,
                 evmBlockHeight,
                 paramsSignature
             );
@@ -381,7 +374,7 @@ contract Processes is IProcessStore, Chained {
         string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         bytes32 paramsSignature
     ) internal {
         uint8 mode = mode_envelopeType_censusOrigin[0];
@@ -448,12 +441,7 @@ contract Processes is IProcessStore, Chained {
 
         // Store the new process
         bytes32 processId =
-            getProcessId(
-                msg.sender,
-                prevCount,
-                maxTotalCost_costExponent_namespace[2],
-                chainId
-            );
+            getProcessId(msg.sender, prevCount, namespaceId, chainId);
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
@@ -484,12 +472,11 @@ contract Processes is IProcessStore, Chained {
             .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
             3
         ];
-        processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
-        processData.costExponent = maxTotalCost_costExponent_namespace[1];
-        processData.namespace = maxTotalCost_costExponent_namespace[2];
+        processData.maxTotalCost = maxTotalCost_costExponent[0];
+        processData.costExponent = maxTotalCost_costExponent[1];
         processData.paramsSignature = paramsSignature;
 
-        emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
+        emit NewProcess(processId, namespaceId);
     }
 
     function newProcessEvm(
@@ -498,7 +485,7 @@ contract Processes is IProcessStore, Chained {
         address tokenContractAddress,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         uint256 evmBlockHeight, // Ethereum block height at which the census will be considered
         bytes32 paramsSignature
     ) internal {
@@ -578,12 +565,7 @@ contract Processes is IProcessStore, Chained {
 
         // Store the new process
         bytes32 processId =
-            getProcessId(
-                tokenContractAddress,
-                prevCount,
-                maxTotalCost_costExponent_namespace[2],
-                chainId
-            );
+            getProcessId(tokenContractAddress, prevCount, namespaceId, chainId);
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
@@ -614,14 +596,13 @@ contract Processes is IProcessStore, Chained {
             .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
             3
         ];
-        processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
-        processData.costExponent = maxTotalCost_costExponent_namespace[1];
-        processData.namespace = maxTotalCost_costExponent_namespace[2];
+        processData.maxTotalCost = maxTotalCost_costExponent[0];
+        processData.costExponent = maxTotalCost_costExponent[1];
 
         processData.evmBlockHeight = evmBlockHeight;
         processData.paramsSignature = paramsSignature;
 
-        emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
+        emit NewProcess(processId, namespaceId);
     }
 
     function setStatus(bytes32 processId, Status newStatus) public override {
@@ -678,11 +659,7 @@ contract Processes is IProcessStore, Chained {
         // If questionIndex is already at the last one
         processes[processId].status = newStatus;
 
-        emit StatusUpdated(
-            processId,
-            processes[processId].namespace,
-            newStatus
-        );
+        emit StatusUpdated(processId, namespaceId, newStatus);
     }
 
     function incrementQuestionIndex(bytes32 processId) public override {
@@ -720,20 +697,12 @@ contract Processes is IProcessStore, Chained {
             processes[processId].questionIndex = nextIdx;
 
             // Not at the last question yet
-            emit QuestionIndexUpdated(
-                processId,
-                processes[processId].namespace,
-                nextIdx
-            );
+            emit QuestionIndexUpdated(processId, namespaceId, nextIdx);
         } else {
             // The last question was currently active => End the process
             processes[processId].status = Status.ENDED;
 
-            emit StatusUpdated(
-                processId,
-                processes[processId].namespace,
-                Status.ENDED
-            );
+            emit StatusUpdated(processId, namespaceId, Status.ENDED);
         }
     }
 
@@ -777,7 +746,7 @@ contract Processes is IProcessStore, Chained {
         processes[processId].censusRoot = censusRoot;
         processes[processId].censusUri = censusUri;
 
-        emit CensusUpdated(processId, processes[processId].namespace);
+        emit CensusUpdated(processId, namespaceId);
     }
 
     function setResults(
