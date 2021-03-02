@@ -49,13 +49,10 @@ contract Processes is IProcessStore, Chained {
     uint8 internal constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2; // Votes are encrypted with the process public key
     uint8 internal constant ENV_TYPE_UNIQUE_VALUES = 1 << 3; // Choices for a question cannot appear twice or more
 
-    // EVENTS
-
-    event NamespaceAddressUpdated(address namespaceAddr);
-
     // GLOBAL DATA
 
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
+    uint32 public namespaceId; // Index of the namespace where this contract has been assigned to
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
     uint32 chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
     uint256 public processPrice; // Price for creating a voting process
@@ -123,11 +120,11 @@ contract Processes is IProcessStore, Chained {
     // MODIFIERS
 
     /// @notice Fails if the msg.sender is not an authorired oracle
-    modifier onlyOracle(bytes32 processId) override {
-        // Only an Oracle within the process' namespace is valid
-        INamespaceStore namespace = INamespaceStore(namespaceAddress);
+    modifier onlyOracle() override {
+        // Only an Oracle within the chainId is valid
+        address genesis = INamespaceStore(namespaceAddress).getGenesisAddress();
         require(
-            namespace.isOracle(processes[processId].namespace, msg.sender),
+            IGenesisStore(genesis).isOracle(chainId, msg.sender),
             "Not oracle"
         );
         _;
@@ -200,25 +197,17 @@ contract Processes is IProcessStore, Chained {
     ) public {
         Chained.setUp(predecessor);
 
-        INamespaceStore nam = INamespaceStore(namespace);
-        nam.register(chainIdNum);
-
         require(ContractSupport.isContract(namespace), "Invalid namespace");
         require(
             ContractSupport.isContract(tokenStorageProof),
             "Invalid tokenStorageProof"
         );
+
+        namespaceId = INamespaceStore(namespace).register(chainIdNum);
         namespaceAddress = namespace;
         tokenStorageProofAddress = tokenStorageProof;
         chainId = chainIdNumber;
         processPrice = procPrice;
-    }
-
-    function setNamespaceAddress(address namespace) public onlyContractOwner {
-        require(ContractSupport.isContract(namespace), "Invalid namespace");
-        namespaceAddress = namespace;
-
-        emit NamespaceAddressUpdated(namespace);
     }
 
     // GETTERS
@@ -795,7 +784,7 @@ contract Processes is IProcessStore, Chained {
         bytes32 processId,
         uint32[][] memory tally,
         uint32 height
-    ) public override onlyOracle(processId) {
+    ) public override onlyOracle() {
         require(height > 0, "No votes");
 
         if (processes[processId].entity == address(0x0)) {

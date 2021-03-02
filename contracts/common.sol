@@ -8,7 +8,7 @@ pragma experimental ABIEncoderV2;
 interface IProcessStore {
     enum Status {READY, ENDED, CANCELED, PAUSED, RESULTS}
 
-    modifier onlyOracle(bytes32 processId) virtual;
+    modifier onlyOracle() virtual;
 
     // GET
     function getEntityProcessCount(address entityAddress) external view returns (uint256);
@@ -64,6 +64,45 @@ interface IProcessStore {
     event Withdraw(address to, uint256 amount);
 }
 
+/// @notice The `INamespaceStore` interface defines the standard methods that allow querying and updating the details of each namespace.
+interface INamespaceStore {
+    // SETTERS
+    function register(uint32 chainId) external returns(uint32);
+    function setGenesis(address genesis) external;
+
+    // GETTERS
+    function getNamespace(uint32 namespace) external view returns (address processContract, uint32 chainId);
+    function getGenesisAddress() external view returns(address);
+
+    // EVENTS
+    event NamespaceRegistered(uint32 namespace);
+}
+
+/// @notice The `IGenesisStore` interface defines the standard methods that allow querying and updating the details of each namespace.
+interface IGenesisStore {
+    // SETTERS
+    function newChain(string memory genesis, string[] memory validators, address[] memory oracles) external returns (uint32);
+    function setGenesis(uint32 chainId, string memory newGenesis) external;
+    function addValidator(uint32 chainId, string memory validatorPublicKey) external;
+    function removeValidator(uint32 chainId, uint256 idx, string memory validatorPublicKey) external;
+    function addOracle(uint32 chainId, address oracleAddress) external;
+    function removeOracle(uint32 chainId, uint256 idx, address oracleAddress) external;
+
+    // GETTERS
+    function get(uint32 chainId) view external returns ( string memory genesis, string[] memory validators, address[] memory oracles);
+    function isValidator(uint32 chainId, string memory validatorPublicKey) external view returns (bool);
+    function isOracle(uint32 chainId, address oracleAddress) external view returns (bool);
+    function getChainCount() external view returns(uint32);
+
+    // EVENTS
+    event ChainRegistered(uint32 chainId);
+    event GenesisUpdated(string genesis, uint32 chainId);
+    event ValidatorAdded(string validatorPublicKey, uint32 chainId);
+    event ValidatorRemoved(string validatorPublicKey, uint32 chainId);
+    event OracleAdded(address oracleAddress, uint32 chainId);
+    event OracleRemoved(address oracleAddress, uint32 chainId);
+}
+
 /// @notice The `ITokenStorageProof` interface defines the standard methods that allow checking ERC token balances.
 interface ITokenStorageProof {
     /// @notice Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
@@ -90,40 +129,4 @@ interface ITokenStorageProof {
 
     /// @notice Returns the balance mapping position of a token for users to generate proofs
     function getBalanceMappingPosition(address ercTokenAddress) external view returns (uint256);
-}
-
-/// @notice The `IGenesisStore` interface defines the standard methods that allow querying and updating the details of each namespace.
-interface IGenesisStore {
-    // SETTERS
-    function newChain(string memory genesis, string[] memory validators, address[] memory oracles) external;
-    function setGenesis(uint32 chainId, string memory newGenesis) external;
-    function addValidator(uint32 chainId, string memory validatorPublicKey) external;
-    function removeValidator(uint32 chainId, uint256 idx, string memory validatorPublicKey) external;
-    function addOracle(uint32 chainId, address oracleAddress) external;
-    function removeOracle(uint32 chainId, uint256 idx, address oracleAddress) external;
-
-    // GETTERS
-    function get(uint32 chainId) view external returns ( string memory genesis, string[] memory validators, address[] memory oracles);
-    function isValidator(uint32 chainId, string memory validatorPublicKey) external view returns (bool);
-    function isOracle(uint32 chainId, address oracleAddress) external view returns (bool);
-
-    // EVENTS
-    event ChainRegistered(uint32 chainId);
-    event GenesisUpdated(string genesis, uint32 chainId);
-    event ValidatorAdded(string validatorPublicKey, uint32 chainId);
-    event ValidatorRemoved(string validatorPublicKey, uint32 chainId);
-    event OracleAdded(address oracleAddress, uint32 chainId);
-    event OracleRemoved(address oracleAddress, uint32 chainId);
-}
-
-/// @notice The `INamespaceStore` interface defines the standard methods that allow querying and updating the details of each namespace.
-interface INamespaceStore {
-    // SETTERS
-    function register(uint32 chainId) external returns(uint32);
-
-    // GETTERS
-    function getNamespace(uint32 namespace) external view returns (address processContract, uint32 chainId);
-
-    // EVENTS
-    event NamespaceRegistered(uint32 namespace);
 }

@@ -16,7 +16,7 @@ contract Genesis is IGenesisStore, Owned {
     }
     // Mapping chains[chainId] => ChainEntry
     mapping(uint32 => ChainEntry) internal chains;
-    uint32 public chainCount;
+    uint32 chainCount;
 
     // HELPERS
 
@@ -32,11 +32,13 @@ contract Genesis is IGenesisStore, Owned {
 
     // GLOBAL METHODS
 
+    /// @notice Registers a new chain ID, along with the given genesis, validators and oracles.
+    /// @return The new chain ID that has been registered
     function newChain(
         string memory genesis,
         string[] memory validators,
         address[] memory oracles
-    ) public override onlyContractOwner {
+    ) public override onlyContractOwner returns (uint32) {
         ChainEntry storage entry = chains[chainCount];
 
         entry.genesis = genesis;
@@ -46,6 +48,8 @@ contract Genesis is IGenesisStore, Owned {
         emit ChainRegistered(chainCount);
 
         chainCount = chainCount + 1;
+
+        return chainCount - 1;
     }
 
     function setGenesis(uint32 chainId, string memory newGenesis)
@@ -146,6 +150,10 @@ contract Genesis is IGenesisStore, Owned {
             chains[chainId].validators,
             chains[chainId].oracles
         );
+    }
+
+    function getChainCount() public view override returns (uint32) {
+        return chainCount;
     }
 
     function isValidator(uint32 chainId, string memory validatorPublicKey)
