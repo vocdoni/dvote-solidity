@@ -59,6 +59,7 @@ contract Processes is IProcessStore, Chained {
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
     uint64 chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
+    uint256 public processPrice; // Price for creating a voting process
 
     // DATA STRUCTS
     struct ProcessResults {
@@ -190,7 +191,8 @@ contract Processes is IProcessStore, Chained {
         address predecessor,
         address namespace,
         address tokenStorageProof,
-        uint64 chainIdNumber
+        uint64 chainIdNumber,
+        uint256 procPrice
     ) public {
         Chained.setUp(predecessor);
 
@@ -199,9 +201,11 @@ contract Processes is IProcessStore, Chained {
             ContractSupport.isContract(tokenStorageProof),
             "Invalid tokenStorageProof"
         );
+        require(procPrice >= 0, "Invalid process price");
         namespaceAddress = namespace;
         tokenStorageProofAddress = tokenStorageProof;
         chainId = chainIdNumber;
+        processPrice = procPrice;
     }
 
     function setNamespaceAddress(address namespace) public onlyContractOwner {
@@ -342,8 +346,9 @@ contract Processes is IProcessStore, Chained {
         uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
-    ) public override onlyIfActive {
+    ) public override payable onlyIfActive {
         CensusOrigin origin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
+        require (msg.value >= processPrice, "Insufficient amount provided for creating a process");
         if (
             origin == CensusOrigin.OFF_CHAIN_TREE ||
             origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
@@ -791,5 +796,22 @@ contract Processes is IProcessStore, Chained {
         processes[processId].status = Status.RESULTS;
 
         emit ResultsAvailable(processId);
+    }
+
+    function setProcessPrice(uint256 procPrice) public override onlyContractOwner {
+        require(procPrice >= 0, "Invalid process price");
+        require(procPrice != processPrice, "Process price cannot be the same");
+
+        processPrice = procPrice;
+        emit ProcessPriceUpdated(procPrice);
+    }
+
+    function withdraw(address payable to, uint256 amount) public override onlyContractOwner {
+        require(amount > 0, "Invalid amount to withdraw");
+        require(address(this).balance > amount, "Insufficient funds to withdraw");
+        require(to != address(0x0), "Invalid address to send");
+
+        payable(to).transfer(amount);
+        emit Withdraw(to, amount);
     }
 }

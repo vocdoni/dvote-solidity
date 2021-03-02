@@ -30,6 +30,10 @@ export function getAccounts() {
     return accounts
 }
 
+export function getProvider() {
+    return localProvider
+}
+
 // UTILITIES
 
 /** In development, increments the timestamp by N seconds and returns the new timestamp */
