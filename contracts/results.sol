@@ -9,10 +9,11 @@ import "./lib.sol"; // Helpers
 
 // INFO: This contract is the ground for future ERC3k dispute resolution of results on chain.
 
-contract Results is IResultsStore {
+contract Results is IResultsStore, Owned {
     // GLOBAL DATA
 
     address public genesisAddress; // Address of the global genesis contract instance
+    address public processesAddress; // Address of the current processes contract instance
 
     // DATA STRUCTS
     struct ProcessResults {
@@ -42,6 +43,18 @@ contract Results is IResultsStore {
 
     // SETTERS
 
+    function setProcessesAddress(address processesAddr)
+        public
+        override
+        onlyContractOwner
+    {
+        require(
+            ContractSupport.isContract(processesAddr),
+            "Invalid processesAddr"
+        );
+        processesAddress = processesAddr;
+    }
+
     function setResults(
         bytes32 processId,
         uint32[][] memory tally,
@@ -50,20 +63,17 @@ contract Results is IResultsStore {
     ) public override onlyOracle(vochainId) {
         require(height > 0, "No votes");
         require(!results[processId].defined, "Already defined");
-
-        // FUTURE: Check that the process on the processes contract exists and is not canceled
-
-        // // cannot publish results on a canceled process or on a process
-        // // that already has results
-        // require(
-        //     processes[processId].status != Status.CANCELED &&
-        //         processes[processId].status != Status.RESULTS,
-        //     "Canceled or already set"
-        // );
+        require(
+            processesAddress != address(0x0),
+            "Processes address undefined"
+        );
 
         results[processId].tally = tally;
         results[processId].height = height;
-        // processes[processId].status = Status.RESULTS;
+
+        // Try to set the process state as RESULTS (will revert if non-existing or if the current state is invalid)
+        IProcessStore proc = IProcessStore(processesAddress);
+        proc.setStatus(processId, IProcessStore.Status.RESULTS);
 
         emit ResultsAvailable(processId);
     }
@@ -78,18 +88,6 @@ contract Results is IResultsStore {
         returns (uint32[][] memory tally, uint32 height)
     {
         require(results[processId].defined, "Not found");
-
-        // FUTURE: Check that the process exists on the processes contract
-
-        // if (processes[processId].entity == address(0x0)) {
-        //     // Not found locally
-        //     if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
-
-        //     // Ask the predecessor
-        //     // Note: The predecessor's method needs to follow the old version's signature
-        //     IProcessStore predecessor = IProcessStore(predecessorAddress);
-        //     return predecessor.getResults(processId);
-        // }
 
         return (results[processId].tally, results[processId].height);
     }

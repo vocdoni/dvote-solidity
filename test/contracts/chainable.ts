@@ -4,9 +4,9 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin } from "../../lib"
+import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters } from "../../lib"
 
-import ProcessBuilder, { DEFAULT_CHAIN_ID, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_PROCESS_PRICE } from "../builders/process"
+import ProcessBuilder, { DEFAULT_ETH_CHAIN_ID, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
 import TokenStorageProofBuilder from "../builders/token-storage-proof"
 
@@ -43,7 +43,8 @@ describe("Chainable Process contract", () => {
         tx = null
 
         contractInstance = await new ProcessBuilder().build()
-        processId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+        const namespace = await contractInstance.namespaceId()
+        processId = await contractInstance.getProcessId(entityAccount.address, 0, namespace, DEFAULT_ETH_CHAIN_ID)
     })
 
     it("should fail deploying if the predecessor address is not a contract", async () => {
@@ -166,8 +167,10 @@ describe("Chainable Process contract", () => {
             expect(await processInstanceNew.predecessorAddress()).to.eq(processInstanceOld.address)
 
             for (let idx of [0, 1, 2]) {
-                const processId1 = await processInstanceOld.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
-                const processId2 = await processInstanceNew.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+                const namespaceId = await processInstanceOld.namespaceId()
+
+                const processId1 = await processInstanceOld.getProcessId(entityAccount.address, idx, namespaceId, DEFAULT_ETH_CHAIN_ID)
+                const processId2 = await processInstanceNew.getProcessId(entityAccount.address, idx, namespaceId, DEFAULT_ETH_CHAIN_ID)
                 expect(processId1).to.eq(processId2)
 
                 // fetch from the new instance
@@ -193,7 +196,9 @@ describe("Chainable Process contract", () => {
             expect((await processInstanceNew.activationBlock()).toNumber()).to.be.gt(0)
 
             for (let idx of [0, 1, 2]) {
-                const processId = await processInstanceOld.getProcessId(entityAccount.address, idx, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
+                const namespaceId = await processInstanceOld.namespaceId()
+                
+                const processId = await processInstanceOld.getProcessId(entityAccount.address, idx, namespaceId, DEFAULT_ETH_CHAIN_ID)
 
                 // Check the process holder
                 expect(await processInstanceNew.getCreationInstance(processId)).to.eq(processInstanceOld.address)
@@ -327,26 +332,6 @@ describe("Chainable Process contract", () => {
             expect((await processInstance2.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(5)
             expect((await processInstance3.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(9)
         }).timeout(7000)
-
-        it("namespace data should stay the same after a fork", async () => {
-            // This does not contribute to the code coverage, but nice to test anyway
-
-            const namespaceInstance = await new NamespaceBuilder().withNamespace(DEFAULT_NAMESPACE).withOracles([authorizedOracleAccount1.address]).build()
-            expect(await namespaceInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
-
-            const processInstanceOld = await new ProcessBuilder().withNamespaceInstance(namespaceInstance.address).build() as Contract & ProcessContractMethods
-            const processInstanceNew = await new ProcessBuilder().withNamespaceInstance(namespaceInstance.address).withPredecessor(processInstanceOld.address).build(0)
-
-            // connect just now as the deployAccount
-            tx = await processInstanceOld.connect(deployAccount.wallet).activateSuccessor(processInstanceNew.address)
-            await tx.wait()
-            // back to entityAccount
-
-            expect(await processInstanceOld.namespaceAddress()).to.eq(namespaceInstance.address)
-            expect(await processInstanceNew.namespaceAddress()).to.eq(namespaceInstance.address)
-
-            expect(await namespaceInstance.isOracle(DEFAULT_NAMESPACE, authorizedOracleAccount1.address)).to.be.true
-        })
     })
 
     describe("Instance activation", () => {
@@ -477,12 +462,12 @@ describe("Chainable Process contract", () => {
             }
         })
 
-        it("should allow to update the status, questionIndex and results after a successor has been activated", async () => {
+        it("should allow to update the status and questionIndex after a successor has been activated", async () => {
             const mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
             const envelopeType = ProcessEnvelopeType.SERIAL
 
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().withMode(mode).withEnvelopeType(envelopeType).withOracle(authorizedOracleAccount1.address).build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().withMode(mode).withEnvelopeType(envelopeType).build() as Contract & ProcessContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
@@ -499,11 +484,6 @@ describe("Chainable Process contract", () => {
             await tx.wait()
             tx = await processInstanceOld.incrementQuestionIndex(processId) // should work fine
             await tx.wait()
-            // connect just now as the oracle1
-            tx = await processInstanceOld.connect(authorizedOracleAccount1.wallet).setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT) // should work fine
-            await tx.wait()
-
-            expect(await (await processInstanceOld.getResults(processId)).tally).to.deep.eq(DEFAULT_RESULTS_TALLY)
         })
 
         it("only the predecessor should be able to activate a new contract", async () => {

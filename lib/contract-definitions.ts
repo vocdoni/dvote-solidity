@@ -71,7 +71,7 @@ interface ProcessMethods {
     /** The chain ID of the Ethereum network where the contract lives */
     ethChainId(): Promise<number>
     /** The namespace ID to which the process contract is assigned */
-    namespaceId(): Promise<string>
+    namespaceId(): Promise<number>
     /** The namespace contract to which the process contract is registered */
     namespaceAddress(): Promise<string>
     /** The address of the token storage proofs contract used by EVM census processes */
@@ -167,12 +167,15 @@ export type IProcessStateTuple = [
 export interface ResultsContractMethods {
     // GLOBAL VARIABLES
     genesisAddress(): Promise<string>,
+    processesAddress(): Promise<string>,
 
     // GETTERS
     /** Retrieve the available results for the given process */
     getResults(processId: string): Promise<IProcessResults>
 
     // SETTERS
+    /** Defines the address of the processes contract where the `RESULTS` status will be set */
+    setProcessesAddress(processesAddr: string): Promise<ContractTransaction>;
     setResults(processId: string, tally: number[][], height: number, vochainId: number, overrides?: IMethodOverrides): Promise<ContractTransaction>
 }
 
@@ -187,6 +190,8 @@ export interface GenesisContractMethods {
 
     // GETTERS
 
+    /** Retrieves the given chain */
+    get(chainId: number): Promise<{ genesis: string, validators: string[], oracles: string[] }>,
     /** Same as chainCount */
     getChainCount(): Promise<number>,
     /** Checks whether the given public key is registered as a validator in the given chain */

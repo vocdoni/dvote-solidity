@@ -13,10 +13,10 @@ contract Processes is IProcessStore, Chained {
 
     // CONSTANTS AND ENUMS
     enum CensusOrigin {
-        __,                         // 0
-        OFF_CHAIN_TREE,             // 1
-        OFF_CHAIN_TREE_WEIGHTED,    // 2
-        OFF_CHAIN_CA,               // 3
+        __, // 0
+        OFF_CHAIN_TREE, // 1
+        OFF_CHAIN_TREE_WEIGHTED, // 2
+        OFF_CHAIN_CA, // 3
         __4,
         __5,
         __6,
@@ -24,11 +24,11 @@ contract Processes is IProcessStore, Chained {
         __8,
         __9,
         __10,
-        ERC20,                      // 11
-        ERC721,                     // 12
-        ERC1155,                    // 13
-        ERC777,                     // 14
-        MINI_ME                     // 15
+        ERC20, // 11
+        ERC721, // 12
+        ERC1155, // 13
+        ERC777, // 14
+        MINI_ME // 15
     } // 256 items max
 
     /*
@@ -185,10 +185,10 @@ contract Processes is IProcessStore, Chained {
     constructor(
         address predecessor,
         address namespace,
+        address resultsAddr,
         address tokenStorageProof,
         uint32 ethereumChainId,
-        uint256 procPrice,
-        address resultsAddr
+        uint256 procPrice
     ) public {
         Chained.setUp(predecessor);
 
@@ -201,10 +201,10 @@ contract Processes is IProcessStore, Chained {
 
         namespaceId = INamespaceStore(namespace).register();
         namespaceAddress = namespace;
-        tokenStorageProofAddress = tokenStorageProof;
-        processPrice = procPrice;
-        ethChainId = ethereumChainId;
         resultsAddress = resultsAddr;
+        tokenStorageProofAddress = tokenStorageProof;
+        ethChainId = ethereumChainId;
+        processPrice = procPrice;
     }
 
     // GETTERS
@@ -544,7 +544,12 @@ contract Processes is IProcessStore, Chained {
 
         // Store the new process
         bytes32 processId =
-            getProcessId(tokenContractAddress, prevCount, namespaceId, ethChainId);
+            getProcessId(
+                tokenContractAddress,
+                prevCount,
+                namespaceId,
+                ethChainId
+            );
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
@@ -596,6 +601,18 @@ contract Processes is IProcessStore, Chained {
             revert("Not found: Try on predecessor");
         }
 
+        Status currentStatus = processes[processId].status;
+
+        // Only the results contract can set to RESULTS
+        if (msg.sender == resultsAddress) {
+            require(currentStatus != Status.CANCELED, "Canceled");
+            require(currentStatus != Status.RESULTS, "Already set");
+            require(newStatus == Status.RESULTS, "Only results allowed");
+            processes[processId].status = newStatus;
+            emit StatusUpdated(processId, namespaceId, newStatus);
+            return;
+        }
+
         // Only the process creator
         require(processes[processId].entity == msg.sender, "Invalid entity");
 
@@ -608,7 +625,6 @@ contract Processes is IProcessStore, Chained {
             "Not off-chain"
         );
 
-        Status currentStatus = processes[processId].status;
         if (currentStatus != Status.READY && currentStatus != Status.PAUSED) {
             // When currentStatus is [ENDED, CANCELED, RESULTS], no update is allowed
             revert("Process terminated");

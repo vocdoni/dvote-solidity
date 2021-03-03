@@ -159,6 +159,8 @@ contract Genesis is IGenesisStore, Owned {
             address[] memory oracles
         )
     {
+        require(chainId < chainCount, "Not found");
+
         return (
             chains[chainId].genesis,
             chains[chainId].validatorList,

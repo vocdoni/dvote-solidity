@@ -1,19 +1,17 @@
 import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespaceContractMethods, ProcessContractParameters, IProcessCensusOrigin, ProcessCensusOrigin } from "../../lib/index"
 import { BigNumber, Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
+import ResultsBuilder from "./results"
 import NamespaceBuilder from "./namespace"
 import TokenStorageProofBuilder from "./token-storage-proof"
-import { assert } from "console"
 
 import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
-import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
-// import { abi as tokenStorageProofAbi, bytecode as tokenStorageProofByteCode } from "../../build/token-storage-proof.json"
 
 // DEFAULT VALUES
 export const DEFAULT_PREDECESSOR_INSTANCE_ADDRESS = "0x0000000000000000000000000000000000000000"
 export const DEFAULT_NAMESPACE = 0
-export const DEFAULT_CHAIN_ID = 0
 export const DEFAULT_PROCESS_PRICE = 0
+export const DEFAULT_ETH_CHAIN_ID = 0
 export const DEFAULT_PROCESS_MODE = ProcessMode.make()
 export const DEFAULT_ENVELOPE_TYPE = ProcessEnvelopeType.make()
 export const DEFAULT_CENSUS_ORIGIN = ProcessCensusOrigin.OFF_CHAIN_TREE
@@ -55,11 +53,10 @@ export default class ProcessBuilder {
     maxValue: number = DEFAULT_MAX_VALUE
     maxTotalCost: number = DEFAULT_MAX_TOTAL_COST
     costExponent: number = DEFAULT_COST_EXPONENT
-    namespace: number = DEFAULT_NAMESPACE
+    resultsAddress: string
     namespaceAddress: string
     tokenStorageProofAddress: string
-    ethChainId: number = DEFAULT_CHAIN_ID
-    oracleAddress: string
+    ethChainId: number = DEFAULT_ETH_CHAIN_ID
     paramsSignature: string = DEFAULT_PARAMS_SIGNATURE
 
     constructor() {
@@ -71,39 +68,35 @@ export default class ProcessBuilder {
         if (this.predecessorInstanceAddress != DEFAULT_PREDECESSOR_INSTANCE_ADDRESS && processCount > 0) throw new Error("Unable to create " + processCount + " processes without a null parent, since the contract is inactive. Call .build(0) instead.")
         const deployAccount = this.accounts[0]
 
-        // Namespace deploy dependency
         let namespaceAddress = this.namespaceAddress
-        if (!namespaceAddress) { // deploy a new one
-            if (this.oracleAddress) {
-                const namespaceInstance = await new NamespaceBuilder().withNamespace(this.namespace).withOracles([this.oracleAddress]).build()
-                namespaceAddress = namespaceInstance.address
-
-                assert(await namespaceInstance.isOracle(this.namespace, this.oracleAddress), "Not an oracle on the new namespace contract")
-            }
-            else {
-                const namespaceInstance = await new NamespaceBuilder().build()
-                namespaceAddress = namespaceInstance.address
-            }
+        if (!this.namespaceAddress) {
+            // Deploy one
+            const namespaceInstance = await new NamespaceBuilder().build()
+            namespaceAddress = namespaceInstance.address
         }
-        else if (this.oracleAddress) { // attach to it and add the oracle
-            const namespaceInstance = new Contract(namespaceAddress, namespaceAbi, deployAccount.wallet) as Contract & NamespaceContractMethods
-            const tx = await namespaceInstance.setNamespace(this.namespace, "dummy", "dummy-2", [], [this.oracleAddress])
-            await tx.wait()
-
-            assert(await namespaceInstance.isOracle(this.namespace, this.oracleAddress), "Not an oracle to the attached instance")
+        let resultsAddress = this.resultsAddress
+        if (!this.resultsAddress) {
+            // Deploy one
+            const resultsInstance = await new ResultsBuilder().build()
+            resultsAddress = resultsInstance.address
         }
-
-        // Storage Proof deploy dependency
         let tokenStorageProofAddress = this.tokenStorageProofAddress
         if (!tokenStorageProofAddress) {
             const tokenStorageProofInstance = await new TokenStorageProofBuilder().build()
             tokenStorageProofAddress = tokenStorageProofInstance.address
         }
 
-        // Process itself
+        // Processes contract itself
         const contractFactory = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
 
-        let contractInstance = await contractFactory.deploy(this.predecessorInstanceAddress, namespaceAddress, tokenStorageProofAddress, this.ethChainId, this.processPrice) as Contract & ProcessContractMethods
+        let contractInstance = await contractFactory.deploy(
+            this.predecessorInstanceAddress,
+            namespaceAddress,
+            resultsAddress,
+            tokenStorageProofAddress,
+            this.ethChainId,
+            this.processPrice
+        ) as Contract & ProcessContractMethods
 
         contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
 
@@ -124,7 +117,6 @@ export default class ProcessBuilder {
                 maxVoteOverwrites: this.maxVoteOverwrites,
                 maxTotalCost: this.maxTotalCost,
                 costExponent: this.costExponent,
-                namespace: this.namespace,
                 paramsSignature: this.paramsSignature
             }).toContractParams(extraParams)
 
@@ -145,6 +137,14 @@ export default class ProcessBuilder {
         if (!predecessorInstanceAddress) throw new Error("Empty predecessorInstanceAddress")
 
         this.predecessorInstanceAddress = predecessorInstanceAddress
+        return this
+    }
+    withNamespaceAddress(namespaceAddress: string) {
+        this.namespaceAddress = namespaceAddress
+        return this
+    }
+    withResultsAddress(resultsAddress: string) {
+        this.resultsAddress = resultsAddress
         return this
     }
     disabled() {
@@ -201,10 +201,6 @@ export default class ProcessBuilder {
         this.costExponent = costExponent
         return this
     }
-    withNamespace(namespace: number) {
-        this.namespace = namespace
-        return this
-    }
     withTokenStorageProof(tokenStorageProofAddress: string) {
         this.tokenStorageProofAddress = tokenStorageProofAddress
         return this
@@ -215,10 +211,6 @@ export default class ProcessBuilder {
     }
     withChainId(chainId: number) {
         this.ethChainId = chainId
-        return this
-    }
-    withOracle(oracleAddress: string) {
-        this.oracleAddress = oracleAddress
         return this
     }
     withParamsSignature(paramsSignature: string) {
@@ -249,7 +241,6 @@ export default class ProcessBuilder {
             maxVoteOverwrites: DEFAULT_MAX_VOTE_OVERWRITES,
             maxTotalCost: DEFAULT_MAX_TOTAL_COST,
             costExponent: DEFAULT_COST_EXPONENT,
-            namespace: DEFAULT_NAMESPACE,
             paramsSignature: DEFAULT_PARAMS_SIGNATURE
         }).toContractParams()
         return contractInstance.newProcess(...params).then(tx => tx.wait())

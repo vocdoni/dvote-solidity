@@ -64,6 +64,7 @@ interface IResultsStore {
     function getResults(bytes32 processId) external view returns (uint32[][] memory tally, uint32 height);
 
     // SET
+    function setProcessesAddress(address processesAddr) external;
     function setResults(bytes32 processId, uint32[][] memory tally, uint32 height, uint32 vochainId) external;
 
     // EVENTS
