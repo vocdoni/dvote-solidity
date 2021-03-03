@@ -24,8 +24,7 @@ describe("Process contract parameter wrapper", () => {
             maxVoteOverwrites: 66,
             maxTotalCost: 77,
             costExponent: 88,
-            namespace: 99,
-            evmBlockHeight: 100,
+            evmBlockHeight: 99,
             paramsSignature: "0x0110"
         }).toContractParams()
 
@@ -44,8 +43,7 @@ describe("Process contract parameter wrapper", () => {
         expect(params1[4][3]).to.eq(66)
         expect(params1[5][0]).to.eq(77)
         expect(params1[5][1]).to.eq(88)
-        expect(params1[5][2]).to.eq(99)
-        expect(params1[6]).to.eq(100)
+        expect(params1[6]).to.eq(99)
         expect(params1[7]).to.eq("0x0110")
 
         const params2 = ProcessContractParameters.fromParams({
@@ -64,8 +62,7 @@ describe("Process contract parameter wrapper", () => {
             maxVoteOverwrites: 67,
             maxTotalCost: 777,
             costExponent: 888,
-            namespace: 999,
-            evmBlockHeight: 1000,
+            evmBlockHeight: 999,
             paramsSignature: "0x1100"
         }).toContractParams({ gasLimit: 100 })
 
@@ -84,8 +81,7 @@ describe("Process contract parameter wrapper", () => {
         expect(params2[4][3]).to.eq(67)
         expect(params2[5][0]).to.eq(777)
         expect(params2[5][1]).to.eq(888)
-        expect(params2[5][2]).to.eq(999)
-        expect(params2[6]).to.eq(1000)
+        expect(params2[6]).to.eq(999)
         expect(params2[7]).to.eq("0x1100")
         expect(params2[8]).to.deep.eq({ gasLimit: 100 })
     })
@@ -98,8 +94,8 @@ describe("Process contract parameter wrapper", () => {
             [7, 8],
             0,
             [11, 12, 13, 14, 15],
-            [16, 17, 18],
-            BigNumber.from(19)
+            [16, 17],
+            BigNumber.from(18)
         ])
 
         expect(json1.mode.value).to.eq(1)
@@ -119,8 +115,7 @@ describe("Process contract parameter wrapper", () => {
         expect(json1.maxVoteOverwrites).to.eq(15)
         expect(json1.maxTotalCost).to.eq(16)
         expect(json1.costExponent).to.eq(17)
-        expect(json1.namespace).to.eq(18)
-        expect(json1.evmBlockHeight).to.eq(19)
+        expect(json1.evmBlockHeight).to.eq(18)
 
         const json2 = ProcessContractParameters.fromContract([
             [10, 3, 2],
@@ -129,8 +124,8 @@ describe("Process contract parameter wrapper", () => {
             [70, 80],
             1,
             [110, 120, 99, 140, 150],
-            [160, 170, 180],
-            BigNumber.from(190)
+            [160, 170],
+            BigNumber.from(180)
         ])
 
         expect(json2.mode.value).to.eq(10)
@@ -150,7 +145,6 @@ describe("Process contract parameter wrapper", () => {
         expect(json2.maxVoteOverwrites).to.eq(150)
         expect(json2.maxTotalCost).to.eq(160)
         expect(json2.costExponent).to.eq(170)
-        expect(json2.namespace).to.eq(180)
-        expect(json2.evmBlockHeight).to.eq(190)
+        expect(json2.evmBlockHeight).to.eq(180)
     })
 })

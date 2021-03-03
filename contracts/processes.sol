@@ -68,9 +68,9 @@ contract Processes is IProcessStore, Chained {
     uint32 public ethChainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
     uint32 public namespaceId; // Index of the namespace where this contract has been assigned to
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
+    address public resultsAddress; // The address of the contract that will hold the results of the processes from the current instance
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
     uint256 public processPrice; // Price for creating a voting process
-    address public resultsAddress; // The address of the contract that will hold the results of the processes from the current instance
 
     // DATA STRUCTS
     struct Process {
@@ -607,7 +607,7 @@ contract Processes is IProcessStore, Chained {
         if (msg.sender == resultsAddress) {
             require(currentStatus != Status.CANCELED, "Canceled");
             require(currentStatus != Status.RESULTS, "Already set");
-            require(newStatus == Status.RESULTS, "Only results allowed");
+            require(newStatus == Status.RESULTS, "Not results contract");
             processes[processId].status = newStatus;
             emit StatusUpdated(processId, namespaceId, newStatus);
             return;
