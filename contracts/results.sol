@@ -7,7 +7,9 @@ import "./base.sol"; // Base contracts (Chained, Owned)
 import "./common.sol"; // Common interface for retro compatibility
 import "./lib.sol"; // Helpers
 
-contract Processes is IResultsStore {
+// INFO: This contract is the ground for future ERC3k dispute resolution of results on chain.
+
+contract Results is IResultsStore {
     // GLOBAL DATA
 
     address public genesisAddress; // Address of the global genesis contract instance
@@ -49,7 +51,7 @@ contract Processes is IResultsStore {
         require(height > 0, "No votes");
         require(!results[processId].defined, "Already defined");
 
-        // TODO: Check that the process on the processes contract exists and is not canceled
+        // FUTURE: Check that the process on the processes contract exists and is not canceled
 
         // // cannot publish results on a canceled process or on a process
         // // that already has results
@@ -75,9 +77,9 @@ contract Processes is IResultsStore {
         override
         returns (uint32[][] memory tally, uint32 height)
     {
-        if (!results[processId].defined) revert("Not found");
+        require(results[processId].defined, "Not found");
 
-        // TODO: Check that the process exists on the processes contract
+        // FUTURE: Check that the process exists on the processes contract
 
         // if (processes[processId].entity == address(0x0)) {
         //     // Not found locally

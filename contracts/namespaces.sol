@@ -32,4 +32,15 @@ contract Namespaces is INamespaceStore {
 
         namespaceCount = namespaceCount + 1;
     }
+
+    // GETTERS
+
+    function processContractAt(uint32 namespaceId)
+        public
+        view
+        override
+        returns (address)
+    {
+        return namespaces[namespaceId];
+    }
 }

@@ -43,8 +43,6 @@ interface IProcessStore {
     function withdraw(address payable to, uint256 amount) external;
 
     // EVENTS
-    event Activated(uint blockNumber);
-    event ActivatedSuccessor(uint blockNumber, address successor);
     event NewProcess(bytes32 processId, uint32 namespace);
     event StatusUpdated(bytes32 processId, uint32 namespace, Status status);
     event QuestionIndexUpdated(
@@ -77,6 +75,9 @@ interface INamespaceStore {
     // SETTERS
     function register() external returns(uint32);
 
+    // GETTERS
+    function processContractAt(uint32 namespaceId) external view returns (address);
+
     // EVENTS
     event NamespaceRegistered(uint32 namespace);
 }
@@ -99,11 +100,11 @@ interface IGenesisStore {
 
     // EVENTS
     event ChainRegistered(uint32 chainId);
-    event GenesisUpdated(string genesis, uint32 chainId);
-    event ValidatorAdded(bytes32 validatorPublicKey, uint32 chainId);
-    event ValidatorRemoved(bytes32 validatorPublicKey, uint32 chainId);
-    event OracleAdded(address oracleAddress, uint32 chainId);
-    event OracleRemoved(address oracleAddress, uint32 chainId);
+    event GenesisUpdated(uint32 chainId);
+    event ValidatorAdded(uint32 chainId, bytes32 validatorPublicKey);
+    event ValidatorRemoved(uint32 chainId, bytes32 validatorPublicKey);
+    event OracleAdded(uint32 chainId, address oracleAddress);
+    event OracleRemoved(uint32 chainId, address oracleAddress);
 }
 
 /// @notice The `ITokenStorageProof` interface defines the standard methods that allow checking ERC token balances.

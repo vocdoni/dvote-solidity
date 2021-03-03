@@ -13,10 +13,10 @@ contract Processes is IProcessStore, Chained {
 
     // CONSTANTS AND ENUMS
     enum CensusOrigin {
-        __,
-        OFF_CHAIN_TREE,
-        OFF_CHAIN_TREE_WEIGHTED,
-        OFF_CHAIN_CA,
+        __,                         // 0
+        OFF_CHAIN_TREE,             // 1
+        OFF_CHAIN_TREE_WEIGHTED,    // 2
+        OFF_CHAIN_CA,               // 3
         __4,
         __5,
         __6,
@@ -24,11 +24,11 @@ contract Processes is IProcessStore, Chained {
         __8,
         __9,
         __10,
-        ERC20,
-        ERC721,
-        ERC1155,
-        ERC777,
-        MINI_ME
+        ERC20,                      // 11
+        ERC721,                     // 12
+        ERC1155,                    // 13
+        ERC777,                     // 14
+        MINI_ME                     // 15
     } // 256 items max
 
     /*
@@ -66,11 +66,11 @@ contract Processes is IProcessStore, Chained {
     // GLOBAL DATA
 
     uint32 public ethChainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
-    address public resultsAddress; // The address of the contract that will hold the results of the processes from the current instance
     uint32 public namespaceId; // Index of the namespace where this contract has been assigned to
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
     uint256 public processPrice; // Price for creating a voting process
+    address public resultsAddress; // The address of the contract that will hold the results of the processes from the current instance
 
     // DATA STRUCTS
     struct Process {

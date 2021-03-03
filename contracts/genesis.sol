@@ -11,12 +11,16 @@ contract Genesis is IGenesisStore, Owned {
 
     struct ChainEntry {
         string genesis;
-        bytes32[] validators; // Public key array
-        address[] oracles; // Oracles allowed to submit processes to the Vochain and publish results on the process contract
+        // Full list for exhaustive retrieval
+        bytes32[] validatorList; // Public key array
+        address[] oracleList; // Oracles allowed to submit processes to the Vochain and publish results on the process contract
+        // Bool mapping for fast checking
+        mapping(bytes32 => bool) validators; // Indicates whether a public key is a validator on the current chain
+        mapping(address => bool) oracles; // Indicates whether an address is an oracle on the current chain
     }
     // Mapping chains[chainId] => ChainEntry
     mapping(uint32 => ChainEntry) internal chains;
-    uint32 chainCount;
+    uint32 public chainCount;
 
     // HELPERS
 
@@ -32,26 +36,33 @@ contract Genesis is IGenesisStore, Owned {
 
     // GLOBAL METHODS
 
-    /// @notice Registers a new chain ID, along with the given genesis, validators and oracles.
-    /// @return The new chain ID that has been registered
+    // Registers a new chain ID, along with the given genesis, validators and oracles.
+    // Returns the new chain ID that has been registered
     function newChain(
         string memory genesis,
-        bytes32[] memory validators,
-        address[] memory oracles
-    ) public override onlyContractOwner returns (uint32) {
+        bytes32[] memory validatorList,
+        address[] memory oracleList
+    ) public override onlyContractOwner returns (uint32 newChainId) {
         ChainEntry storage entry = chains[chainCount];
 
         entry.genesis = genesis;
-        entry.validators = validators;
-        entry.oracles = oracles;
+        entry.validatorList = validatorList;
+        entry.oracleList = oracleList;
+
+        for (uint256 i = 0; i < validatorList.length; i++) {
+            entry.validators[validatorList[i]] = true;
+        }
+        for (uint256 i = 0; i < oracleList.length; i++) {
+            entry.oracles[oracleList[i]] = true;
+        }
 
         emit ChainRegistered(chainCount);
+        newChainId = chainCount;
 
         chainCount = chainCount + 1;
-
-        return chainCount - 1;
     }
 
+    // Sets the given data as the new genesis for the chain
     function setGenesis(uint32 chainId, string memory newGenesis)
         public
         override
@@ -64,7 +75,7 @@ contract Genesis is IGenesisStore, Owned {
 
         chains[chainId].genesis = newGenesis;
 
-        emit GenesisUpdated(newGenesis, chainId);
+        emit GenesisUpdated(chainId);
     }
 
     function addValidator(uint32 chainId, bytes32 validatorPublicKey)
@@ -74,9 +85,11 @@ contract Genesis is IGenesisStore, Owned {
     {
         require(!isValidator(chainId, validatorPublicKey), "Already present");
 
-        chains[chainId].validators.push(validatorPublicKey);
+        ChainEntry storage entry = chains[chainId];
+        entry.validatorList.push(validatorPublicKey);
+        entry.validators[validatorPublicKey] = true;
 
-        emit ValidatorAdded(validatorPublicKey, chainId);
+        emit ValidatorAdded(chainId, validatorPublicKey);
     }
 
     function removeValidator(
@@ -84,20 +97,21 @@ contract Genesis is IGenesisStore, Owned {
         uint256 idx,
         bytes32 validatorPublicKey
     ) public override onlyContractOwner {
-        uint256 currentLength = chains[chainId].validators.length;
+        ChainEntry storage entry = chains[chainId];
+        uint256 currentLength = entry.validatorList.length;
+
         require(idx < currentLength, "Invalid index");
-        // using `idx` to avoid searching/looping and using `validatorPublicKey` to enforce that the correct value is removed
+        // using `idx` to avoid searching/looping and using `validatorPublicKey` to enforce that the correct idx/value is removed
         require(
-            chains[chainId].validators[idx] == validatorPublicKey,
+            entry.validatorList[idx] == validatorPublicKey,
             "Index-key mismatch"
         );
         // swap with the last element from the list
-        chains[chainId].validators[idx] = chains[chainId].validators[
-            currentLength - 1
-        ];
-        chains[chainId].validators.pop();
+        entry.validatorList[idx] = entry.validatorList[currentLength - 1];
+        entry.validatorList.pop();
+        entry.validators[validatorPublicKey] = false;
 
-        emit ValidatorRemoved(validatorPublicKey, chainId);
+        emit ValidatorRemoved(chainId, validatorPublicKey);
     }
 
     function addOracle(uint32 chainId, address oracleAddress)
@@ -107,9 +121,11 @@ contract Genesis is IGenesisStore, Owned {
     {
         require(!isOracle(chainId, oracleAddress), "Already present");
 
-        chains[chainId].oracles.push(oracleAddress);
+        ChainEntry storage entry = chains[chainId];
+        entry.oracleList.push(oracleAddress);
+        entry.oracles[oracleAddress] = true;
 
-        emit OracleAdded(oracleAddress, chainId);
+        emit OracleAdded(chainId, oracleAddress);
     }
 
     function removeOracle(
@@ -117,20 +133,18 @@ contract Genesis is IGenesisStore, Owned {
         uint256 idx,
         address oracleAddress
     ) public override onlyContractOwner {
-        uint256 currentLength = chains[chainId].oracles.length;
+        ChainEntry storage entry = chains[chainId];
+        uint256 currentLength = entry.oracleList.length;
+
         require(idx < currentLength, "Invalid index");
-        require( // using `idx` to avoid searching/looping and using `oracleAddress` to enforce that the correct value is removed
-            chains[chainId].oracles[idx] == oracleAddress,
-            "Index-key mismatch"
-        );
+        require(entry.oracleList[idx] == oracleAddress, "Index-key mismatch"); // using `idx` to avoid searching/looping and using `oracleAddress` to enforce that the correct value is removed
 
         // swap with the last element from the list
-        chains[chainId].oracles[idx] = chains[chainId].oracles[
-            currentLength - 1
-        ];
-        chains[chainId].oracles.pop();
+        entry.oracleList[idx] = entry.oracleList[currentLength - 1];
+        entry.oracleList.pop();
+        entry.oracles[oracleAddress] = false;
 
-        emit OracleRemoved(oracleAddress, chainId);
+        emit OracleRemoved(chainId, oracleAddress);
     }
 
     // GETTERS
@@ -147,8 +161,8 @@ contract Genesis is IGenesisStore, Owned {
     {
         return (
             chains[chainId].genesis,
-            chains[chainId].validators,
-            chains[chainId].oracles
+            chains[chainId].validatorList,
+            chains[chainId].oracleList
         );
     }
 
@@ -162,12 +176,7 @@ contract Genesis is IGenesisStore, Owned {
         override
         returns (bool)
     {
-        for (uint256 i = 0; i < chains[chainId].validators.length; i++) {
-            if (chains[chainId].validators[i] == validatorPublicKey) {
-                return true;
-            }
-        }
-        return false;
+        return chains[chainId].validators[validatorPublicKey];
     }
 
     function isOracle(uint32 chainId, address oracleAddress)
@@ -176,11 +185,6 @@ contract Genesis is IGenesisStore, Owned {
         override
         returns (bool)
     {
-        for (uint256 i = 0; i < chains[chainId].oracles.length; i++) {
-            if (chains[chainId].oracles[i] == oracleAddress) {
-                return true;
-            }
-        }
-        return false;
+        return chains[chainId].oracles[oracleAddress];
     }
 }
