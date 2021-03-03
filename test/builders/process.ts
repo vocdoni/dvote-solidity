@@ -69,13 +69,13 @@ export default class ProcessBuilder {
         const deployAccount = this.accounts[0]
 
         let namespaceAddress = this.namespaceAddress
-        if (!this.namespaceAddress) {
+        if (!namespaceAddress) {
             // Deploy one
             const namespaceInstance = await new NamespaceBuilder().build()
             namespaceAddress = namespaceInstance.address
         }
         let resultsAddress = this.resultsAddress
-        if (!this.resultsAddress) {
+        if (!resultsAddress) {
             // Deploy one
             const resultsInstance = await new ResultsBuilder().build()
             resultsAddress = resultsInstance.address

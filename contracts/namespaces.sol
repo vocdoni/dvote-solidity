@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 
 import "./base.sol";
 import "./common.sol";
-import "./lib.sol";
 
 contract Namespaces is INamespaceStore {
     // GLOBAL DATA
@@ -21,10 +20,10 @@ contract Namespaces is INamespaceStore {
      * Returns the new namespace ID that has been registered
      */
     function register() public override returns (uint32 result) {
-        require(
-            ContractSupport.isContract(msg.sender),
-            "Caller must be a contract"
-        );
+        // It would be good to enforce that the caller is a contract, but `register()` is called upon deployment
+        // and the code segment is not yet available to be checked. 
+        // Taking a compromise and accepting any Ethereum address, as a `uint32` has plenty of margin for
+        // hypothetic spam registrations.
 
         namespaces[namespaceCount] = msg.sender;
         emit NamespaceRegistered(namespaceCount);

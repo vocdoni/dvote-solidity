@@ -86,24 +86,24 @@ interface INamespaceStore {
 /// @notice The `IGenesisStore` interface defines the standard methods that allow querying and updating the details of each namespace.
 interface IGenesisStore {
     // SETTERS
-    function newChain(string memory genesis, bytes32[] memory validators, address[] memory oracles) external returns (uint32);
+    function newChain(string memory genesis, bytes[] memory validators, address[] memory oracles) external returns (uint32);
     function setGenesis(uint32 chainId, string memory newGenesis) external;
-    function addValidator(uint32 chainId, bytes32 validatorPublicKey) external;
-    function removeValidator(uint32 chainId, uint256 idx, bytes32 validatorPublicKey) external;
+    function addValidator(uint32 chainId, bytes memory validatorPublicKey) external;
+    function removeValidator(uint32 chainId, uint256 idx, bytes memory validatorPublicKey) external;
     function addOracle(uint32 chainId, address oracleAddress) external;
     function removeOracle(uint32 chainId, uint256 idx, address oracleAddress) external;
 
     // GETTERS
-    function get(uint32 chainId) view external returns ( string memory genesis, bytes32[] memory validators, address[] memory oracles);
-    function isValidator(uint32 chainId, bytes32 validatorPublicKey) external view returns (bool);
+    function get(uint32 chainId) view external returns ( string memory genesis, bytes[] memory validators, address[] memory oracles);
+    function isValidator(uint32 chainId, bytes memory validatorPublicKey) external view returns (bool);
     function isOracle(uint32 chainId, address oracleAddress) external view returns (bool);
     function getChainCount() external view returns(uint32);
 
     // EVENTS
     event ChainRegistered(uint32 chainId);
     event GenesisUpdated(uint32 chainId);
-    event ValidatorAdded(uint32 chainId, bytes32 validatorPublicKey);
-    event ValidatorRemoved(uint32 chainId, bytes32 validatorPublicKey);
+    event ValidatorAdded(uint32 chainId, bytes validatorPublicKey);
+    event ValidatorRemoved(uint32 chainId, bytes validatorPublicKey);
     event OracleAdded(uint32 chainId, address oracleAddress);
     event OracleRemoved(uint32 chainId, address oracleAddress);
 }
