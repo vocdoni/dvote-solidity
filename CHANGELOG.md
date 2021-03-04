@@ -14,6 +14,7 @@
   - The results contract can then set the `RESULTS` status on the process contract
 - `EnsPublicResolver` is now renamed to `EnsResolver` in TypeScript
 - Validators now have a `bytes32` data type
+- `getNextProcessId` no longer required the `namespace` parameter
 
 ## 0.15.0
 

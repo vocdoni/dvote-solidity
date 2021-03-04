@@ -62,7 +62,7 @@ interface ProcessMethods {
     /** Retrieves the amount of processes that the entity has created */
     getEntityProcessCount(entityAddress: string): Promise<BigNumber>,
     /** Get the process ID that would be assigned to the next process */
-    getNextProcessId(entityAddress: string, namespace: number): Promise<string>,
+    getNextProcessId(entityAddress: string): Promise<string>,
     /** Compute the process ID that corresponds to the given parameters */
     getProcessId(entityAddress: string, processCountIndex: number, namespace: number, ethChainId: number | BigNumber): Promise<string>,
 

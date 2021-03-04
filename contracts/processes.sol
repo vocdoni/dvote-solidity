@@ -590,11 +590,6 @@ contract Processes is IProcessStore, Chained {
     }
 
     function setStatus(bytes32 processId, Status newStatus) public override {
-        require(
-            uint8(newStatus) <= uint8(Status.PAUSED), // [READY 0..3 PAUSED] => RESULTS (4) is not allowed
-            "Invalid status code"
-        );
-
         if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
@@ -615,6 +610,10 @@ contract Processes is IProcessStore, Chained {
 
         // Only the process creator
         require(processes[processId].entity == msg.sender, "Invalid entity");
+        require(
+            uint8(newStatus) <= uint8(Status.PAUSED), // [READY 0..3 PAUSED] => RESULTS (4) is not allowed
+            "Invalid status code"
+        );
 
         // Only processes managed by entities (with an off-chain census) can be updated
         CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
