@@ -1586,7 +1586,7 @@ describe("Process contract", () => {
                             throw new Error("The transaction should have thrown an error but didn't")
                         }
                         catch (err) {
-                            expect(err.message).to.match(/revert Invalid status code/, "The transaction threw an unexpected error:\n" + err.message)
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
                         }
 
                         const processData6 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1835,7 +1835,7 @@ describe("Process contract", () => {
                             throw new Error("The transaction should have thrown an error but didn't")
                         }
                         catch (err) {
-                            expect(err.message).to.match(/revert Invalid status code/, "The transaction threw an unexpected error:\n" + err.message)
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
                         }
 
                         const processData6 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -1997,7 +1997,7 @@ describe("Process contract", () => {
                             throw new Error("The transaction should have thrown an error but didn't")
                         }
                         catch (err) {
-                            expect(err.message).to.match(/revert Invalid status code/, "The transaction threw an unexpected error:\n" + err.message)
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
                         }
 
                         const processData5 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
@@ -2158,7 +2158,7 @@ describe("Process contract", () => {
                             throw new Error("The transaction should have thrown an error but didn't")
                         }
                         catch (err) {
-                            expect(err.message).to.match(/revert Invalid status code/, "The transaction threw an unexpected error:\n" + err.message)
+                            expect(err.message).to.match(/revert Invalid entity/, "The transaction threw an unexpected error:\n" + err.message)
                         }
 
                         const processData5 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))

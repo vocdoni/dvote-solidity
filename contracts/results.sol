@@ -61,15 +61,13 @@ contract Results is IResultsStore, Owned {
         uint32 height,
         uint32 vochainId
     ) public override onlyOracle(vochainId) {
+        require(processesAddress != address(0x0), "Invalid processesAddress");
+        require(!results[processId].defined, "Already set");
         require(height > 0, "No votes");
-        require(!results[processId].defined, "Already defined");
-        require(
-            processesAddress != address(0x0),
-            "Processes address undefined"
-        );
 
         results[processId].tally = tally;
         results[processId].height = height;
+        results[processId].defined = true;
 
         // Try to set the process state as RESULTS (will revert if non-existing or if the current state is invalid)
         IProcessStore proc = IProcessStore(processesAddress);

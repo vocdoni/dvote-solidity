@@ -74,12 +74,12 @@ interface ProcessMethods {
     namespaceId(): Promise<number>
     /** The namespace contract to which the process contract is registered */
     namespaceAddress(): Promise<string>
+    /** The address of the contract on which results shoud be published */
+    resultsAddress(): Promise<string>
     /** The address of the token storage proofs contract used by EVM census processes */
     tokenStorageProofAddress(): Promise<string>
     /** The ProcessPrice is the amount to send to the contract for creating a process */
     processPrice(): Promise<BigNumber>
-    /** The address of the contract on which results shoud be published */
-    resultsAddress(): Promise<string>
 
     // GETTERS
 

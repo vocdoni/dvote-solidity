@@ -43,20 +43,21 @@ describe("Results contract", () => {
 
         const genesisInstance = await new GenesisBuilder().withOracles([authorizedOracleAccount1.address, authorizedOracleAccount2.address]).build()
         contractInstance = await new ResultsBuilder().withGenesisAddress(genesisInstance.address).build()
-        processesInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: true, interruptible: true })).build()
+        processesInstance = await new ProcessBuilder().withResultsAddress(contractInstance.address).withMode(ProcessMode.make({ autoStart: true, interruptible: true })).build()
+        contractInstance = contractInstance.connect(deployAccount.wallet) as any
         tx = await contractInstance.setProcessesAddress(processesInstance.address)
         await tx.wait()
     })
 
     it("should deploy the contract", async () => {
         const genesisInstance = await new GenesisBuilder().build()
-        const contractFactory = new ContractFactory(resultsAbi, resultsByteCode)
-        const localInstance1: Contract & GenesisContractMethods = await contractFactory.deploy(genesisInstance.address) as Contract & GenesisContractMethods
+        const contractFactory = new ContractFactory(resultsAbi, resultsByteCode, deployAccount.wallet)
+        const localInstance1: Contract & ResultsContractMethods = await contractFactory.deploy(genesisInstance.address) as Contract & ResultsContractMethods
 
         expect(localInstance1).to.be.ok
         expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
 
-        const localInstance2: Contract & GenesisContractMethods = await contractFactory.deploy(genesisInstance.address) as Contract & GenesisContractMethods
+        const localInstance2: Contract & ResultsContractMethods = await contractFactory.deploy(genesisInstance.address) as Contract & ResultsContractMethods
 
         expect(localInstance2).to.be.ok
         expect(localInstance2.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -75,8 +76,8 @@ describe("Results contract", () => {
         // Should remain
         expect(await contractInstance.processesAddress()).to.eq(oldAddress)
 
-        // As Oracle
-        contractInstance = contractInstance.connect(randomAccount1.wallet) as any
+        // As deploy
+        contractInstance = contractInstance.connect(deployAccount.wallet) as any
         tx = await contractInstance.setProcessesAddress(processesInstance.address)
         await tx.wait()
 
@@ -85,19 +86,21 @@ describe("Results contract", () => {
     })
 
     it("should reject publishing results without a valid processes contract defined", async () => {
-        contractInstance = await new ResultsBuilder().build()
+        const genesisInstance = await new GenesisBuilder().withOracles([authorizedOracleAccount1.address, authorizedOracleAccount2.address]).build()
+        contractInstance = await new ResultsBuilder().withGenesisAddress(genesisInstance.address).build()
+        processesInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: true, interruptible: true })).build()
+        await tx.wait()
 
-        // no processes contract
-        contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
-
+        // no processes contract defined
         const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
 
         try {
+            contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
             tx = await contractInstance.setResults(processId, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_VOCHAIN_ID)
             throw new Error("The transaction should have thrown an error but didn't")
         }
         catch (err) {
-            expect(err.message).to.match(/revert Invalid processesAddr/, "The transaction threw an unexpected error:\n" + err.message)
+            expect(err.message).to.match(/revert Invalid processesAddress/, "The transaction threw an unexpected error:\n" + err.message)
         }
     })
 
@@ -134,13 +137,13 @@ describe("Results contract", () => {
     it("should be accepted when the sender is a registered oracle", async () => {
         const genesisInstance = await new GenesisBuilder().withOracles([authorizedOracleAccount1.address, authorizedOracleAccount2.address]).build()
         contractInstance = await new ResultsBuilder().withGenesisAddress(genesisInstance.address).build()
-        processesInstance = await new ProcessBuilder().build()
+        processesInstance = await new ProcessBuilder().withResultsAddress(contractInstance.address).withMode(ProcessMode.make({ autoStart: true, interruptible: true })).build()
+        contractInstance = contractInstance.connect(deployAccount.wallet) as any
         tx = await contractInstance.setProcessesAddress(processesInstance.address)
         await tx.wait()
 
-        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
-
         // One is already created by the builder
+        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
 
         // Attempt to publish the results by someone else
         try {
@@ -152,13 +155,11 @@ describe("Results contract", () => {
             expect(err.message).to.match(/revert Not oracle/, "The transaction threw an unexpected error:\n" + err.message)
         }
 
-        // Get results
-        const result2 = await contractInstance.getResults(processId)
-        expect(result2.tally).to.deep.eq(emptyArray, "There should be no results")
-        expect(result2.height).to.eq(0, "There should be no votes")
+        // Get results (none yet)
+        expect(() => contractInstance.getResults(processId)).to.throw
 
         // Register an oracle
-        tx = await genesisInstance.addOracle(DEFAULT_VOCHAIN_ID, randomAccount1.address)
+        tx = await genesisInstance.connect(deployAccount.wallet).addOracle(DEFAULT_VOCHAIN_ID, randomAccount1.address)
         await tx.wait()
 
         // Publish the results
@@ -200,9 +201,11 @@ describe("Results contract", () => {
     })
 
     it("should not be accepted when the process is canceled", async () => {
-        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        expect(await processesInstance.resultsAddress()).to.eq(contractInstance.address)
 
         // One is already created by the builder
+        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+
 
         // Cancel the process
         contractInstance = contractInstance.connect(entityAccount.wallet) as any
@@ -220,9 +223,7 @@ describe("Results contract", () => {
         }
 
         // Get results
-        const result4 = await contractInstance.getResults(processId)
-        expect(result4.tally).to.deep.eq(emptyArray, "There should be no results")
-        expect(result4.height).to.eq(0, "There should be no votes")
+        expect(() => contractInstance.getResults(processId)).to.throw
     }).timeout(5000)
 
     it("should retrieve the submited results", async () => {
@@ -242,38 +243,42 @@ describe("Results contract", () => {
     }).timeout(5000)
 
     it("should allow oracles to set the results", async () => {
-        for (let account of [authorizedOracleAccount1, authorizedOracleAccount2]) {
-            const processesInstance = await new ProcessBuilder().withMode(ProcessMode.make({ autoStart: true, interruptible: true })).build()
-            const processId1 = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
-            // one is already created by the builder
+        const processesInstance = await new ProcessBuilder().withResultsAddress(contractInstance.address).withMode(ProcessMode.make({ autoStart: true, interruptible: true })).build()
+        contractInstance = contractInstance.connect(deployAccount.wallet) as any
+        tx = await contractInstance.setProcessesAddress(processesInstance.address)
+        await tx.wait()
 
-            const processData0 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
-            expect(processData0.status.value).to.eq(ProcessStatus.READY, "The process should be ready")
+        expect(await processesInstance.resultsAddress()).to.eq(contractInstance.address)
 
-            // Try to set the results (fail)
-            try {
-                contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-                tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_VOCHAIN_ID)
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            }
-            catch (err) {
-                expect(err.message).to.match(/revert Not oracle/, "The transaction threw an unexpected error:\n" + err.message)
-            }
+        // one is already created by the builder
+        const processId1 = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
 
-            const processData5 = ProcessContractParameters.fromContract(await contractInstance.get(processId1))
-            expect(processData5.entityAddress).to.eq(entityAccount.address)
-            expect(processData5.status.value).to.eq(ProcessStatus.READY, "The process should be ready")
+        const processData0 = ProcessContractParameters.fromContract(await processesInstance.get(processId1))
+        expect(processData0.status.value).to.eq(ProcessStatus.READY, "The process should be ready")
 
-            // Set the RESULTS (now oracle)
-            contractInstance = contractInstance.connect(account.wallet) as any
+        // Try to set the results (fail)
+        try {
+            contractInstance = contractInstance.connect(randomAccount1.wallet) as any
             tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_VOCHAIN_ID)
             await tx.wait()
-
-            const processData1 = ProcessContractParameters.fromContract(await processesInstance.get(processId1))
-            expect(processData1.entityAddress).to.eq(entityAccount.address)
-            expect(processData1.status.value).to.eq(ProcessStatus.RESULTS, "The process should be in results")
+            throw new Error("The transaction should have thrown an error but didn't")
         }
+        catch (err) {
+            expect(err.message).to.match(/revert Not oracle/, "The transaction threw an unexpected error:\n" + err.message)
+        }
+
+        const processData5 = ProcessContractParameters.fromContract(await processesInstance.get(processId1))
+        expect(processData5.entityAddress).to.eq(entityAccount.address)
+        expect(processData5.status.value).to.eq(ProcessStatus.READY, "The process should be ready")
+
+        // Set the RESULTS (now oracle)
+        contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
+        tx = await contractInstance.setResults(processId1, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_VOCHAIN_ID)
+        await tx.wait()
+
+        const processData1 = ProcessContractParameters.fromContract(await processesInstance.get(processId1))
+        expect(processData1.entityAddress).to.eq(entityAccount.address)
+        expect(processData1.status.value).to.eq(ProcessStatus.RESULTS, "The process should be in results")
     })
 
     it("should prevent publishing twice", async () => {
