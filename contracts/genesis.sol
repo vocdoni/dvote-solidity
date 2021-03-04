@@ -72,6 +72,7 @@ contract Genesis is IGenesisStore, Owned {
         override
         onlyContractOwner
     {
+        require(chainId < chainCount, "Not found");
         require(
             !equalStrings(chains[chainId].genesis, newGenesis),
             "Must differ"
@@ -87,6 +88,7 @@ contract Genesis is IGenesisStore, Owned {
         override
         onlyContractOwner
     {
+        require(chainId < chainCount, "Not found");
         require(!isValidator(chainId, validatorPublicKey), "Already present");
 
         ChainEntry storage entry = chains[chainId];
@@ -101,6 +103,8 @@ contract Genesis is IGenesisStore, Owned {
         uint256 idx,
         bytes memory validatorPublicKey
     ) public override onlyContractOwner {
+        require(chainId < chainCount, "Not found");
+
         ChainEntry storage entry = chains[chainId];
         uint256 currentLength = entry.validatorList.length;
 
@@ -123,6 +127,7 @@ contract Genesis is IGenesisStore, Owned {
         override
         onlyContractOwner
     {
+        require(chainId < chainCount, "Not found");
         require(!isOracle(chainId, oracleAddress), "Already present");
 
         ChainEntry storage entry = chains[chainId];
@@ -137,6 +142,8 @@ contract Genesis is IGenesisStore, Owned {
         uint256 idx,
         address oracleAddress
     ) public override onlyContractOwner {
+        require(chainId < chainCount, "Not found");
+        
         ChainEntry storage entry = chains[chainId];
         uint256 currentLength = entry.oracleList.length;
 

@@ -324,7 +324,7 @@ export class ProcessContractParameters {
         result.maxValue = params[5][3]
         result.maxVoteOverwrites = params[5][4]
 
-        if (!Array.isArray(params[6]) || params[6].length != 3 || params[6].some((item) => typeof item != "number"))
+        if (!Array.isArray(params[6]) || params[6].length != 2 || params[6].some((item) => typeof item != "number"))
             throw new Error("Invalid parameters maxTotalCost_costExponent list")
 
         result.maxTotalCost = params[6][0]

@@ -6,7 +6,7 @@ import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
 import { GenesisContractMethods } from "../../lib"
 
-import GenesisBuilder, { DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES } from "../builders/genesis"
+import GenesisBuilder, { DEFAULT_CHAIN_ID, DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES } from "../builders/genesis"
 
 import { abi as genesisAbi, bytecode as genesisByteCode } from "../../build/genesis.json"
 
@@ -21,8 +21,6 @@ let contractInstance: GenesisContractMethods & Contract
 let tx: ContractTransaction
 
 addCompletionHooks()
-
-const DEFAULT_CHAIN_ID = 0
 
 describe("Genesis contract", () => {
     beforeEach(async () => {
@@ -78,8 +76,8 @@ describe("Genesis contract", () => {
             expect(await contractInstance.isValidator(1, "0x20")).to.be.true
             expect(await contractInstance.isValidator(1, "0x30")).to.be.false
             expect(await contractInstance.isValidator(1, "0x40")).to.be.false
-            expect(await contractInstance.isValidator(1, authorizedOracleAccount1.address)).to.be.true
-            expect(await contractInstance.isValidator(1, authorizedOracleAccount2.address)).to.be.false
+            expect(await contractInstance.isOracle(1, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(1, authorizedOracleAccount2.address)).to.be.false
 
             // 2
             expect(() => contractInstance.get(2)).to.throw
@@ -94,15 +92,15 @@ describe("Genesis contract", () => {
             expect(await contractInstance.isValidator(2, "0x2345")).to.be.true
             expect(await contractInstance.isValidator(2, "0x10")).to.be.false
             expect(await contractInstance.isValidator(2, "0x20")).to.be.false
-            expect(await contractInstance.isValidator(2, authorizedOracleAccount2.address)).to.be.true
-            expect(await contractInstance.isValidator(2, authorizedOracleAccount1.address)).to.be.false
+            expect(await contractInstance.isOracle(2, authorizedOracleAccount2.address)).to.be.true
+            expect(await contractInstance.isOracle(2, authorizedOracleAccount1.address)).to.be.false
         })
 
         it("should allow only the contract creator to update a chain", async () => {
             contractInstance = contractInstance.connect(randomAccount1.wallet) as any
 
             try {
-                await contractInstance.setNamespace(10, "cid", "gen", ["0x1", "0x2", "0x3"], [authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+                await contractInstance.newChain("hi", ["0x01", "0x02", "0x03"], [authorizedOracleAccount1.address, authorizedOracleAccount2.address])
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -110,20 +108,39 @@ describe("Genesis contract", () => {
                 expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
             }
 
-            const chainData0 = await contractInstance.get(10)
-            expect(chainData0[0]).to.eq("")
-            expect(chainData0[1]).to.eq("")
-            expect(chainData0[2]).to.deep.eq([])
-            expect(chainData0[3]).to.deep.eq([])
+            try {
+                await contractInstance.addValidator(0, "0x01")
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            try {
+                await contractInstance.addOracle(0, randomAccount2.address)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+
+            expect(() => contractInstance.get(1)).to.throw
         })
 
         it("should emit an event", async () => {
+            // Capture the builder's event
+            await new Promise((resolve, reject) => {
+                contractInstance.on("ChainRegistered", (chainId: number) => resolve({ chainId }))
+            })
+
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
             const result: { chainId: number } = await new Promise((resolve, reject) => {
                 contractInstance.on("ChainRegistered", (chainId: number) => resolve({ chainId }))
 
-                contractInstance.newChain("gen", ["0x1", "0x2", "0x3"], [authorizedOracleAccount1.address, "0x1234567890123456789012345678901234567890"]).then(tx => tx.wait()).catch(reject)
+                contractInstance.newChain("gen", ["0x01", "0x02", "0x03"], [authorizedOracleAccount1.address, "0x1234567890123456789012345678901234567890"]).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
@@ -154,15 +171,15 @@ describe("Genesis contract", () => {
             tx = await contractInstance.setGenesis(DEFAULT_CHAIN_ID, genesis)
             await tx.wait()
 
-            let currentNamespace = await contractInstance.get(DEFAULT_CHAIN_ID)
-            expect(currentNamespace[1]).to.eq(genesis, "Gensis should match")
+            let chain = await contractInstance.get(DEFAULT_CHAIN_ID)
+            expect(chain.genesis).to.eq(genesis, "Gensis should match")
 
             // Another genesis value
             tx = await contractInstance.setGenesis(DEFAULT_CHAIN_ID, "1234")
             await tx.wait()
 
-            currentNamespace = await contractInstance.get(DEFAULT_CHAIN_ID)
-            expect(currentNamespace[1]).to.eq("1234", "Gensis should match")
+            chain = await contractInstance.get(DEFAULT_CHAIN_ID)
+            expect(chain.genesis).to.eq("1234", "Gensis should match")
         })
 
         it("should fail if duplicated", async () => {
@@ -186,15 +203,14 @@ describe("Genesis contract", () => {
         it("should emit an event", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
-            const result: { genesis: string, namespace: number } = await new Promise((resolve, reject) => {
-                contractInstance.on("GenesisUpdated", (genesis: string, namespace: number) => resolve({ genesis, namespace }))
+            const result: { chainId: number } = await new Promise((resolve, reject) => {
+                contractInstance.on("GenesisUpdated", (chainId: number) => resolve({ chainId }))
 
-                contractInstance.setGenesis(DEFAULT_CHAIN_ID, genesis).then(tx => tx.wait()).catch(reject)
+                contractInstance.setGenesis(DEFAULT_CHAIN_ID, "my-new-genesis").then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
-            expect(result.genesis).to.equal(genesis)
-            expect(result.namespace).to.equal(DEFAULT_CHAIN_ID)
+            expect(result.chainId).to.equal(DEFAULT_CHAIN_ID)
         }).timeout(7000)
     })
 
@@ -212,7 +228,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey)).to.be.true
@@ -229,7 +245,7 @@ describe("Genesis contract", () => {
             }
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey2)).to.be.false
@@ -244,7 +260,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey)).to.be.true
@@ -255,7 +271,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey, validatorPublicKey2])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey, validatorPublicKey2])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey2)).to.be.true
@@ -272,7 +288,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey)).to.be.true
@@ -288,49 +304,62 @@ describe("Genesis contract", () => {
             }
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey)).to.be.true
         })
 
-        it("should add the validator to the right namespace", async () => {
-            contractInstance = await new GenesisBuilder().withValidators([]).build() as any
-
-            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.false
+        it("should add the validator to the right chain", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            await contractInstance.newChain("1", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("2", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("3", [], []).then(tx => tx.wait())
 
-            // Register on namespace 5
+            // Attempt to add to a wrong chain
+            try {
+                tx = await contractInstance.addValidator(4, validatorPublicKey)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Not found/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+            expect(await contractInstance.isValidator(4, validatorPublicKey)).to.be.false
 
-            tx = await contractInstance.addValidator(5, validatorPublicKey)
+            // Register on chain 2
+
+            expect(await contractInstance.isValidator(2, validatorPublicKey)).to.be.false
+
+            tx = await contractInstance.addValidator(2, validatorPublicKey)
             await tx.wait()
 
             // Check validator
-            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.true
-            expect(await contractInstance.isValidator(10, validatorPublicKey)).to.be.false
+            expect(await contractInstance.isValidator(2, validatorPublicKey)).to.be.true
 
-            // 2
-            expect(await contractInstance.isValidator(10, validatorPublicKey2)).to.be.false
+            // 3
+            expect(await contractInstance.isValidator(3, validatorPublicKey2)).to.be.false
 
-            tx = await contractInstance.addValidator(10, validatorPublicKey2)
+            tx = await contractInstance.addValidator(3, validatorPublicKey2)
             await tx.wait()
 
             // Check validator
-            expect(await contractInstance.isValidator(10, validatorPublicKey2)).to.be.true
+            expect(await contractInstance.isValidator(3, validatorPublicKey2)).to.be.true
         })
 
         it("should emit an event", async () => {
             // Register validator
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
-            const result: { validatorPublicKey: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ValidatorAdded", (validatorPublicKey: string) => {
-                    resolve({ validatorPublicKey })
+            const result: { chainId: number, validatorPublicKey: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("ValidatorAdded", (chainId: number, validatorPublicKey: string) => {
+                    resolve({ chainId, validatorPublicKey })
                 })
                 contractInstance.addValidator(DEFAULT_CHAIN_ID, validatorPublicKey).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
+            expect(result.chainId).to.equal(DEFAULT_CHAIN_ID)
             expect(result.validatorPublicKey).to.equal(validatorPublicKey)
         }).timeout(7000)
     })
@@ -347,7 +376,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Attempt to disable the validator from someone else
             try {
@@ -361,7 +390,7 @@ describe("Genesis contract", () => {
             }
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey)).to.be.true
@@ -372,7 +401,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([])
         })
 
         it("should fail if the idx does not match validatorPublicKey", async () => {
@@ -396,7 +425,7 @@ describe("Genesis contract", () => {
             }
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validators
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey)).to.be.true
@@ -413,23 +442,25 @@ describe("Genesis contract", () => {
             }
 
             // Get validator list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validator
             expect(await contractInstance.isValidator(DEFAULT_CHAIN_ID, validatorPublicKey)).to.be.true
         })
 
-        it("should remove from the right namespace", async () => {
-            contractInstance = await new GenesisBuilder().withValidators([]).build() as any
+        it("should remove from the right chain", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            await contractInstance.newChain("1", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("2", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("3", [], []).then(tx => tx.wait())
 
-            // Register a validator on namespace 5
-            tx = await contractInstance.addValidator(5, validatorPublicKey)
+            // Register a validator on chain 2
+            tx = await contractInstance.addValidator(2, validatorPublicKey)
             await tx.wait()
 
-            // Attempt to disable from the wrong namespace
+            // Attempt to disable from the wrong chain
             try {
-                tx = await contractInstance.removeValidator(10, 0, validatorPublicKey)
+                tx = await contractInstance.removeValidator(1, 0, validatorPublicKey)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -438,20 +469,20 @@ describe("Genesis contract", () => {
             }
 
             // Get validator list
-            expect((await contractInstance.get(5))[2]).to.deep.eq([validatorPublicKey])
+            expect((await contractInstance.get(2)).validators).to.deep.eq([validatorPublicKey])
 
             // Check validators
-            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.true
+            expect(await contractInstance.isValidator(2, validatorPublicKey)).to.be.true
 
-            // Disable from the right namespace
-            tx = await contractInstance.removeValidator(5, 0, validatorPublicKey)
+            // Disable from the right chain
+            tx = await contractInstance.removeValidator(2, 0, validatorPublicKey)
             await tx.wait()
 
             // Get validator list
-            expect((await contractInstance.get(5))[2]).to.deep.eq([])
+            expect((await contractInstance.get(2)).validators).to.deep.eq([])
 
             // Check validator
-            expect(await contractInstance.isValidator(5, validatorPublicKey)).to.be.false
+            expect(await contractInstance.isValidator(2, validatorPublicKey)).to.be.false
         })
 
         it("should emit an event", async () => {
@@ -463,14 +494,15 @@ describe("Genesis contract", () => {
             tx = await contractInstance.addValidator(DEFAULT_CHAIN_ID, validatorPublicKey)
             await tx.wait()
 
-            const result: { validatorPublicKey: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("ValidatorRemoved", (validatorPublicKey: string) => {
-                    resolve({ validatorPublicKey })
+            const result: { chainId: number, validatorPublicKey: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("ValidatorRemoved", (chainId: number, validatorPublicKey: string) => {
+                    resolve({ chainId, validatorPublicKey })
                 })
                 contractInstance.removeValidator(DEFAULT_CHAIN_ID, 3, validatorPublicKey).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
+            expect(result.chainId).to.equal(DEFAULT_CHAIN_ID)
             expect(result.validatorPublicKey).to.equal(validatorPublicKey)
         }).timeout(7000)
     })
@@ -489,7 +521,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
@@ -506,7 +538,7 @@ describe("Genesis contract", () => {
             }
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
@@ -522,7 +554,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
@@ -533,7 +565,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
@@ -550,7 +582,7 @@ describe("Genesis contract", () => {
             await tx.wait()
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
@@ -566,43 +598,56 @@ describe("Genesis contract", () => {
             }
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
         })
 
-        it("should add the validator to the right namespace", async () => {
-            contractInstance = await new GenesisBuilder().withOracles([]).build() as any
-            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.false
+        it("should add the oracle to the right chain", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            await contractInstance.newChain("1", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("2", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("3", [], []).then(tx => tx.wait())
 
-            // Register on namespace 5
+            // Attempt to add to a wrong chain
+            try {
+                tx = await contractInstance.addOracle(4, authorizedOracleAccount1.address)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            }
+            catch (err) {
+                expect(err.message).to.match(/revert Not found/, "The transaction threw an unexpected error:\n" + err.message)
+            }
+            expect(await contractInstance.isOracle(4, authorizedOracleAccount1.address)).to.be.false
 
-            tx = await contractInstance.addOracle(5, authorizedOracleAccount1.address)
+            // Register on chain 2
+
+            expect(await contractInstance.isOracle(2, authorizedOracleAccount1.address)).to.be.false
+
+            tx = await contractInstance.addOracle(2, authorizedOracleAccount1.address)
             await tx.wait()
 
             // Check validator
-            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.true
-            expect(await contractInstance.isOracle(10, authorizedOracleAccount1.address)).to.be.false
+            expect(await contractInstance.isOracle(2, authorizedOracleAccount1.address)).to.be.true
 
-            // 2
-            expect(await contractInstance.isOracle(10, authorizedOracleAccount2.address)).to.be.false
+            // 3
+            expect(await contractInstance.isOracle(3, authorizedOracleAccount2.address)).to.be.false
 
-            tx = await contractInstance.addOracle(10, authorizedOracleAccount2.address)
+            tx = await contractInstance.addOracle(3, authorizedOracleAccount2.address)
             await tx.wait()
 
             // Check validator
-            expect(await contractInstance.isOracle(10, authorizedOracleAccount2.address)).to.be.true
+            expect(await contractInstance.isOracle(3, authorizedOracleAccount2.address)).to.be.true
         })
 
         it("should emit an event", async () => {
             contractInstance = await new GenesisBuilder().withOracles([]).build() as any
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
-            const result: { oracleAddress: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("OracleAdded", (oracleAddress: string) => {
-                    resolve({ oracleAddress })
+            const result: { chainId: number, oracleAddress: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("OracleAdded", (chainId: number, oracleAddress: string) => {
+                    resolve({ chainId, oracleAddress })
                 })
                 contractInstance.addOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address).then(tx => tx.wait()).catch(reject)
             })
@@ -639,7 +684,7 @@ describe("Genesis contract", () => {
             }
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
@@ -649,7 +694,7 @@ describe("Genesis contract", () => {
             const result3 = await contractInstance.removeOracle(DEFAULT_CHAIN_ID, 0, authorizedOracleAccount1.address)
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.false
@@ -682,7 +727,7 @@ describe("Genesis contract", () => {
             }
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
@@ -713,24 +758,26 @@ describe("Genesis contract", () => {
             }
 
             // Get oracle list
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3]).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles).to.deep.eq([authorizedOracleAccount1.address, authorizedOracleAccount2.address])
 
             // Check oracle
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
             expect(await contractInstance.isOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)).to.be.true
         })
 
-        it("should remove from the right namespace", async () => {
-            contractInstance = await new GenesisBuilder().withOracles([]).build() as any
+        it("should remove from the right chain", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
+            await contractInstance.newChain("1", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("2", [], []).then(tx => tx.wait())
+            await contractInstance.newChain("3", [], []).then(tx => tx.wait())
 
-            // Register an oracle on namespace 5
-            tx = await contractInstance.addOracle(5, authorizedOracleAccount1.address)
+            // Register a oracle on chain 2
+            tx = await contractInstance.addOracle(2, authorizedOracleAccount1.address)
             await tx.wait()
 
-            // Attempt to disable from the wrong namespace
+            // Attempt to disable from the wrong chain
             try {
-                tx = await contractInstance.removeOracle(10, 0, authorizedOracleAccount1.address)
+                tx = await contractInstance.removeOracle(1, 0, authorizedOracleAccount1.address)
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -739,41 +786,42 @@ describe("Genesis contract", () => {
             }
 
             // Get oracle list
-            expect((await contractInstance.get(5))[3]).to.deep.eq([authorizedOracleAccount1.address])
+            expect((await contractInstance.get(2)).oracles).to.deep.eq([authorizedOracleAccount1.address])
 
             // Check oracles
-            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.true
+            expect(await contractInstance.isOracle(2, authorizedOracleAccount1.address)).to.be.true
 
-            // Disable from the right namespace
-            tx = await contractInstance.removeOracle(5, 0, authorizedOracleAccount1.address)
+            // Disable from the right chain
+            tx = await contractInstance.removeOracle(2, 0, authorizedOracleAccount1.address)
             await tx.wait()
 
             // Get oracle list
-            expect((await contractInstance.get(5))[3]).to.deep.eq([])
+            expect((await contractInstance.get(2)).oracles).to.deep.eq([])
 
-            // Check oracles
-            expect(await contractInstance.isOracle(5, authorizedOracleAccount1.address)).to.be.false
+            // Check oracle
+            expect(await contractInstance.isOracle(2, authorizedOracleAccount1.address)).to.be.false
         })
 
         it("should emit an event", async () => {
             contractInstance = contractInstance.connect(deployAccount.wallet) as any
 
             // 3 by default
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[3].length).to.eq(3)
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles.length).to.eq(3)
 
             // Register oracle
-            tx = await contractInstance.addOracle(DEFAULT_CHAIN_ID, authorizedOracleAccount1.address)
+            tx = await contractInstance.addOracle(DEFAULT_CHAIN_ID, randomAccount1.address)
             await tx.wait()
 
-            const result: { oracleAddress: string } = await new Promise((resolve, reject) => {
-                contractInstance.on("OracleRemoved", (oracleAddress: string) => {
-                    resolve({ oracleAddress })
+            const result: { chainId: number, oracleAddress: string } = await new Promise((resolve, reject) => {
+                contractInstance.on("OracleRemoved", (chainId: number, oracleAddress: string) => {
+                    resolve({ chainId, oracleAddress })
                 })
-                contractInstance.removeOracle(DEFAULT_CHAIN_ID, 3, authorizedOracleAccount1.address).then(tx => tx.wait()).catch(reject)
+                contractInstance.removeOracle(DEFAULT_CHAIN_ID, 3, randomAccount1.address).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
-            expect(result.oracleAddress).to.equal(authorizedOracleAccount1.address)
+            expect(result.chainId).to.equal(DEFAULT_CHAIN_ID)
+            expect(result.oracleAddress).to.equal(randomAccount1.address)
         }).timeout(7000)
     })
 }).timeout(4000)
