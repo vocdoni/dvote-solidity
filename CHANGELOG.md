@@ -1,5 +1,11 @@
 # DVote Solidity Changelog
 
+## 0.16.0
+
+- The process contract is now payable
+- A price can be defined for every process that is created (to prevent spam)
+- The processes contract now has a `withdraw` function, callable by the owner
+
 ## 0.15.0
 
 - Allowing to retrieve and count registered ERC20 tokens
