@@ -15,6 +15,7 @@
 - `EnsPublicResolver` is now renamed to `EnsResolver` in TypeScript
 - Validators now have a `bytes32` data type
 - `getNextProcessId` no longer required the `namespace` parameter
+- Namespace indexes now start at index `1`. Zero is reserved.
 
 ## 0.15.0
 
