@@ -38,11 +38,15 @@ interface IProcessStore {
         uint16[3] memory maxTotalCost_costExponent_namespace,
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
-    ) external;
+    ) payable external;
     function setStatus(bytes32 processId, Status newStatus) external;
     function incrementQuestionIndex(bytes32 processId) external;
     function setCensus(bytes32 processId, string memory censusRoot, string memory censusUri) external;
     function setResults(bytes32 processId, uint32[][] memory tally, uint32 height) external;
+    function setProcessPrice(uint256 processPrice) external;
+
+    // WITHDRAW
+    function withdraw(address payable to, uint256 amount) external;
 
     // EVENTS
     event Activated(uint blockNumber);
@@ -56,6 +60,8 @@ interface IProcessStore {
     );
     event CensusUpdated(bytes32 processId, uint16 namespace);
     event ResultsAvailable(bytes32 processId);
+    event ProcessPriceUpdated(uint256 processPrice);
+    event Withdraw(address to, uint256 amount);
 }
 
 /// @notice The `ITokenStorageProof` interface defines the standard methods that allow checking ERC token balances.

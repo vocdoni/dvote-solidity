@@ -351,6 +351,8 @@ export interface ProcessContractMethods {
     tokenStorageProofAddress(): Promise<string>
     /** The chain ID of the Ethereum network where the contract lives */
     chainId(): Promise<BigNumber>
+    /** The ProcessPrice is the amount to send to the contract for creating a process */
+    processPrice(): Promise<BigNumber>
 
     // GETTERS
 
@@ -410,10 +412,14 @@ export interface ProcessContractMethods {
     setCensus(processId: string, censusRoot: string, censusUri: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Sets the given results for the given process */
     setResults(processId: string, tally: number[][], height: number, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    /** sets the process creation price */
+    setProcessPrice(processPrice: number | BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Adds the given signature to the given process results */
     addResultsSignature(processId: string, signature: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Adds the given proof to the given process results */
     addResultsProof(processId: string, proof: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
+    /** withdraw the given amount to a given address */
+    withdraw(to: string, amount: number | BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 }
 
 /** Wraps and unwraps the parameters sent to `Process.newProcess()` and obtained from `Process.get()` for convenience */
