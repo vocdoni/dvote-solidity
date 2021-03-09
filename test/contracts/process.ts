@@ -170,7 +170,7 @@ describe("Process contract", () => {
         // Results
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(noParentAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId) as Contract & ProcessContractMethods
+            await contractFactory.deploy(noParentAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -180,7 +180,7 @@ describe("Process contract", () => {
 
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId) as Contract & ProcessContractMethods
+            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -191,7 +191,7 @@ describe("Process contract", () => {
         // Proofs ERC20
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(noParentAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId) as Contract & ProcessContractMethods
+            await contractFactory.deploy(noParentAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -201,7 +201,7 @@ describe("Process contract", () => {
 
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId) as Contract & ProcessContractMethods
+            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -411,7 +411,7 @@ describe("Process contract", () => {
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                     DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE,
                     { value: utils.parseUnits("0.01", "ether") }
@@ -431,7 +431,7 @@ describe("Process contract", () => {
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                 DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE,
                 { value: utils.parseUnits("0.2", "ether") }
