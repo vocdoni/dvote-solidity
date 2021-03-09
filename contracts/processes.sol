@@ -201,7 +201,6 @@ contract Processes is IProcessStore, Chained {
             ContractSupport.isContract(tokenStorageProof),
             "Invalid tokenStorageProof"
         );
-        require(procPrice >= 0, "Invalid process price");
         namespaceAddress = namespace;
         tokenStorageProofAddress = tokenStorageProof;
         chainId = chainIdNumber;
@@ -347,8 +346,9 @@ contract Processes is IProcessStore, Chained {
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) public override payable onlyIfActive {
+        require (msg.value >= processPrice, "Insufficient funds");
+
         CensusOrigin origin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
-        require (msg.value >= processPrice, "Insufficient amount provided for creating a process");
         if (
             origin == CensusOrigin.OFF_CHAIN_TREE ||
             origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
@@ -798,18 +798,17 @@ contract Processes is IProcessStore, Chained {
         emit ResultsAvailable(processId);
     }
 
-    function setProcessPrice(uint256 procPrice) public override onlyContractOwner {
-        require(procPrice >= 0, "Invalid process price");
-        require(procPrice != processPrice, "Process price cannot be the same");
+    function setProcessPrice(uint256 newPrice) public override onlyContractOwner {
+        if (newPrice == processPrice) return;
 
-        processPrice = procPrice;
-        emit ProcessPriceUpdated(procPrice);
+        processPrice = newPrice;
+        emit ProcessPriceUpdated(newPrice);
     }
 
     function withdraw(address payable to, uint256 amount) public override onlyContractOwner {
-        require(amount > 0, "Invalid amount to withdraw");
-        require(address(this).balance > amount, "Insufficient funds to withdraw");
-        require(to != address(0x0), "Invalid address to send");
+        if (amount == 0) return;
+        require(address(this).balance > amount, "Not enough funds");
+        require(to != address(0x0), "Invalid address");
 
         payable(to).transfer(amount);
         emit Withdraw(to, amount);

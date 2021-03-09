@@ -1,5 +1,5 @@
 import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespaceContractMethods, ProcessContractParameters, IProcessCensusOrigin, ProcessCensusOrigin } from "../../lib/index"
-import { Contract, ContractFactory } from "ethers"
+import { BigNumber, Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 import NamespaceBuilder from "./namespace"
 import TokenStorageProofBuilder from "./token-storage-proof"
@@ -39,7 +39,7 @@ export default class ProcessBuilder {
 
     entityAccount: TestAccount
     predecessorInstanceAddress: string = DEFAULT_PREDECESSOR_INSTANCE_ADDRESS
-    processPrice: number = DEFAULT_PROCESS_PRICE
+    processPrice: number | BigNumber = DEFAULT_PROCESS_PRICE
     enabled: boolean = true
     metadata: string = DEFAULT_METADATA_CONTENT_HASHED_URI
     censusRoot: string = DEFAULT_CENSUS_ROOT
@@ -69,7 +69,6 @@ export default class ProcessBuilder {
 
     async build(processCount: number = 1): Promise<Contract & ProcessContractMethods> {
         if (this.predecessorInstanceAddress != DEFAULT_PREDECESSOR_INSTANCE_ADDRESS && processCount > 0) throw new Error("Unable to create " + processCount + " processes without a null parent, since the contract is inactive. Call .build(0) instead.")
-        if (this.processPrice < 0) throw new Error("Unable to create process contract, process price must be greater than 0")
         const deployAccount = this.accounts[0]
 
         // Namespace deploy dependency
@@ -108,6 +107,7 @@ export default class ProcessBuilder {
 
         contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
 
+        const extraParams = { value: BigNumber.from(this.processPrice || 0) }
         for (let i = 0; i < processCount; i++) {
             const params = ProcessContractParameters.fromParams({
                 mode: this.mode,
@@ -126,7 +126,8 @@ export default class ProcessBuilder {
                 costExponent: this.costExponent,
                 namespace: this.namespace,
                 paramsSignature: this.paramsSignature
-            }).toContractParams()
+            }).toContractParams(extraParams)
+
             await contractInstance.newProcess(...params)
         }
 
@@ -224,7 +225,8 @@ export default class ProcessBuilder {
         this.paramsSignature = paramsSignature
         return this
     }
-    withProcessPrice(processPrice: number) {
+    withPrice(processPrice: number | BigNumber) {
+        if (this.processPrice < 0) throw new Error("Unable to create process contract, process price must be positive")
         this.processPrice = processPrice
         return this
     }

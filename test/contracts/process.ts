@@ -3,7 +3,7 @@ import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils, BigNumber, ethers } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
-import { getAccounts, getProvider, TestAccount } from "../utils"
+import { getAccounts, TestAccount } from "../utils"
 import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin, TokenStorageProofContractMethods } from "../../lib"
 
 import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN, DEFAULT_EVM_BLOCK_HEIGHT, DEFAULT_PROCESS_PRICE } from "../builders/process"
@@ -321,41 +321,40 @@ describe("Process contract", () => {
             expect(processIdExpected).to.eq(processIdActual)
         })
 
-        it("should not create a process if msg.value provided is less than processPrice of the contract", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, utils.parseUnits("1", "ether")) as Contract & ProcessContractMethods
+        it("should not create a process if msg.value provided is less than processPrice of the contract", async () => {
+            contractInstance = await new ProcessBuilder().withPrice(utils.parseUnits("0.1", "ether")).build()
 
-            expect(localInstance1).to.be.ok
-            expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
-            expect(await localInstance1.predecessorAddress()).to.eq(nullAddress)
-            expect(await localInstance1.namespaceAddress()).to.eq(namespaceInstance1.address)
-            expect(await localInstance1.tokenStorageProofAddress()).to.eq(storageProofAddress)
-            expect(await localInstance1.processPrice()).to.be.deep.eq(utils.parseUnits("1", "ether"))
+            expect(contractInstance).to.be.ok
+            expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+            expect(await contractInstance.predecessorAddress()).to.eq(nullAddress)
+            expect(await contractInstance.processPrice()).to.be.deep.eq(utils.parseUnits("0.1", "ether"))
 
             let processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             let processIdActual = await contractInstance.getNextProcessId(entityAccount.address, DEFAULT_NAMESPACE)
             expect(processIdExpected).to.eq(processIdActual)
+            expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(1)
 
             contractInstance = contractInstance.connect(entityAccount.wallet) as any
-            tx = await contractInstance.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
-                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
-                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
-                DEFAULT_EVM_BLOCK_HEIGHT,
-                DEFAULT_PARAMS_SIGNATURE,
-                {value: utils.parseUnits("10000000000000000", "wei")} // 0.01 ether
-            )
+
             try {
+                tx = await contractInstance.newProcess(
+                    [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
+                    nullAddress, // token/entity ID
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
+                    DEFAULT_EVM_BLOCK_HEIGHT,
+                    DEFAULT_PARAMS_SIGNATURE,
+                    { value: utils.parseUnits("0.01", "ether") }
+                )
                 await tx.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             } catch (err) {
-                expect(processIdExpected).to.eq(processIdActual)
+                expect(err.message).to.match(/revert Insufficient funds/)
             }
+
+            expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(1)
 
             processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1, DEFAULT_NAMESPACE, DEFAULT_CHAIN_ID)
             tx = await contractInstance.newProcess(
@@ -367,11 +366,12 @@ describe("Process contract", () => {
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
                 DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE,
-                {value: utils.parseUnits("2", "ether")}
+                { value: utils.parseUnits("0.2", "ether") }
             )
-            
+
             await tx.wait()
-            expect(processIdExpected).to.eq(processIdActual)
+
+            expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(2)
         })
 
         it("retrieved metadata should match the one submitted (off chain census)", async () => {
@@ -3236,107 +3236,68 @@ describe("Process contract", () => {
         }).timeout(7000)
     })
 
-    describe("Process price & Withdraw", () => {
-        it("should change the process price only if owner", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+    describe("Process price and withdrawal", () => {
+        it("should change the process price only if owner", async () => {
+            const localInstanceOwned = contractInstance.connect(deployAccount.wallet) as any
 
             // owner should pass
-            const actualPrice = await localInstance1.processPrice()
-            const tx = await localInstance1.setProcessPrice(utils.parseUnits("2", "ether"))
+            const initialPrice = await localInstanceOwned.processPrice()
+            const tx = await localInstanceOwned.setProcessPrice(utils.parseUnits("2", "ether"))
             await tx.wait()
-            const newPrice = await localInstance1.processPrice()
-            expect(actualPrice).to.not.be.deep.equal(newPrice)
-            expect(actualPrice).to.be.deep.equal(utils.parseUnits("0", "ether"))
-            expect(newPrice).to.be.deep.equal(utils.parseUnits("2", "ether"))
+            const newPrice = await localInstanceOwned.processPrice()
+            expect(initialPrice.toString()).to.not.eq(newPrice.toString())
+            expect(initialPrice.toString()).to.eq(utils.parseUnits("0", "ether").toString())
+            expect(newPrice.toString()).to.eq(utils.parseUnits("2", "ether").toString())
 
             // random account should fail
-            const localInstanceNotOwner = localInstance1.connect(randomAccount2.wallet) as any
+            const localInstanceNotOwner = contractInstance.connect(randomAccount2.wallet) as any
             try {
-                const tx2 = await localInstanceNotOwner.setProcessPrice(utils.parseUnits("0", "ether"))
+                const tx2 = await localInstanceNotOwner.setProcessPrice(utils.parseUnits("1", "ether"))
                 await tx2.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             } catch (err) {
                 expect(err.message).to.match(/revert onlyContractOwner/, "The transaction threw an unexpected error:\n" + err.message)
             }
             const newPrice2 = await localInstanceNotOwner.processPrice()
-            expect(newPrice2).to.be.deep.equal(utils.parseUnits("2", "ether"))
+            expect(newPrice2.toString()).to.eq(utils.parseUnits("2", "ether").toString())
         })
 
-        it("should not change the process price if the new value is the same as the actual", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
-
-            // same process price should fail
-            const actualPrice = await localInstance1.processPrice()
-            try {
-                const tx = await localInstance1.setProcessPrice(utils.parseUnits("0", "ether"))
-                await tx.wait()
-                throw new Error("The transaction should have thrown an error but didn't")
-            } catch (err) {
-                expect(err.message).to.match(/revert Process price cannot be the same/, "The transaction threw an unexpected error:\n" + err.message)
-            }
-            expect(actualPrice).to.be.deep.equal(utils.parseUnits("0", "ether"))
-        })
-
-        it("should emit an event when price changed", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+        it("should emit an event when price changed", async () => {
+            const localInstanceOwned = contractInstance.connect(deployAccount.wallet) as any
 
             // owner should pass
-            const actualPrice = await localInstance1.processPrice()
+            const initialPrice = await localInstanceOwned.processPrice()
 
             const result: { processPrice: number | BigNumber } = await new Promise((resolve, reject) => {
-                localInstance1.on("ProcessPriceUpdated", (processPrice: number | BigNumber) => {
+                localInstanceOwned.on("ProcessPriceUpdated", (processPrice: number | BigNumber) => {
                     resolve({ processPrice })
                 })
-                localInstance1.setProcessPrice(utils.parseUnits("1", "ether")).then(tx => tx.wait()).catch(reject)
+                localInstanceOwned.setProcessPrice(utils.parseUnits("1", "ether")).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
-            const newPrice = await localInstance1.processPrice()
-            expect(actualPrice).to.not.be.deep.equal(newPrice)
-            expect(actualPrice).to.be.deep.equal(utils.parseUnits("0", "ether"))
-            expect(newPrice).to.be.deep.equal(utils.parseUnits("1", "ether"))
+            const newPrice = await localInstanceOwned.processPrice()
+            expect(initialPrice.toString()).to.not.eq(newPrice.toString())
+            expect(initialPrice.toString()).to.eq(utils.parseUnits("0", "ether").toString())
+            expect(newPrice.toString()).to.eq(utils.parseUnits("1", "ether").toString())
         })
 
-        it("should allow to withdraw only if owner", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+        it("should allow to withdraw only if owner", async () => {
+            contractInstance = await new ProcessBuilder().withPrice(utils.parseUnits("0.2", "ether")).build()
+            const localInstanceOwned = contractInstance.connect(deployAccount.wallet) as any
 
-            const txProcess = await localInstance1.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                deployAccount.address, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
-                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
-                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
-                DEFAULT_EVM_BLOCK_HEIGHT,
-                DEFAULT_PARAMS_SIGNATURE,
-                {value: utils.parseUnits("2", "ether")}
-            )
-            
-            await txProcess.wait()
-            const provider = getProvider()
-            expect(await provider.getBalance(localInstance1.address)).to.be.deep.equal(utils.parseUnits("2", "ether"))
+            const provider = entityAccount.wallet.provider
+            expect(await provider.getBalance(localInstanceOwned.address)).to.be.deep.equal(utils.parseUnits("0.2", "ether"))
 
-            // owner should pass
+            // owner withdrawals should pass
             const randomAccount1Balance = await randomAccount1.wallet.getBalance()
-            const tx = await localInstance1.withdraw(randomAccount1.address, utils.parseUnits("1000", "wei"))
+            const tx = await localInstanceOwned.withdraw(randomAccount1.address, utils.parseUnits("1000", "wei"))
             await tx.wait()
             const randomAccount1BalanceNew = await randomAccount1.wallet.getBalance()
-            expect(randomAccount1BalanceNew).to.be.deep.equal(randomAccount1Balance.add(utils.parseUnits("1000", "wei")))
-            
-            // random account should fail
-            const localInstanceNotOwner = localInstance1.connect(randomAccount2.wallet) as any
+            expect(randomAccount1BalanceNew.toString()).to.eq(randomAccount1Balance.add(utils.parseUnits("1000", "wei")).toString())
+
+            // random accounts should fail
+            const localInstanceNotOwner = contractInstance.connect(randomAccount2.wallet) as any
             try {
                 const tx2 = await localInstanceNotOwner.withdraw(randomAccount1.address, utils.parseUnits("1000", "wei"))
                 await tx2.wait()
@@ -3346,108 +3307,63 @@ describe("Process contract", () => {
             }
         })
 
-        it("should allow to withdraw only if balance is higher than the requested amount", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
-
-            const txProcess = await localInstance1.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                deployAccount.address, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
-                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
-                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
-                DEFAULT_EVM_BLOCK_HEIGHT,
-                DEFAULT_PARAMS_SIGNATURE,
-                {value: utils.parseUnits("2", "ether")}
-            )
-            
-            await txProcess.wait()
+        it("should allow to withdraw only if balance is higher than the requested amount", async () => {
+            contractInstance = await new ProcessBuilder().withPrice(utils.parseUnits("0.2", "ether")).build()
+            const localInstanceOwned = contractInstance.connect(deployAccount.wallet) as any
 
             // should pass
             const randomAccount1Balance = await randomAccount1.wallet.getBalance()
-            const tx = await localInstance1.withdraw(randomAccount1.address, utils.parseUnits("1", "ether"))
+            const tx = await localInstanceOwned.withdraw(randomAccount1.address, utils.parseUnits("0.1", "ether"))
             await tx.wait()
             const randomAccount1BalanceNew = await randomAccount1.wallet.getBalance()
-            expect(randomAccount1BalanceNew).to.be.deep.equal(randomAccount1Balance.add(utils.parseUnits("1", "ether")))
-            
+            expect(randomAccount1BalanceNew.toString()).to.be.deep.equal(randomAccount1Balance.add(utils.parseUnits("0.1", "ether")).toString())
+
             // insufficient balance should fail
             try {
-                const tx2 = await localInstance1.withdraw(randomAccount1.address, utils.parseUnits("10", "ether"))
+                const tx2 = await localInstanceOwned.withdraw(randomAccount1.address, utils.parseUnits("1", "ether"))
                 await tx2.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             } catch (err) {
-                expect(err.message).to.match(/revert Insufficient funds to withdraw/, "The transaction threw an unexpected error:\n" + err.message)
+                expect(err.message).to.match(/revert Not enough funds/, "The transaction threw an unexpected error:\n" + err.message)
             }
         })
 
-        it("should allow to withdraw only to valid addresses", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
-
-            const txProcess = await localInstance1.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                deployAccount.address, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
-                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
-                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
-                DEFAULT_EVM_BLOCK_HEIGHT,
-                DEFAULT_PARAMS_SIGNATURE,
-                {value: utils.parseUnits("2", "ether")}
-            )
-            
-            await txProcess.wait()
+        it("should allow to withdraw only to valid addresses", async () => {
+            contractInstance = await new ProcessBuilder().withPrice(utils.parseUnits("0.2", "ether")).build()
+            const localInstanceOwned = contractInstance.connect(deployAccount.wallet) as any
 
             // should pass
             const randomAccount1Balance = await randomAccount1.wallet.getBalance()
-            const tx = await localInstance1.withdraw(randomAccount1.address, utils.parseUnits("1", "ether"))
+            const tx = await localInstanceOwned.withdraw(randomAccount1.address, utils.parseUnits("0.1", "ether"))
             await tx.wait()
             const randomAccount1BalanceNew = await randomAccount1.wallet.getBalance()
-            expect(randomAccount1BalanceNew).to.be.deep.equal(randomAccount1Balance.add(utils.parseUnits("1", "ether")))
-            
+            expect(randomAccount1BalanceNew.toString()).to.eq(randomAccount1Balance.add(utils.parseUnits("0.1", "ether")).toString())
+
             // invalid address should fail
             try {
-                const tx2 = await localInstance1.withdraw(nullAddress, utils.parseUnits("0.5", "ether"))
+                const tx2 = await localInstanceOwned.withdraw(nullAddress, utils.parseUnits("0.05", "ether"))
                 await tx2.wait()
                 throw new Error("The transaction should have thrown an error but didn't")
             } catch (err) {
-                expect(err.message).to.match(/revert Invalid address to send/, "The transaction threw an unexpected error:\n" + err.message)
+                expect(err.message).to.match(/revert Invalid address/, "The transaction threw an unexpected error:\n" + err.message)
             }
         })
 
-        it("should emit an event when withdraw", async() => {
-            const namespaceInstance1 = await new NamespaceBuilder().build()
-            const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
-            const contractFactory1 = new ContractFactory(processAbi, processByteCode, deployAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+        it("should emit an event when withdraw", async () => {
+            contractInstance = await new ProcessBuilder().withPrice(utils.parseUnits("0.2", "ether")).build()
+            const localInstanceOwned = contractInstance.connect(deployAccount.wallet) as any
 
-            const txProcess = await localInstance1.newProcess(
-                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                deployAccount.address, // token/entity ID
-                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
-                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
-                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_NAMESPACE],
-                DEFAULT_EVM_BLOCK_HEIGHT,
-                DEFAULT_PARAMS_SIGNATURE,
-                {value: utils.parseUnits("2", "ether")}
-            )
-            
-            await txProcess.wait()
-
-            const result: { to: string, amount: number | BigNumber } = await new Promise((resolve, reject) => {
-                localInstance1.on("Withdraw", (to: string, amount: number | BigNumber) => {
+            const wAmount = utils.parseUnits("0.1", "ether")
+            const result: { to: string, amount: BigNumber } = await new Promise((resolve, reject) => {
+                localInstanceOwned.on("Withdraw", (to: string, amount: BigNumber) => {
                     resolve({ to, amount })
                 })
-                localInstance1.withdraw(randomAccount1.address, utils.parseUnits("0.5", "ether")).then(tx => tx.wait()).catch(reject)
+                localInstanceOwned.withdraw(randomAccount1.address, wAmount).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok
+            expect(result.to).to.eq(randomAccount1.address)
+            expect(result.amount.toString()).to.eq(wAmount.toString())
         })
     })
 
