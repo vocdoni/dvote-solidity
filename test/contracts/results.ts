@@ -9,6 +9,7 @@ import ProcessBuilder, { DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_
 import ResultsBuilder from "../builders/results"
 import GenesisBuilder from "../builders/genesis"
 import { abi as resultsAbi, bytecode as resultsByteCode } from "../../build/results.json"
+import { DEFAULT_NAMESPACE } from "../builders/namespace"
 
 const DEFAULT_VOCHAIN_ID = 0
 
@@ -92,7 +93,7 @@ describe("Results contract", () => {
         await tx.wait()
 
         // no processes contract defined
-        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
 
         try {
             contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as any
@@ -143,7 +144,7 @@ describe("Results contract", () => {
         await tx.wait()
 
         // One is already created by the builder
-        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
 
         // Attempt to publish the results by someone else
         try {
@@ -204,7 +205,7 @@ describe("Results contract", () => {
         expect(await processesInstance.resultsAddress()).to.eq(contractInstance.address)
 
         // One is already created by the builder
-        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
 
 
         // Cancel the process
@@ -227,7 +228,7 @@ describe("Results contract", () => {
     }).timeout(5000)
 
     it("should retrieve the submited results", async () => {
-        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
 
         // One is already created by the builder
 
@@ -251,7 +252,7 @@ describe("Results contract", () => {
         expect(await processesInstance.resultsAddress()).to.eq(contractInstance.address)
 
         // one is already created by the builder
-        const processId1 = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        const processId1 = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
 
         const processData0 = ProcessContractParameters.fromContract(await processesInstance.get(processId1))
         expect(processData0.status.value).to.eq(ProcessStatus.READY, "The process should be ready")
@@ -282,7 +283,7 @@ describe("Results contract", () => {
     })
 
     it("should prevent publishing twice", async () => {
-        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        const processId = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
 
         // One is already created by the builder
 
@@ -320,7 +321,7 @@ describe("Results contract", () => {
     }).timeout(5000)
 
     it("should emit an event", async () => {
-        const processId1 = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_VOCHAIN_ID, DEFAULT_ETH_CHAIN_ID)
+        const processId1 = await processesInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
 
         // one is already created by the builder
 

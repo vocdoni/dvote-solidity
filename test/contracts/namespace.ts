@@ -65,7 +65,7 @@ describe("Namespace contract", () => {
         expect(await contractInstance.namespaceCount()).to.eq(1)
         expect(await processInstance.namespaceAddress()).to.eq(contractInstance.address)
 
-        expect(await contractInstance.processContractAt(0)).to.eq(processInstance.address)
+        expect(await contractInstance.processContractAt(DEFAULT_NAMESPACE)).to.eq(processInstance.address)
 
         // 2
         processInstance = await new ProcessBuilder().withNamespaceAddress(contractInstance.address).build()
@@ -73,6 +73,6 @@ describe("Namespace contract", () => {
         expect(await contractInstance.namespaceCount()).to.eq(2)
         expect(await processInstance.namespaceAddress()).to.eq(contractInstance.address)
 
-        expect(await contractInstance.processContractAt(1)).to.eq(processInstance.address)
+        expect(await contractInstance.processContractAt(DEFAULT_NAMESPACE + 1)).to.eq(processInstance.address)
     })
 })

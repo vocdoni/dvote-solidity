@@ -4,7 +4,7 @@ import { getAccounts, TestAccount } from "../utils"
 
 import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 
-export const DEFAULT_NAMESPACE = 0  // The id that the first process contract will be assigned to
+export const DEFAULT_NAMESPACE = 1  // The id that the first process contract will be assigned to
 
 // BUILDER
 export default class NamespaceBuilder {
