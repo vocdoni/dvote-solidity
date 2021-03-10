@@ -40,8 +40,12 @@ const configSchema = yup.object({
         entityResolver: yup.boolean().required(),
         /** Deploy the processes contract by forking the current one (may be forced to true if proofs.xx is active) */
         processes: yup.boolean().required(),
+        /** Deploy the genesis contract, to define the details of all Vocdoni chains */
+        genesis: yup.boolean().required(),
         /** Deploy the namespaces contract */
         namespaces: yup.boolean().required(),
+        /** Deploy the results contract */
+        results: yup.boolean().required(),
         proofs: yup.object({
             /** Deploy the ERC20 storage proofs contract */
             erc20: yup.boolean().required(),

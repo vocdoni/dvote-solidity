@@ -1130,7 +1130,7 @@ describe("Process contract", () => {
 
         it("setting the status of a non-existent process should fail", async () => {
             for (let status of [ProcessStatus.READY, ProcessStatus.ENDED, ProcessStatus.CANCELED, ProcessStatus.PAUSED]) {
-                const randomProcessId = "0x" + (Math.random().toString().substr(2) + Math.random().toString().substr(2) + Math.random().toString().substr(2) + Math.random().toString().substr(2) + Math.random().toString().substr(2)).substr(-64)
+                const randomProcessId = utils.keccak256(Buffer.from(Math.random().toString()))
 
                 try {
                     await contractInstance.setStatus(randomProcessId, status)

@@ -1,6 +1,6 @@
 import { Wallet, providers, Contract, ContractFactory, utils, ContractTransaction } from "ethers"
 import { keccak256 } from "web3-utils"
-import { ensHashAddress, EnsPublicResolverContractMethods, EnsRegistryContractMethods, NamespaceContractMethods, ProcessContractMethods, TokenStorageProofContractMethods } from "../lib"
+import { ensHashAddress, EnsPublicResolverContractMethods, EnsRegistryContractMethods, GenesisContractMethods, NamespaceContractMethods, ProcessContractMethods, ResultsContractMethods, TokenStorageProofContractMethods } from "../lib"
 import { getConfig } from "./config"
 import * as namehash from "eth-ens-namehash"
 import * as readline from 'readline'
@@ -17,7 +17,9 @@ const { abi: ENSRegistryAbi, bytecode: ENSRegistryBytecode } = require("../build
 const { abi: ENSPublicResolverAbi, bytecode: ENSPublicResolverBytecode } = require("../build/ens-resolver.json")
 const { abi: VotingProcessAbi, bytecode: VotingProcessBytecode } = require("../build/processes.json")
 const { abi: tokenStorageProofAbi, bytecode: tokenStorageProofBytecode } = require("../build/token-storage-proof.json")
+const { abi: genesisAbi, bytecode: genesisByteCode } = require("../build/genesis.json")
 const { abi: namespaceAbi, bytecode: namespaceByteCode } = require("../build/namespaces.json")
+const { abi: resultsAbi, bytecode: resultsByteCode } = require("../build/results.json")
 
 // SET UP
 
@@ -161,7 +163,7 @@ async function deployEnsContracts() {
 }
 
 async function deployCoreContracts() {
-    let processes: string, namespaces: string, erc20Proofs: string
+    let processes: string, genesis: string, namespaces: string, results: string, erc20Proofs: string
 
     console.log()
     console.log("Core contract deployment")
@@ -184,12 +186,31 @@ async function deployCoreContracts() {
         console.log("ℹ️  Using the existing ERC20 storage proofs at", erc20Proofs)
     }
 
+    if (config.features.genesis) {
+        console.warn("\n⚠️  IMPORTANT:\nBy deploying a new Genesis contract, the currently registered chains may become unavailable.")
+        if (!await confirmStep("Do you want to continue?")) process.exit(1)
+
+        const genesisFactory = new ContractFactory(genesisAbi, genesisByteCode, wallet)
+        const genesisContract = await genesisFactory.deploy(transactionOptions)
+        const genesisInstance = await genesisContract.deployed() as Contract & GenesisContractMethods
+        genesis = genesisInstance.address
+
+        console.log("✅ Genesis deployed at", genesis)
+    }
+    else {
+        genesis = await provider.resolveName("genesis" + ENS_DOMAIN_SUFFIX)
+
+        console.log("ℹ️  Using the existing genesis at", genesis)
+    }
+
     if (config.features.namespaces) {
-        // Namespace
-        const namespaceFactory = new ContractFactory(namespaceAbi, namespaceByteCode, wallet)
-        const namespaceContract = await namespaceFactory.deploy(transactionOptions)
-        const namespaceInstance = await namespaceContract.deployed() as Contract & NamespaceContractMethods
-        namespaces = namespaceInstance.address
+        console.warn("\n⚠️  IMPORTANT:\nBy deploying a new Namespaces contract, the currently registered namespace ID's may clash with the ones granted by the new instance.")
+        if (!await confirmStep("Do you want to continue?")) process.exit(1)
+
+        const namespacesFactory = new ContractFactory(namespaceAbi, namespaceByteCode, wallet)
+        const namespacesContract = await namespacesFactory.deploy(transactionOptions)
+        const namespacesInstance = await namespacesContract.deployed() as Contract & NamespaceContractMethods
+        namespaces = namespacesInstance.address
 
         console.log("✅ Namespace deployed at", namespaces)
     }
@@ -199,18 +220,38 @@ async function deployCoreContracts() {
         console.log("ℹ️  Using the existing namespaces at", namespaces)
     }
 
-    const someProofsContractchanged = config.features.proofs.erc20
+    let resultsInstance: Contract & ResultsContractMethods
+    const resultsFactory = new ContractFactory(resultsAbi, resultsByteCode, wallet)
+    if (config.features.results) {
+        console.warn("\n⚠️  IMPORTANT:\nBy deploying a new Results contract, the currently registered Process results may become unavailable.")
+        if (!await confirmStep("Do you want to continue?")) process.exit(1)
+
+        const resultsContract = await resultsFactory.deploy(genesis, transactionOptions)
+        resultsInstance = await resultsContract.deployed() as Contract & ResultsContractMethods
+        results = resultsInstance.address
+
+        console.log("✅ Results deployed at", results)
+    }
+    else {
+        results = await provider.resolveName("results" + ENS_DOMAIN_SUFFIX)
+        resultsInstance = resultsFactory.attach(results) as Contract & ResultsContractMethods
+
+        console.log("ℹ️  Using the existing results at", results)
+    }
+
+    const dependentProcessContractchanged = config.features.results || config.features.proofs.erc20
     let currentProcessesContractAddress = await provider.resolveName("processes" + ENS_DOMAIN_SUFFIX)
-    if (config.features.processes || someProofsContractchanged) {
+    if (config.features.processes || dependentProcessContractchanged) {
         let predecessorContractAddress = currentProcessesContractAddress
         if (predecessorContractAddress == "" || predecessorContractAddress == "0x0") {
             predecessorContractAddress = "0x0000000000000000000000000000000000000000"
         }
+
         if (predecessorContractAddress == "0x0000000000000000000000000000000000000000") {
             console.warn("\n⚠️  IMPORTANT: You are about to deploy a root processes contract with no predecessor.")
         }
-        else if (someProofsContractchanged) {
-            console.warn("\n⚠️  IMPORTANT: A new processes instance will be deployed because a proofs contract has just been deployed.")
+        else if (dependentProcessContractchanged) {
+            console.warn("\n⚠️  IMPORTANT: A new processes instance will be deployed because a dependent contract has also been deployed.")
             console.warn("The new processes instance will have " + predecessorContractAddress + " as the predecessor.")
         }
         else {
@@ -220,13 +261,15 @@ async function deployCoreContracts() {
 
         // Process
         const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
-        const processContract = await processFactory.deploy(predecessorContractAddress, namespaces, erc20Proofs, config.ethereum.chainId, DEFAULT_PROCESS_PRICE, transactionOptions)
+        const processContract = await processFactory.deploy(predecessorContractAddress, namespaces, results, erc20Proofs, config.ethereum.chainId, DEFAULT_PROCESS_PRICE, transactionOptions)
         const processInstance = await processContract.deployed() as Contract & ProcessContractMethods
         processes = processInstance.address
 
         console.log("✅ Process deployed at", processInstance.address)
         console.log("  - Predecessor:", predecessorContractAddress)
-        console.log("  - Namespace:", namespaces)
+        console.log("  - Namespaces:", namespaces)
+        console.log("  - Namespace ID:", await processInstance.namespaceId())
+        console.log("  - Results:", results)
         console.log("  - ERC20 Storage Proofs:", erc20Proofs)
     }
     else {
@@ -234,16 +277,28 @@ async function deployCoreContracts() {
         console.log("ℹ️  Using the existing processes at", processes)
     }
 
+    // After deploy: tell the results contract about the new processes instance if different
+    if (processes != await resultsInstance.processesAddress()) {
+        console.warn("\n⚠️  IMPORTANT:")
+        console.log("The Process contract that will be notified when results are published is not set on the recently deployed instance.")
+        if (await confirmStep("Do you want to update it? (recommended)")) {
+            const tx = await resultsInstance.setProcessesAddress(processes)
+            await tx.wait()
+        }
+    }
+
     return {
         processes,
+        genesis,
         namespaces,
+        results,
         proofs: {
             erc20Proofs
         }
     }
 }
 
-async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPublicResolver: string, entityResolver: string, processes: string, namespaces: string, proofs: { erc20Proofs: string } }) {
+async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPublicResolver: string, entityResolver: string, processes: string, genesis: string, namespaces: string, results: string, proofs: { erc20Proofs: string } }) {
     if (!config.features.setDomains) return console.log("Skipping domain registration")
     else if (provider.network.ensAddress == "0x0000000000000000000000000000000000000000"
         || !contractAddresses.ensRegistry) {
@@ -288,12 +343,14 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
         console.log("Root owner", rootOwner)
     }
 
-    let entitiesVocdoniEthNode: string, processesVocdoniEthNode: string, namespacesVocdoniEthNode: string, proofsVocdoniEthNode: string, erc20ProofsVocdoniEthNode: string
+    let entitiesVocdoniEthNode: string, processesVocdoniEthNode: string, genesisVocdoniEthNode: string, namespacesVocdoniEthNode: string, resultsVocdoniEthNode: string, proofsVocdoniEthNode: string, erc20ProofsVocdoniEthNode: string
 
     if (config.vocdoni.environment == "prod") {
         entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
         processesVocdoniEthNode = await registerEnsNodeOwner("processes", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
+        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
         namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
+        resultsVocdoniEthNode = await registerEnsNodeOwner("results", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
         proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
 
         erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", "proofs.vocdoni.eth", proofsVocdoniEthNode, ensRegistryInstance)
@@ -304,7 +361,9 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
 
         entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
         processesVocdoniEthNode = await registerEnsNodeOwner("processes", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
+        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
         namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
+        resultsVocdoniEthNode = await registerEnsNodeOwner("results", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
         proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
 
         erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", "proofs." + config.vocdoni.environment + ".vocdoni.eth", proofsVocdoniEthNode, ensRegistryInstance)
@@ -324,8 +383,16 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
         tx = await ensRegistryInstance.setResolver(processesVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
         await tx.wait()
     }
+    if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(genesisVocdoniEthNode)) {
+        tx = await ensRegistryInstance.setResolver(genesisVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        await tx.wait()
+    }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(namespacesVocdoniEthNode)) {
         tx = await ensRegistryInstance.setResolver(namespacesVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        await tx.wait()
+    }
+    if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(resultsVocdoniEthNode)) {
+        tx = await ensRegistryInstance.setResolver(resultsVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
         await tx.wait()
     }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(proofsVocdoniEthNode)) {
@@ -352,8 +419,16 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
         tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](processesVocdoniEthNode, contractAddresses.processes, transactionOptions)
         await tx.wait()
     }
+    if (contractAddresses.genesis != await ensPublicResolverInstance["addr(bytes32)"](genesisVocdoniEthNode)) {
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](genesisVocdoniEthNode, contractAddresses.genesis, transactionOptions)
+        await tx.wait()
+    }
     if (contractAddresses.namespaces != await ensPublicResolverInstance["addr(bytes32)"](namespacesVocdoniEthNode)) {
         tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](namespacesVocdoniEthNode, contractAddresses.namespaces, transactionOptions)
+        await tx.wait()
+    }
+    if (contractAddresses.results != await ensPublicResolverInstance["addr(bytes32)"](resultsVocdoniEthNode)) {
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](resultsVocdoniEthNode, contractAddresses.results, transactionOptions)
         await tx.wait()
     }
     if (contractAddresses.proofs.erc20Proofs != await ensPublicResolverInstance["addr(bytes32)"](erc20ProofsVocdoniEthNode)) {
@@ -364,7 +439,9 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     console.log("'entities" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](entitiesVocdoniEthNode))
     console.log("'processes" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](processesVocdoniEthNode))
     console.log("'erc20.proofs" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](erc20ProofsVocdoniEthNode))
+    console.log("'genesis" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](genesisVocdoniEthNode))
     console.log("'namespaces" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](namespacesVocdoniEthNode))
+    console.log("'results" + ENS_DOMAIN_SUFFIX + "' address", await ensPublicResolverInstance["addr(bytes32)"](resultsVocdoniEthNode))
 
     console.log()
     console.log("Bootnode key")
