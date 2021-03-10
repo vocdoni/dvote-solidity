@@ -20,7 +20,7 @@ contract Genesis is IGenesisStore, Owned {
     }
     // Mapping chains[chainId] => ChainEntry
     mapping(uint32 => ChainEntry) internal chains;
-    uint32 public chainCount;
+    uint32 internal chainCount;
 
     // HELPERS
 

@@ -185,14 +185,11 @@ export interface ResultsContractMethods {
 
 /** Smart Contract operations for a Genesis instance */
 export interface GenesisContractMethods {
-    // GLOBAL VARIABLES
-    chainCount(): Promise<number>,
-
     // GETTERS
 
     /** Retrieves the given chain */
     get(chainId: number): Promise<{ genesis: string, validators: string[], oracles: string[] }>,
-    /** Same as chainCount */
+    /** Retrieves the amount of chains currently registered */
     getChainCount(): Promise<number>,
     /** Checks whether the given public key is registered as a validator in the given chain */
     isValidator(chainId: number, validatorPublicKey: string): Promise<boolean>,

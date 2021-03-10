@@ -65,8 +65,11 @@ describe("Genesis contract", () => {
 
             // 1
             expect(() => contractInstance.get(1)).to.throw
+            expect(await contractInstance.getChainCount()).to.eq(0)
+
             tx = await contractInstance.newChain("genesis", ["0x10", "0x20"], [authorizedOracleAccount1.address])
             await tx.wait()
+            expect(await contractInstance.getChainCount()).to.eq(1)
 
             const chainData1 = await contractInstance.get(1)
             expect(chainData1.genesis).to.eq("genesis")
@@ -81,11 +84,14 @@ describe("Genesis contract", () => {
 
             // 2
             expect(() => contractInstance.get(2)).to.throw
-            tx = await contractInstance.newChain("genesis", ["0x1234", "0x2345"], [authorizedOracleAccount2.address])
+            expect(await contractInstance.getChainCount()).to.eq(1)
+
+            tx = await contractInstance.newChain("genesis-2", ["0x1234", "0x2345"], [authorizedOracleAccount2.address])
             await tx.wait()
+            expect(await contractInstance.getChainCount()).to.eq(2)
 
             const chainData2 = await contractInstance.get(2)
-            expect(chainData2.genesis).to.eq("genesis")
+            expect(chainData2.genesis).to.eq("genesis-2")
             expect(chainData2.validators).to.deep.eq(["0x1234", "0x2345"])
             expect(chainData2.oracles).to.deep.eq([authorizedOracleAccount2.address])
             expect(await contractInstance.isValidator(2, "0x1234")).to.be.true
