@@ -2340,7 +2340,7 @@ describe("Process contract", () => {
                         expect(processData5.entityAddress).to.eq(entityAccount.address)
                         expect(processData5.status.value).to.eq(ProcessStatus.RESULTS, "The process should remain in results")
                     }
-                }).timeout(4000)
+                }).timeout(5000)
             })
 
             describe("only the results contract", () => {
