@@ -156,55 +156,40 @@ A Voting Process is defined by the following fields within the contract:
 
 ```solidity
 struct Process {
-    uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
-    uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
-    address entityAddress; // The Ethereum address of the Entity
-    uint64 startBlock; // Tendermint block number on which the voting process starts
-    uint32 blockCount; // Amount of Tendermint blocks during which the voting process should be active
-    string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
-    string censusRoot; // Hex string with the Merkle Root hash of the census
-    string censusUri; // Content (hashed) URI of the exported Merkle Tree (not including the public keys)
-    Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
-    
-    uint8 questionIndex; // The index of the currently active question (only assembly processes)
-    // How many questions are available to vote
-    // questionCount >= 1
-    uint8 questionCount;
-    
-    // How many choices can be made for each question.
-    // 1 <= maxCount <= 100
-    uint8 maxCount;
-    
-    // Determines the acceptable value range.
-    // N => valid votes will range from 0 to N (inclusive)
-    uint8 maxValue;
-    
-    uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last one counts)
-    // Choices for a question cannot appear twice or more
-    
-    bool uniqueValues;
-    // Limits up to how much cost, the values of a vote can add up to (if applicable).
-    // 0 => No limit / Not applicable
-    
-    uint16 maxTotalCost;
-    // Defines the exponent that will be used to compute the "cost" of the options voted and compare it against `maxTotalCost`.
-    // totalCost = Σ (value[i] ** costExponent) <= maxTotalCost
-    //
-    // Exponent range:
-    // - 0 => 0.0000
-    // - 10000 => 1.0000
-    // - 65535 => 6.5535
-    uint16 costExponent;
-    
-    // Self-assign to a certain namespace.
-    // This will determine the oracles that listen and react to it.
-    // Indirectly, it will also determine the Vochain that hosts this process.
-    
-    uint16 namespace;
-    
-    bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
-    
-    string results; // string containing the results
+  uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
+  uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
+  CensusOrigin censusOrigin; // How the census proofs are computed (Off-chain vs EVM Merkle Tree)
+  address entity; // The address of the Entity (or contract) holding the process
+  uint32 startBlock; // Vochain block number on which the voting process starts
+  uint32 blockCount; // Amount of Vochain blocks during which the voting process should be active
+  string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
+  string censusRoot; // Hex string with the Census Root. Depending on the census origin, it will be a Merkle Root or a public key.
+  string censusUri; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
+  Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
+  uint8 questionIndex; // The index of the currently active question (only assembly processes)
+  // How many questions are available to vote
+  // questionCount >= 1
+  uint8 questionCount;
+  // How many choices can be made for each question.
+  // 1 <= maxCount <= 100
+  uint8 maxCount;
+  // Determines the acceptable value range.
+  // N => valid votes will range from 0 to N (inclusive)
+  uint8 maxValue;
+  uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last one counts)
+  // Limits up to how much cost, the values of a vote can add up to (if applicable).
+  // 0 => No limit / Not applicable
+  uint16 maxTotalCost;
+  // Defines the exponent that will be used to compute the "cost" of the options voted and compare it against `maxTotalCost`.
+  // totalCost = Σ (value[i] ** costExponent) <= maxTotalCost
+  //
+  // Exponent range:
+  // - 0 => 0.0000
+  // - 10000 => 1.0000
+  // - 65535 => 6.5535
+  uint16 costExponent;
+  uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
+  bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
 }
 ```
 
@@ -213,6 +198,8 @@ Behaviour is defined by the flags on these variables:
   - The process mode (how it behaves)
 - `envelopeType`
   - How votes look like
+- `censusOrigin`
+  - What kind of census proof needs to be used
 - `status`
   - Whether the process is open, ended, canceled, paused, results
 
