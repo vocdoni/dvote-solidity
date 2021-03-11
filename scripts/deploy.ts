@@ -1,6 +1,6 @@
 import { Wallet, providers, Contract, ContractFactory, utils, ContractTransaction } from "ethers"
 import { keccak256 } from "web3-utils"
-import { ensHashAddress, EnsPublicResolverContractMethods, EnsRegistryContractMethods, GenesisContractMethods, NamespaceContractMethods, ProcessContractMethods, ResultsContractMethods, TokenStorageProofContractMethods } from "../lib"
+import { ensHashAddress, EnsResolverContractMethods, EnsRegistryContractMethods, GenesisContractMethods, NamespacesContractMethods, ProcessesContractMethods, ResultsContractMethods, Erc20StorageProofContractMethods } from "../lib"
 import { getConfig } from "./config"
 import * as namehash from "eth-ens-namehash"
 import * as readline from 'readline'
@@ -112,7 +112,7 @@ async function deployEnsContracts() {
             // ENS Public resolver
             const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
             const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistry, transactionOptions)
-            const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
+            const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsResolverContractMethods
             ensPublicResolver = ensPublicResolverInstance.address
             console.log("✅ ENS Public Resolver deployed at", ensPublicResolver)
         }
@@ -142,7 +142,7 @@ async function deployEnsContracts() {
             // Entity resolver
             const entityResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
             const entityResolverContract = await entityResolverFactory.deploy(ensRegistry, transactionOptions)
-            const entityResolverInstance = await entityResolverContract.deployed() as Contract & EnsPublicResolverContractMethods
+            const entityResolverInstance = await entityResolverContract.deployed() as Contract & EnsResolverContractMethods
             entityResolver = entityResolverInstance.address
 
             console.log("✅ Entity Resolver deployed at", entityResolver)
@@ -175,7 +175,7 @@ async function deployCoreContracts() {
         // ERC Storage Proof
         const tokenStorageProofFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofBytecode, wallet)
         const tokenStorageProofContract = await tokenStorageProofFactory.deploy(transactionOptions)
-        const tokenStorageProofInstance = await tokenStorageProofContract.deployed() as Contract & TokenStorageProofContractMethods
+        const tokenStorageProofInstance = await tokenStorageProofContract.deployed() as Contract & Erc20StorageProofContractMethods
         erc20Proofs = tokenStorageProofInstance.address
 
         console.log("✅ ERC20 Token Storage Proof deployed at", erc20Proofs)
@@ -209,7 +209,7 @@ async function deployCoreContracts() {
 
         const namespacesFactory = new ContractFactory(namespaceAbi, namespaceByteCode, wallet)
         const namespacesContract = await namespacesFactory.deploy(transactionOptions)
-        const namespacesInstance = await namespacesContract.deployed() as Contract & NamespaceContractMethods
+        const namespacesInstance = await namespacesContract.deployed() as Contract & NamespacesContractMethods
         namespaces = namespacesInstance.address
 
         console.log("✅ Namespace deployed at", namespaces)
@@ -262,7 +262,7 @@ async function deployCoreContracts() {
         // Process
         const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
         const processContract = await processFactory.deploy(predecessorContractAddress, namespaces, results, erc20Proofs, config.ethereum.chainId, DEFAULT_PROCESS_PRICE, transactionOptions)
-        const processInstance = await processContract.deployed() as Contract & ProcessContractMethods
+        const processInstance = await processContract.deployed() as Contract & ProcessesContractMethods
         processes = processInstance.address
 
         console.log("✅ Process deployed at", processInstance.address)
@@ -311,13 +311,13 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     const ensRegistryInstance = ensRegistryFactory.attach(contractAddresses.ensRegistry) as Contract & EnsRegistryContractMethods
 
     const ensResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
-    const ensPublicResolverInstance = ensResolverFactory.attach(contractAddresses.ensPublicResolver) as Contract & EnsPublicResolverContractMethods
+    const ensPublicResolverInstance = ensResolverFactory.attach(contractAddresses.ensPublicResolver) as Contract & EnsResolverContractMethods
 
     const entityResolverInstance = config.ethereum.networkId != "xdai" && config.ethereum.networkId != "sokol" ?
         // use our own entity resolver
-        ensResolverFactory.attach(contractAddresses.entityResolver) as Contract & EnsPublicResolverContractMethods :
+        ensResolverFactory.attach(contractAddresses.entityResolver) as Contract & EnsResolverContractMethods :
         // reuse the global resolver  we deployed
-        ensResolverFactory.attach(contractAddresses.ensPublicResolver) as Contract & EnsPublicResolverContractMethods
+        ensResolverFactory.attach(contractAddresses.ensPublicResolver) as Contract & EnsResolverContractMethods
 
     console.log()
     console.log("Domain owner")
@@ -496,7 +496,7 @@ async function activateSuccessors({ processes }: { processes: { old: string, new
     else if (processes.old == processes.new) return console.log("No need to activate a successor processes contract (unchanged)")
 
     console.log("ℹ️  Activating the process contract successor from", processes.old)
-    const predecessor = new Contract(processes.old, VotingProcessAbi, wallet) as Contract & ProcessContractMethods
+    const predecessor = new Contract(processes.old, VotingProcessAbi, wallet) as Contract & ProcessesContractMethods
     const tx = await predecessor.activateSuccessor(processes.new)
     await tx.wait()
 }

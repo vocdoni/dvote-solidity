@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { Contract, ContractFactory, utils, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
-import { EnsPublicResolverContractMethods, ensHashAddress } from "../../lib"
+import { EnsResolverContractMethods, ensHashAddress } from "../../lib"
 import EntityResolverBuilder from "../builders/entities"
 // import { BigNumber } from "ethers"
 
@@ -18,7 +18,7 @@ let entityAccount: TestAccount
 let randomAccount: TestAccount
 let randomAccount1: TestAccount
 let randomAccount2: TestAccount
-let contractInstance: EnsPublicResolverContractMethods & Contract
+let contractInstance: EnsResolverContractMethods & Contract
 let entityId: string
 let tx: ContractTransaction
 

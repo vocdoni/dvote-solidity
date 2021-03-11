@@ -3,7 +3,7 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils, BigNumber } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { TokenStorageProofContractMethods, TokenStorageProofTestContractMethods } from "../../lib"
+import { Erc20StorageProofContractMethods, Erc20StorageProofTestContractMethods } from "../../lib"
 
 import TokenStorageProofBuilder, { TokenStorageProofTestBuilder, STORAGE_PROOFS_USDT_11328124 as proofs } from "../builders/token-storage-proof"
 import { abi as tokenStorageProofTestAbi, bytecode as tokenStorageProofTestByteCode } from "../../build/token-storage-proof-test.json"
@@ -13,8 +13,8 @@ let accounts: TestAccount[]
 let deployAccount: TestAccount
 let randomAccount1: TestAccount
 let randomAccount2: TestAccount
-let contractInstance: TokenStorageProofContractMethods & Contract
-let testContractInstance: TokenStorageProofTestContractMethods & Contract
+let contractInstance: Erc20StorageProofContractMethods & Contract
+let testContractInstance: Erc20StorageProofTestContractMethods & Contract
 let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
@@ -101,7 +101,7 @@ describe("StorageProofTest contract", () => {
         expect(storageProofTestContractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
 
         const contractFactory = new ContractFactory(tokenStorageProofTestAbi, tokenStorageProofTestByteCode, deployAccount.wallet)
-        const localInstance: Contract & TokenStorageProofTestContractMethods = await contractFactory.deploy() as Contract & TokenStorageProofTestContractMethods
+        const localInstance: Contract & Erc20StorageProofTestContractMethods = await contractFactory.deploy() as Contract & Erc20StorageProofTestContractMethods
 
         expect(localInstance).to.be.ok
         expect(localInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)

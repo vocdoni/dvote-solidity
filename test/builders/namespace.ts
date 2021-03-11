@@ -1,4 +1,4 @@
-import { NamespaceContractMethods } from "../../lib/index"
+import { NamespacesContractMethods } from "../../lib/index"
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 
@@ -17,11 +17,11 @@ export default class NamespaceBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(): Promise<Contract & NamespaceContractMethods> {
+    async build(): Promise<Contract & NamespacesContractMethods> {
         const deployAccount = this.accounts[0]
         const contractFactory = new ContractFactory(namespaceAbi, namespaceByteCode, deployAccount.wallet)
-        let contractInstance = await contractFactory.deploy() as Contract & NamespaceContractMethods
+        let contractInstance = await contractFactory.deploy() as Contract & NamespacesContractMethods
 
-        return contractInstance.connect(this.entityAccount.wallet) as Contract & NamespaceContractMethods
+        return contractInstance.connect(this.entityAccount.wallet) as Contract & NamespacesContractMethods
     }
 }

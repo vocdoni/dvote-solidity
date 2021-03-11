@@ -1,5 +1,5 @@
 import { Contract, ContractFactory, utils } from "ethers"
-import { EnsPublicResolverContractMethods } from "../../lib/index"
+import { EnsResolverContractMethods } from "../../lib/index"
 import { getAccounts, TestAccount } from "../utils"
 
 const { abi: ensPublicResolverAbi, bytecode: ensPublicResolverByteCode } = require("../../build/ens-resolver.json")
@@ -21,9 +21,9 @@ export default class EntityResolverBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(): Promise<EnsPublicResolverContractMethods & Contract> {
+    async build(): Promise<EnsResolverContractMethods & Contract> {
         const resolverFactory = new ContractFactory(ensPublicResolverAbi, ensPublicResolverByteCode, this.entityAccount.wallet)
-        const contractInstance = await resolverFactory.deploy(emptyAddress) as EnsPublicResolverContractMethods & Contract
+        const contractInstance = await resolverFactory.deploy(emptyAddress) as EnsResolverContractMethods & Contract
 
         // const entityId = utils.keccak256(this.entityAccount.address)
         // await contractInstance.setText(entityId, "key-name", this.name)

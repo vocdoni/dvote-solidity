@@ -1,4 +1,4 @@
-import { ProcessContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespaceContractMethods, ProcessContractParameters, IProcessCensusOrigin, ProcessCensusOrigin } from "../../lib/index"
+import { ProcessesContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespacesContractMethods, ProcessContractParameters, IProcessCensusOrigin, ProcessCensusOrigin } from "../../lib/index"
 import { BigNumber, Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 import ResultsBuilder from "./results"
@@ -64,7 +64,7 @@ export default class ProcessBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(processCount: number = 1): Promise<Contract & ProcessContractMethods> {
+    async build(processCount: number = 1): Promise<Contract & ProcessesContractMethods> {
         if (this.predecessorInstanceAddress != DEFAULT_PREDECESSOR_INSTANCE_ADDRESS && processCount > 0) throw new Error("Unable to create " + processCount + " processes without a null parent, since the contract is inactive. Call .build(0) instead.")
         const deployAccount = this.accounts[0]
 
@@ -96,9 +96,9 @@ export default class ProcessBuilder {
             tokenStorageProofAddress,
             this.ethChainId,
             this.processPrice
-        ) as Contract & ProcessContractMethods
+        ) as Contract & ProcessesContractMethods
 
-        contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessContractMethods
+        contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessesContractMethods
 
         const extraParams = { value: BigNumber.from(this.processPrice || 0) }
         for (let i = 0; i < processCount; i++) {
@@ -123,7 +123,7 @@ export default class ProcessBuilder {
             await contractInstance.newProcess(...params)
         }
 
-        return contractInstance as Contract & ProcessContractMethods
+        return contractInstance as Contract & ProcessesContractMethods
     }
 
     // custom modifiers
@@ -225,7 +225,7 @@ export default class ProcessBuilder {
 
     // STATIC
 
-    static createDefaultProcess(contractInstance: Contract & ProcessContractMethods) {
+    static createDefaultProcess(contractInstance: Contract & ProcessesContractMethods) {
         const params = ProcessContractParameters.fromParams({
             mode: DEFAULT_PROCESS_MODE,
             envelopeType: DEFAULT_ENVELOPE_TYPE,

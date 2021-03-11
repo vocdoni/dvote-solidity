@@ -3,7 +3,7 @@ import { expect } from "chai"
 import { Contract, ContractFactory, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { GenesisContractMethods, ProcessContractMethods, ProcessContractParameters, ProcessMode, ProcessStatus, ResultsContractMethods } from "../../lib"
+import { GenesisContractMethods, ProcessesContractMethods, ProcessContractParameters, ProcessMode, ProcessStatus, ResultsContractMethods } from "../../lib"
 
 import ProcessBuilder, { DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_ETH_CHAIN_ID } from "../builders/process"
 import ResultsBuilder from "../builders/results"
@@ -23,7 +23,7 @@ let authorizedOracleAccount2: TestAccount
 let contractInstance: ResultsContractMethods & Contract
 let tx: ContractTransaction
 
-let processesInstance: Contract & ProcessContractMethods
+let processesInstance: Contract & ProcessesContractMethods
 
 addCompletionHooks()
 

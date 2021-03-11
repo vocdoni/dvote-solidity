@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters } from "../../lib"
+import { ProcessesContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters } from "../../lib"
 
 import ProcessBuilder, { DEFAULT_ETH_CHAIN_ID, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE } from "../builders/process"
 import NamespaceBuilder from "../builders/namespace"
@@ -22,7 +22,7 @@ let authorizedOracleAccount1: TestAccount
 let authorizedOracleAccount1Signature: string
 let authorizedOracleAccount2: TestAccount
 let processId: string
-let contractInstance: ProcessContractMethods & Contract
+let contractInstance: ProcessesContractMethods & Contract
 let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
@@ -56,7 +56,7 @@ describe("Chainable Process contract", () => {
         const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
 
         try {
-            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -65,7 +65,7 @@ describe("Chainable Process contract", () => {
         }
 
         try {
-            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(Wallet.createRandom().address, namespaceInstance.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -81,7 +81,7 @@ describe("Chainable Process contract", () => {
             const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
 
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            const localInstance1: Contract & ProcessContractMethods = await contractFactory.deploy(nullAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            const localInstance1: Contract & ProcessesContractMethods = await contractFactory.deploy(nullAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             expect(localInstance1).to.be.ok
             expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -103,7 +103,7 @@ describe("Chainable Process contract", () => {
 
             // Try to deploy with ourselves as the parent
             try {
-                await contractFactory.deploy(nextContractDeployAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+                await contractFactory.deploy(nextContractDeployAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -124,7 +124,7 @@ describe("Chainable Process contract", () => {
             // create manually
             const namespaceInstance1 = await new NamespaceBuilder().build()
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -134,7 +134,7 @@ describe("Chainable Process contract", () => {
         it("should retrieve the successorAddress if set", async () => {
             expect(await contractInstance.predecessorAddress()).to.eq(nullAddress)
 
-            const processInstanceOld = (await new ProcessBuilder().build()).connect(deployAccount.wallet) as Contract & ProcessContractMethods
+            const processInstanceOld = (await new ProcessBuilder().build()).connect(deployAccount.wallet) as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             await processInstanceOld.activateSuccessor(processInstanceNew.address)
@@ -155,7 +155,7 @@ describe("Chainable Process contract", () => {
             // create manually
             const namespaceInstance1 = await new NamespaceBuilder().build()
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -164,7 +164,7 @@ describe("Chainable Process contract", () => {
 
         it("should allow to read processes on the old instance from the new one", async () => {
             // make 3 processes on the old one
-            const processInstanceOld = (await new ProcessBuilder().build(3)).connect(deployAccount.wallet) as Contract & ProcessContractMethods
+            const processInstanceOld = (await new ProcessBuilder().build(3)).connect(deployAccount.wallet) as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             await processInstanceOld.activateSuccessor(processInstanceNew.address)
@@ -189,7 +189,7 @@ describe("Chainable Process contract", () => {
             const mode = ProcessMode.make({ interruptible: true, dynamicCensus: true })
 
             // make 3 processes on the old one
-            const processInstanceOld = await new ProcessBuilder().withMode(mode).build(3) as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().withMode(mode).build(3) as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
@@ -241,7 +241,7 @@ describe("Chainable Process contract", () => {
             const nonExistingProcessId1 = "0x0123456789012345678901234567890123456789012345678901234567890123"
             const nonExistingProcessId2 = "0x1234567890123456789012345678901234567890123456789012345678901234"
 
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
@@ -375,7 +375,7 @@ describe("Chainable Process contract", () => {
             // create manually
             const namespaceInstance1 = await new NamespaceBuilder().build()
             const contractFactory = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            contractInstance = await contractFactory.deploy(predecessorAddress, namespaceInstance1.address, resultsIntance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             expect(contractInstance).to.be.ok
             expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -385,7 +385,7 @@ describe("Chainable Process contract", () => {
 
         it("should not allow to create new processes before it has been activated", async () => {
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // try to create (not active yet)
@@ -401,7 +401,7 @@ describe("Chainable Process contract", () => {
 
         it("should allow to create new processes after the predecessor activates it", async () => {
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
@@ -418,7 +418,7 @@ describe("Chainable Process contract", () => {
 
         it("should not allow to create new processes after a successor has been activated", async () => {
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
@@ -445,7 +445,7 @@ describe("Chainable Process contract", () => {
             const mode = ProcessMode.make({ dynamicCensus: true })
 
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().withMode(mode).build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().withMode(mode).build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
@@ -474,7 +474,7 @@ describe("Chainable Process contract", () => {
             const envelopeType = ProcessEnvelopeType.SERIAL
 
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().withMode(mode).withEnvelopeType(envelopeType).build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().withMode(mode).withEnvelopeType(envelopeType).build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount
@@ -495,10 +495,10 @@ describe("Chainable Process contract", () => {
 
         it("only the predecessor should be able to activate a new contract", async () => {
             // Create a predecessor + successor and two random extras
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
-            const processInstanceRandom = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceRandom = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
 
             const randomCallerFactory = new ContractFactory(callerAbi, callerBytecode, deployAccount.wallet)
             const randomCallerInstance = await randomCallerFactory.deploy() as Contract & { activateSuccessor(addr: string): Promise<ContractTransaction> }
@@ -561,7 +561,7 @@ describe("Chainable Process contract", () => {
 
         it("only the contract owner should be able to call activateSuccessor contract", async () => {
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             for (let account of [randomAccount1, randomAccount2]) {
@@ -624,7 +624,7 @@ describe("Chainable Process contract", () => {
 
         it("should fail activating with no predecessor defined", async () => {
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(nullAddress).build()
 
             // try to activate from the old instance to the new
@@ -641,7 +641,7 @@ describe("Chainable Process contract", () => {
 
         it("can only be deactivated once", async () => {
             // Create a successor
-            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessContractMethods
+            const processInstanceOld = await new ProcessBuilder().build() as Contract & ProcessesContractMethods
             const processInstanceNew = await new ProcessBuilder().withPredecessor(processInstanceOld.address).build(0)
 
             // connect just now as the deployAccount

@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { Contract, ContractFactory, ContractTransaction } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { NamespaceContractMethods } from "../../lib"
+import { NamespacesContractMethods } from "../../lib"
 
 import NamespaceBuilder, { DEFAULT_NAMESPACE } from "../builders/namespace"
 
@@ -18,7 +18,7 @@ let randomAccount1: TestAccount
 let randomAccount2: TestAccount
 let authorizedOracleAccount1: TestAccount
 let authorizedOracleAccount2: TestAccount
-let contractInstance: NamespaceContractMethods & Contract
+let contractInstance: NamespacesContractMethods & Contract
 let tx: ContractTransaction
 
 addCompletionHooks()
@@ -40,12 +40,12 @@ describe("Namespace contract", () => {
 
     it("should deploy the contract", async () => {
         const contractFactory = new ContractFactory(namespaceAbi, namespaceByteCode, entityAccount.wallet)
-        const localInstance1: Contract & NamespaceContractMethods = await contractFactory.deploy() as Contract & NamespaceContractMethods
+        const localInstance1: Contract & NamespacesContractMethods = await contractFactory.deploy() as Contract & NamespacesContractMethods
 
         expect(localInstance1).to.be.ok
         expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
 
-        const localInstance2: Contract & NamespaceContractMethods = await contractFactory.deploy() as Contract & NamespaceContractMethods
+        const localInstance2: Contract & NamespacesContractMethods = await contractFactory.deploy() as Contract & NamespacesContractMethods
 
         expect(localInstance2).to.be.ok
         expect(localInstance2.address).to.match(/^0x[0-9a-fA-F]{40}$/)

@@ -1,4 +1,4 @@
-import { TokenStorageProofContractMethods, TokenStorageProofTestContractMethods } from "../../lib/index"
+import { Erc20StorageProofContractMethods, Erc20StorageProofTestContractMethods } from "../../lib/index"
 import { Contract, ContractFactory } from "ethers"
 import { getAccounts, TestAccount } from "../utils"
 
@@ -1388,14 +1388,14 @@ export default class TokenStorageProofBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(): Promise<Contract & TokenStorageProofContractMethods> {
+    async build(): Promise<Contract & Erc20StorageProofContractMethods> {
         const deployAccount = this.accounts[0]
         const contractFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofByteCode, deployAccount.wallet)
-        let contractInstance = await contractFactory.deploy() as Contract & TokenStorageProofContractMethods
+        let contractInstance = await contractFactory.deploy() as Contract & Erc20StorageProofContractMethods
 
         // TODO: Register a token
 
-        return contractInstance.connect(this.entityAccount.wallet) as Contract & TokenStorageProofContractMethods
+        return contractInstance.connect(this.entityAccount.wallet) as Contract & Erc20StorageProofContractMethods
     }
 }
 
@@ -1409,11 +1409,11 @@ export class TokenStorageProofTestBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(): Promise<Contract & TokenStorageProofTestContractMethods> {
+    async build(): Promise<Contract & Erc20StorageProofTestContractMethods> {
         const deployAccount = this.accounts[0]
         const contractFactory = new ContractFactory(tokenStorageProofTestAbi, tokenStorageProofTestByteCode, deployAccount.wallet)
-        let contractInstance = await contractFactory.deploy() as Contract & TokenStorageProofTestContractMethods
+        let contractInstance = await contractFactory.deploy() as Contract & Erc20StorageProofTestContractMethods
 
-        return contractInstance.connect(this.entityAccount.wallet) as Contract & TokenStorageProofTestContractMethods
+        return contractInstance.connect(this.entityAccount.wallet) as Contract & Erc20StorageProofTestContractMethods
     }
 }

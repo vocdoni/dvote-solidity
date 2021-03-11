@@ -1,5 +1,10 @@
 # DVote Solidity Changelog
 
+## 0.16.1
+
+- Renaming the exported TypeScript interfaces for consistency
+  - `EnsRegistryContractMethods`, `EnsResolverContractMethods`, `ProcessesContractMethods`, `IProcessCreateParamsTuple`, `IProcessStateTuple`, `ResultsContractMethods`, `GenesisContractMethods`, `NamespacesContractMethods`, `Erc20StorageProofContractMethods`, `Erc20StorageProofTestContractMethods` 
+
 ## 0.16.0
 
 - The Processes contract is now payable

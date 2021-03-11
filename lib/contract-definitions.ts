@@ -23,7 +23,7 @@ export interface EnsRegistryContractMethods {
 }
 
 /** Custom Smart Contract operations for a Public Resolver contract */
-export interface EnsPublicResolverContractMethods {
+export interface EnsResolverContractMethods {
     /** Whether the resolver supports an interface */
     supportsInterface(interfaceID: string): Promise<boolean>
 
@@ -54,7 +54,7 @@ export interface EnsPublicResolverContractMethods {
 ///////////////////////////////////////////////////////////////////////////////
 
 /** Smart Contract operations for a Voting Process contract */
-export type ProcessContractMethods = ProcessMethods & Chained
+export type ProcessesContractMethods = ProcessMethods & Chained
 
 interface ProcessMethods {
     // HELPERS
@@ -216,7 +216,7 @@ export interface GenesisContractMethods {
 ///////////////////////////////////////////////////////////////////////////////
 
 /** Smart Contract operations for a Namespace */
-export interface NamespaceContractMethods {
+export interface NamespacesContractMethods {
     // GLOBAL VARIABLES
 
     /** How many namespaces are currently registered */
@@ -238,7 +238,7 @@ export interface NamespaceContractMethods {
 ///////////////////////////////////////////////////////////////////////////////
 
 /** Smart Contract operations for Storage Proofs */
-export interface TokenStorageProofContractMethods {
+export interface Erc20StorageProofContractMethods {
     // GETTERS
 
     /** Determines whether the given address is registered as an ERC token contract */
@@ -308,7 +308,7 @@ type Chained = {
 // TEST TYPES
 ///////////////////////////////////////////////////////////////////////////////
 
-export interface TokenStorageProofTestContractMethods {
+export interface Erc20StorageProofTestContractMethods {
     exposedVerify(siblings: Buffer, rootHash: string, key: string): Promise<string>
     testVerify(): Promise<number | BigNumber>
     testExclusion(): Promise<string>

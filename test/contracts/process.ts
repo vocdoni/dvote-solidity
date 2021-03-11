@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { Contract, Wallet, ContractFactory, ContractTransaction, utils, BigNumber, ethers } from "ethers"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 import { getAccounts, TestAccount } from "../utils"
-import { ProcessContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespaceContractMethods, ProcessCensusOrigin, TokenStorageProofContractMethods } from "../../lib"
+import { ProcessesContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters, ProcessResults, NamespacesContractMethods, ProcessCensusOrigin, Erc20StorageProofContractMethods } from "../../lib"
 
 import ProcessBuilder, { DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI, DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT, DEFAULT_QUESTION_COUNT, DEFAULT_ETH_CHAIN_ID, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT, DEFAULT_PARAMS_SIGNATURE, DEFAULT_RESULTS_TALLY, DEFAULT_RESULTS_HEIGHT, DEFAULT_CENSUS_ORIGIN, DEFAULT_EVM_BLOCK_HEIGHT, DEFAULT_PROCESS_PRICE } from "../builders/process"
 import NamespaceBuilder, { DEFAULT_NAMESPACE } from "../builders/namespace"
@@ -26,7 +26,7 @@ let authorizedOracleAccount1: TestAccount
 let authorizedOracleAccount1Signature: string
 let authorizedOracleAccount2: TestAccount
 let processId: string
-let contractInstance: ProcessContractMethods & Contract
+let contractInstance: ProcessesContractMethods & Contract
 let tx: ContractTransaction
 
 const nullAddress = "0x0000000000000000000000000000000000000000"
@@ -117,7 +117,7 @@ describe("Process contract", () => {
         const somePredecessorAddr = (await new ProcessBuilder().build()).address
         const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
         const contractFactory1 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-        const localInstance1: Contract & ProcessContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, resultsInstance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+        const localInstance1: Contract & ProcessesContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, resultsInstance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
         expect(localInstance1).to.be.ok
         expect(localInstance1.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -126,7 +126,7 @@ describe("Process contract", () => {
         expect(await localInstance1.tokenStorageProofAddress()).to.eq(storageProofAddress)
 
         const contractFactory2 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
-        const localInstance2: Contract & ProcessContractMethods = await contractFactory2.deploy(somePredecessorAddr, namespaceInstance2.address, resultsInstance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+        const localInstance2: Contract & ProcessesContractMethods = await contractFactory2.deploy(somePredecessorAddr, namespaceInstance2.address, resultsInstance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
         expect(localInstance2).to.be.ok
         expect(localInstance2.address).to.match(/^0x[0-9a-fA-F]{40}$/)
@@ -149,7 +149,7 @@ describe("Process contract", () => {
         // Namespace
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(noParentAddr, randomAddress, resultsAddr, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(noParentAddr, randomAddress, resultsAddr, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -159,7 +159,7 @@ describe("Process contract", () => {
 
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(somePredecessorAddr, randomAddress, resultsAddr, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(somePredecessorAddr, randomAddress, resultsAddr, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -170,7 +170,7 @@ describe("Process contract", () => {
         // Results
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(noParentAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(noParentAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -180,7 +180,7 @@ describe("Process contract", () => {
 
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, randomAddress, storageProofAddr, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -191,7 +191,7 @@ describe("Process contract", () => {
         // Proofs ERC20
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(noParentAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(noParentAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -201,7 +201,7 @@ describe("Process contract", () => {
 
         try {
             const randomAddress = Wallet.createRandom().address
-            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessContractMethods
+            await contractFactory.deploy(somePredecessorAddr, namespaceAddr, resultsAddr, randomAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
             throw new Error("The transaction should have thrown an error but didn't")
         }
@@ -519,7 +519,7 @@ describe("Process contract", () => {
             const dummyTokenInstance = await dummyTokenFactory.deploy("Dummy Token", "DUM") as Contract
 
             const proofsAddress = await contractInstance.tokenStorageProofAddress()
-            const proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & TokenStorageProofContractMethods
+            const proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
 
             expect(await proofsInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
             await proofsInstance.connect(deployAccount.wallet).registerToken(
@@ -1225,7 +1225,7 @@ describe("Process contract", () => {
 
                 // Try to set it back to paused from someone else
                 try {
-                    contractInstance = contractInstance.connect(randomAccount1.wallet) as ProcessContractMethods & Contract
+                    contractInstance = contractInstance.connect(randomAccount1.wallet) as ProcessesContractMethods & Contract
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
@@ -1241,7 +1241,7 @@ describe("Process contract", () => {
 
                 // Try to set it back to paused from an oracle
                 try {
-                    contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as ProcessContractMethods & Contract
+                    contractInstance = contractInstance.connect(authorizedOracleAccount1.wallet) as ProcessesContractMethods & Contract
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
@@ -1268,7 +1268,7 @@ describe("Process contract", () => {
 
                 // Try to set it to ready (it already is)
                 try {
-                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessContractMethods & Contract
+                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessesContractMethods & Contract
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
@@ -1284,7 +1284,7 @@ describe("Process contract", () => {
 
                 // Try to set it to paused
                 try {
-                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessContractMethods & Contract
+                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessesContractMethods & Contract
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
@@ -1300,7 +1300,7 @@ describe("Process contract", () => {
 
                 // Try to set it to ended
                 try {
-                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessContractMethods & Contract
+                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessesContractMethods & Contract
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
@@ -1316,7 +1316,7 @@ describe("Process contract", () => {
 
                 // Try to set it to canceled
                 try {
-                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessContractMethods & Contract
+                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessesContractMethods & Contract
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
@@ -1332,7 +1332,7 @@ describe("Process contract", () => {
 
                 // Try to set it to results
                 try {
-                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessContractMethods & Contract
+                    contractInstance = contractInstance.connect(entityAccount.wallet) as ProcessesContractMethods & Contract
                     tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
                     await tx.wait()
                     throw new Error("The transaction should have thrown an error but didn't")
@@ -1516,7 +1516,7 @@ describe("Process contract", () => {
 
                         // Try to set it to ready (it already is)
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1532,7 +1532,7 @@ describe("Process contract", () => {
 
                         // Try to set it to paused
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1548,7 +1548,7 @@ describe("Process contract", () => {
 
                         // Try to set it to ended
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1564,7 +1564,7 @@ describe("Process contract", () => {
 
                         // Try to set it to canceled
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1580,7 +1580,7 @@ describe("Process contract", () => {
 
                         // Try to set it to results
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1765,7 +1765,7 @@ describe("Process contract", () => {
 
                         // Try to set it to ready (it already is)
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.READY)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1781,7 +1781,7 @@ describe("Process contract", () => {
 
                         // Try to set it to paused
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.PAUSED)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1797,7 +1797,7 @@ describe("Process contract", () => {
 
                         // Try to set it to ended
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.ENDED)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1813,7 +1813,7 @@ describe("Process contract", () => {
 
                         // Try to set it to canceled
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.CANCELED)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1829,7 +1829,7 @@ describe("Process contract", () => {
 
                         // Try to set it to results
                         try {
-                            contractInstance = contractInstance.connect(account.wallet) as ProcessContractMethods & Contract
+                            contractInstance = contractInstance.connect(account.wallet) as ProcessesContractMethods & Contract
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
@@ -1946,7 +1946,7 @@ describe("Process contract", () => {
                         expect(processData1.entityAddress).to.eq(entityAccount.address)
                         expect(processData1.status.value).to.eq(ProcessStatus.ENDED, "The process should be ended")
 
-                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
+                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessesContractMethods
 
                         // Try to set it to ready
                         try {
@@ -2107,7 +2107,7 @@ describe("Process contract", () => {
                         expect(processData1.entityAddress).to.eq(entityAccount.address)
                         expect(processData1.status.value).to.eq(ProcessStatus.CANCELED, "The process should be canceled")
 
-                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
+                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessesContractMethods
 
                         // Try to set it to ready
                         try {
@@ -2282,7 +2282,7 @@ describe("Process contract", () => {
                         expect(processData1.status.value).to.eq(ProcessStatus.RESULTS, "The process should be in results")
 
                         // random account
-                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessContractMethods
+                        contractInstance = contractInstance.connect(account.wallet) as Contract & ProcessesContractMethods
 
                         // Try to set it to ready
                         try {
@@ -2362,7 +2362,7 @@ describe("Process contract", () => {
 
                         // Try to set the results (fail)
                         try {
-                            contractInstance = contractInstance.connect(entityAccount.wallet) as Contract & ProcessContractMethods
+                            contractInstance = contractInstance.connect(entityAccount.wallet) as Contract & ProcessesContractMethods
                             tx = await contractInstance.setStatus(processId1, ProcessStatus.RESULTS)
                             await tx.wait()
                             throw new Error("The transaction should have thrown an error but didn't")
