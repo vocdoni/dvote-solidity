@@ -2,7 +2,7 @@ import { Contract, ContractFactory, utils } from "ethers"
 import { EnsPublicResolverContractMethods } from "../../lib/index"
 import { getAccounts, TestAccount } from "../utils"
 
-const { abi: ensPublicResolverAbi, bytecode: ensPublicResolverByteCode } = require("../../build/ens-public-resolver.json")
+const { abi: ensPublicResolverAbi, bytecode: ensPublicResolverByteCode } = require("../../build/ens-resolver.json")
 
 // DEFAULT VALUES
 export const DEFAULT_NAME = "Organizer Entity Name"

@@ -10,7 +10,7 @@ import EntityResolverBuilder from "../builders/entities"
 
 const emptyAddress = "0x0000000000000000000000000000000000000000"
 
-import { abi as ensPublicResolverAbi, bytecode as ensPublicResolverByteCode } from "../../build/ens-public-resolver.json"
+import { abi as ensPublicResolverAbi, bytecode as ensPublicResolverByteCode } from "../../build/ens-resolver.json"
 
 let accounts: TestAccount[]
 let baseAccount: TestAccount

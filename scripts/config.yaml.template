@@ -7,9 +7,11 @@ features:
   ensResolver: false
   entityResolver: false
   processes: true
-  namespaces: true
+  genesis: false
+  namespaces: false
+  results: false
   proofs:
-    erc20: true
+    erc20: false
   setDomains: true   # update the ENS addresses
 contracts:
   xdai:

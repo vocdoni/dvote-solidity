@@ -3,16 +3,30 @@ SHELL := /bin/bash
 PROJECT_NAME=$(shell basename "$(PWD)")
 
 .DEFAULT_GOAL := help
-SOLC=./node_modules/.bin/solcjs
-TSC=./node_modules/.bin/tsc
-VOTING_CONTRACTS=$(wildcard contracts/*.sol)
-ENS_CONTRACTS=$(wildcard contracts/vendor/registry/*.sol contracts/vendor/resolver/*.sol)
-ENS_REGISTRY_ARTIFACT_NAME=contracts_vendor_registry_ENSRegistry_sol_ENSRegistry
-ENS_PUBLIC_RESOLVER_ARTIFACT_NAME=contracts_vendor_resolver_PublicResolver_sol_PublicResolver
-PROCESS_ARTIFACT_NAME=contracts_processes_sol_Processes
-NAMESPACE_ARTIFACT_NAME=contracts_namespaces_sol_Namespaces
-TOKEN_STORAGE_PROOF_ARTIFACT_NAME=contracts_token-storage-proof_sol_TokenStorageProof
-TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME=contracts_token-storage-proof-test_sol_TokenStorageProofTest
+SOLC := ./node_modules/.bin/solcjs
+TSC := ./node_modules/.bin/tsc
+
+TS_SOURCES := $(wildcard lib/*.ts)
+# JS_TARGETS = $(patsubst lib/%.ts, build/%.js, $(TS_SOURCES))
+VOTING_CONTRACTS = $(wildcard contracts/*.sol)
+ENS_CONTRACTS = $(wildcard contracts/vendor/registry/*.sol contracts/vendor/resolver/*.sol)
+
+# Declare new contract artifacts on `build/solc` here
+ARTIFACT_BASE_NAMES = contracts_vendor_registry_ENSRegistry_sol_ENSRegistry contracts_vendor_resolver_PublicResolver_sol_PublicResolver contracts_genesis_sol_Genesis contracts_namespaces_sol_Namespaces contracts_processes_sol_Processes contracts_results_sol_Results contracts_token-storage-proof_sol_TokenStorageProof contracts_token-storage-proof-test_sol_TokenStorageProofTest
+
+SOLC_ABI_ARTIFACTS := $(patsubst %, build/solc/%.abi, $(ARTIFACT_BASE_NAMES))
+SOLC_BIN_ARTIFACTS := $(patsubst %, build/solc/%.bin, $(ARTIFACT_BASE_NAMES))
+SOLC_ARTIFACT_PREFIXES := $(patsubst %, build/solc/%, $(ARTIFACT_BASE_NAMES))
+
+# Add new contract entries here
+ENS_REGISTRY_ARTIFACT_PREFIX = $(filter %_sol_ENSRegistry, $(SOLC_ARTIFACT_PREFIXES))
+ENS_RESOLVER_ARTIFACT_PREFIX = $(filter %_sol_PublicResolver, $(SOLC_ARTIFACT_PREFIXES))
+GENESIS_ARTIFACT_PREFIX = $(filter %_sol_Genesis, $(SOLC_ARTIFACT_PREFIXES))
+NAMESPACES_ARTIFACT_PREFIX = $(filter %_sol_Namespaces, $(SOLC_ARTIFACT_PREFIXES))
+PROCESSES_ARTIFACT_PREFIX = $(filter %_sol_Processes, $(SOLC_ARTIFACT_PREFIXES))
+RESULTS_ARTIFACT_PREFIX = $(filter %_sol_Results, $(SOLC_ARTIFACT_PREFIXES))
+TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProof, $(SOLC_ARTIFACT_PREFIXES))
+TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProofTest, $(SOLC_ARTIFACT_PREFIXES))
 
 #-----------------------------------------------------------------------
 # HELP
@@ -34,7 +48,7 @@ help:
 
 ## all: Compile the contract artifacts and generate the TypeScript type definitions
 
-all: node_modules js contract-output
+all: node_modules javascript contract-objects
 
 ## :
 
@@ -52,60 +66,64 @@ node_modules: package.json
 	fi
 	@touch $@
 
-js: build/index.js
-contract-output: build/ens-registry.json build/ens-public-resolver.json build/processes.json build/namespaces.json build/token-storage-proof.json build/token-storage-proof-test.json
+
+# Add new contract target files here
+contract-objects: build/ens-registry.json build/ens-resolver.json build/processes.json build/results.json build/genesis.json build/namespaces.json build/token-storage-proof.json build/token-storage-proof-test.json
 
 build:
 	@mkdir -p build
 	@touch $@
 
-build/index.js: build contract-output lib/index.ts
+javascript: build/index.js
+build/index.js: build contract-objects $(TS_SOURCES)
 	@echo "Building JS/TS artifacts"
-	cp lib/index.ts build
+	cp $(TS_SOURCES) build
 	$(TSC) --build tsconfig.json
 
-build/ens-registry.json: build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin
+# Contract artifacts
+
+build/ens-registry.json: $(ENS_REGISTRY_ARTIFACT_PREFIX).abi $(ENS_REGISTRY_ARTIFACT_PREFIX).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat $(ENS_REGISTRY_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(ENS_REGISTRY_ARTIFACT_PREFIX).bin)\"}" > $@
 
-build/ens-public-resolver.json: build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).abi build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).bin
+build/ens-resolver.json: $(ENS_RESOLVER_ARTIFACT_PREFIX).abi $(ENS_RESOLVER_ARTIFACT_PREFIX).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat $(ENS_RESOLVER_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(ENS_RESOLVER_ARTIFACT_PREFIX).bin)\"}" > $@
 
-build/processes.json: build/solc/$(PROCESS_ARTIFACT_NAME).abi build/solc/$(PROCESS_ARTIFACT_NAME).bin
+build/processes.json: $(PROCESSES_ARTIFACT_PREFIX).abi $(PROCESSES_ARTIFACT_PREFIX).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(PROCESS_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(PROCESS_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat $(PROCESSES_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(PROCESSES_ARTIFACT_PREFIX).bin)\"}" > $@
 
-build/namespaces.json: build/solc/$(NAMESPACE_ARTIFACT_NAME).abi build/solc/$(NAMESPACE_ARTIFACT_NAME).bin
+build/results.json: $(RESULTS_ARTIFACT_PREFIX).abi $(RESULTS_ARTIFACT_PREFIX).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(NAMESPACE_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat $(RESULTS_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(RESULTS_ARTIFACT_PREFIX).bin)\"}" > $@
 
-build/token-storage-proof.json: build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).abi build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).bin
+build/genesis.json: $(GENESIS_ARTIFACT_PREFIX).abi $(GENESIS_ARTIFACT_PREFIX).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(TOKEN_STORAGE_PROOF_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat $(GENESIS_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(GENESIS_ARTIFACT_PREFIX).bin)\"}" > $@
 
-build/token-storage-proof-test.json: build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).abi build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).bin
+build/namespaces.json: $(NAMESPACES_ARTIFACT_PREFIX).abi $(NAMESPACES_ARTIFACT_PREFIX).bin
 	@stat $^ > /dev/null
 	@echo "Building $@"
-	echo "{\"abi\":$$(cat build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).abi),\"bytecode\":\"0x$$(cat build/solc/$(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_NAME).bin)\"}" > $@
+	echo "{\"abi\":$$(cat $(NAMESPACES_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(NAMESPACES_ARTIFACT_PREFIX).bin)\"}" > $@
 
-build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).abi: build/solc
-build/solc/$(ENS_REGISTRY_ARTIFACT_NAME).bin: build/solc
-build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).abi: build/solc
-build/solc/$(ENS_PUBLIC_RESOLVER_ARTIFACT_NAME).bin: build/solc
-build/solc/$(PROCESS_ARTIFACT_NAME).abi: build/solc
-build/solc/$(PROCESS_ARTIFACT_NAME).bin: build/solc
-build/solc/$(NAMESPACE_ARTIFACT_NAME).abi: build/solc
-build/solc/$(NAMESPACE_ARTIFACT_NAME).bin: build/solc
-build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).abi: build/solc
-build/solc/$(STORAGE_PROOF_ARTIFACT_NAME).bin: build/solc
-build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).abi: build/solc
-build/solc/$(STORAGE_PROOF_TEST_ARTIFACT_NAME).bin: build/solc
+build/token-storage-proof.json: $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).abi $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).bin
+	@stat $^ > /dev/null
+	@echo "Building $@"
+	echo "{\"abi\":$$(cat $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).bin)\"}" > $@
+
+build/token-storage-proof-test.json: $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).abi $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).bin
+	@stat $^ > /dev/null
+	@echo "Building $@"
+	echo "{\"abi\":$$(cat $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).bin)\"}" > $@
+
+$(SOLC_ABI_ARTIFACTS): build/solc
+$(SOLC_BIN_ARTIFACTS): build/solc
 
 # Link the contracts from node_modules
 contracts/vendor: contracts/vendor/openzeppelin contracts/vendor/rlp/RLPReader.sol

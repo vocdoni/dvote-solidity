@@ -4,18 +4,31 @@ pragma solidity >=0.6.0 <0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./base.sol"; // Base contracts (Chained, Owned)
-import "./interfaces.sol"; // Common interface for retro compatibility
+import "./common.sol"; // Common interface for retro compatibility
 import "./lib.sol"; // Helpers
 import "./vendor/openzeppelin/token/ERC20/IERC20.sol";
-
 
 contract Processes is IProcessStore, Chained {
     using SafeUint8 for uint8;
 
     // CONSTANTS AND ENUMS
     enum CensusOrigin {
-        __, OFF_CHAIN_TREE, OFF_CHAIN_TREE_WEIGHTED, OFF_CHAIN_CA, __4, __5, __6, __7, __8, __9,
-        __10, ERC20, ERC721, ERC1155, ERC777, MINI_ME
+        __, // 0
+        OFF_CHAIN_TREE, // 1
+        OFF_CHAIN_TREE_WEIGHTED, // 2
+        OFF_CHAIN_CA, // 3
+        __4,
+        __5,
+        __6,
+        __7,
+        __8,
+        __9,
+        __10,
+        ERC20, // 11
+        ERC721, // 12
+        ERC1155, // 13
+        ERC777, // 14
+        MINI_ME // 15
     } // 256 items max
 
     /*
@@ -50,23 +63,16 @@ contract Processes is IProcessStore, Chained {
     uint8 internal constant ENV_TYPE_ENCRYPTED_VOTES = 1 << 2; // Votes are encrypted with the process public key
     uint8 internal constant ENV_TYPE_UNIQUE_VALUES = 1 << 3; // Choices for a question cannot appear twice or more
 
-    // EVENTS
-
-    event NamespaceAddressUpdated(address namespaceAddr);
-
     // GLOBAL DATA
 
+    uint32 public ethChainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
+    uint32 public namespaceId; // Index of the namespace where this contract has been assigned to
     address public namespaceAddress; // Address of the namespace contract instance that holds the current state
+    address public resultsAddress; // The address of the contract that will hold the results of the processes from the current instance
     address public tokenStorageProofAddress; // Address of the storage proof contract, used to query ERC token balances and proofs
-    uint64 chainId; // Used to salt the process ID's so they don't collide within the same entity on another chain. Could be computed, but not all development tools support that yet.
     uint256 public processPrice; // Price for creating a voting process
 
     // DATA STRUCTS
-    struct ProcessResults {
-        uint32[][] tally; // The tally for every question, option and value
-        uint32 height; // The amount of valid envelopes registered
-    }
-
     struct Process {
         uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
         uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
@@ -100,13 +106,8 @@ contract Processes is IProcessStore, Chained {
         // - 10000 => 1.0000
         // - 65535 => 6.5535
         uint16 costExponent;
-        // Self-assign to a certain namespace.
-        // This will determine the oracles that listen and react to it.
-        // Indirectly, it will also determine the Vochain that hosts this process.
-        uint16 namespace;
         uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
-        ProcessResults results; // results wraps the tally, the total number of votes, a list of signatures and a list of proofs
     }
 
     /// @notice An entry for each process created by an Entity.
@@ -121,25 +122,12 @@ contract Processes is IProcessStore, Chained {
     mapping(address => ProcessCheckpoint[]) internal entityCheckpoints; // Array of ProcessCheckpoint indexed by entity address
     mapping(bytes32 => Process) internal processes; // Mapping of all processes indexed by the Process ID
 
-    // MODIFIERS
-
-    /// @notice Fails if the msg.sender is not an authorired oracle
-    modifier onlyOracle(bytes32 processId) override {
-        // Only an Oracle within the process' namespace is valid
-        INamespaceStore namespace = INamespaceStore(namespaceAddress);
-        require(
-            namespace.isOracle(processes[processId].namespace, msg.sender),
-            "Not oracle"
-        );
-        _;
-    }
-
     // HELPERS
 
     function getEntityProcessCount(address entityAddress)
         public
-        override
         view
+        override
         returns (uint256)
     {
         if (entityCheckpoints[entityAddress].length == 0) {
@@ -153,33 +141,40 @@ contract Processes is IProcessStore, Chained {
         }
 
         return
-            entityCheckpoints[entityAddress][entityCheckpoints[entityAddress]
-                .length - 1]
+            entityCheckpoints[entityAddress][
+                entityCheckpoints[entityAddress].length - 1
+            ]
                 .index + 1;
     }
 
     /// @notice Get the next process ID to use for an entity
-    function getNextProcessId(address entityAddress, uint16 namespace)
+    function getNextProcessId(address entityAddress)
         public
-        override
         view
+        override
         returns (bytes32)
     {
         // From 0 to N-1, the next index is N
         uint256 processCount = getEntityProcessCount(entityAddress);
-        return getProcessId(entityAddress, processCount, namespace, chainId);
+        return
+            getProcessId(entityAddress, processCount, namespaceId, ethChainId);
     }
 
     /// @notice Compute the process ID from the given parameters, salted with the contract chain ID
     function getProcessId(
         address entityAddress,
         uint256 processCountIndex,
-        uint16 namespace,
-        uint64 chainIdNumber
-    ) public override pure returns (bytes32) {
+        uint32 namespaceIdNum,
+        uint32 ethereumChainId
+    ) public pure override returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(entityAddress, processCountIndex, namespace, chainIdNumber)
+                abi.encodePacked(
+                    entityAddress,
+                    processCountIndex,
+                    namespaceIdNum,
+                    ethereumChainId
+                )
             );
     }
 
@@ -190,28 +185,26 @@ contract Processes is IProcessStore, Chained {
     constructor(
         address predecessor,
         address namespace,
+        address resultsAddr,
         address tokenStorageProof,
-        uint64 chainIdNumber,
+        uint32 ethereumChainId,
         uint256 procPrice
     ) public {
         Chained.setUp(predecessor);
 
         require(ContractSupport.isContract(namespace), "Invalid namespace");
+        require(ContractSupport.isContract(resultsAddr), "Invalid results");
         require(
             ContractSupport.isContract(tokenStorageProof),
             "Invalid tokenStorageProof"
         );
+
+        namespaceId = INamespaceStore(namespace).register();
         namespaceAddress = namespace;
+        resultsAddress = resultsAddr;
         tokenStorageProofAddress = tokenStorageProof;
-        chainId = chainIdNumber;
+        ethChainId = ethereumChainId;
         processPrice = procPrice;
-    }
-
-    function setNamespaceAddress(address namespace) public onlyContractOwner {
-        require(ContractSupport.isContract(namespace), "Invalid namespace");
-        namespaceAddress = namespace;
-
-        emit NamespaceAddressUpdated(namespace);
     }
 
     // GETTERS
@@ -219,16 +212,17 @@ contract Processes is IProcessStore, Chained {
     /// @notice Retrieves all the stored fields for the given processId
     function get(bytes32 processId)
         public
-        override
         view
+        override
         returns (
             uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
             address entityAddress,
             string[3] memory metadata_censusRoot_censusUri, // [metadata, censusRoot, censusUri]
             uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
             Status status, // status
-            uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
-            uint16[3] memory maxTotalCost_costExponent_namespace,
+            uint8[5]
+                memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
+            uint16[2] memory maxTotalCost_costExponent,
             uint256 evmBlockHeight
         )
     {
@@ -263,19 +257,15 @@ contract Processes is IProcessStore, Chained {
             proc.maxValue,
             proc.maxVoteOverwrites
         ];
-        maxTotalCost_costExponent_namespace = [
-            proc.maxTotalCost,
-            proc.costExponent,
-            proc.namespace
-        ];
+        maxTotalCost_costExponent = [proc.maxTotalCost, proc.costExponent];
         evmBlockHeight = proc.evmBlockHeight;
     }
 
     /// @notice Gets the signature of the process parameters, so that authentication can be performed on the Vochain as well
     function getParamsSignature(bytes32 processId)
         public
-        override
         view
+        override
         returns (bytes32)
     {
         if (processes[processId].entity == address(0x0)) {
@@ -291,33 +281,12 @@ contract Processes is IProcessStore, Chained {
         return proc.paramsSignature;
     }
 
-    /// @notice Fetch the results of the given processId, if any
-    function getResults(bytes32 processId)
-        public
-        override
-        view
-        returns (uint32[][] memory tally, uint32 height)
-    {
-        if (processes[processId].entity == address(0x0)) {
-            // Not found locally
-            if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
-
-            // Ask the predecessor
-            // Note: The predecessor's method needs to follow the old version's signature
-            IProcessStore predecessor = IProcessStore(predecessorAddress);
-            return predecessor.getResults(processId);
-        }
-        // Found locally
-        ProcessResults storage results = processes[processId].results;
-        return (results.tally, results.height);
-    }
-
     /// @notice Gets the address of the process instance where the given processId was originally created.
     /// @notice This allows to know where to send update transactions, after a fork has occurred.
     function getCreationInstance(bytes32 processId)
         public
-        override
         view
+        override
         returns (address)
     {
         if (processes[processId].entity == address(0x0)) {
@@ -342,7 +311,7 @@ contract Processes is IProcessStore, Chained {
         string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) public override payable onlyIfActive {
@@ -359,7 +328,7 @@ contract Processes is IProcessStore, Chained {
                 metadata_censusRoot_censusUri,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent_namespace,
+                maxTotalCost_costExponent,
                 paramsSignature
             );
         } else if (origin == CensusOrigin.ERC20) {
@@ -369,7 +338,7 @@ contract Processes is IProcessStore, Chained {
                 tokenContractAddress,
                 startBlock_blockCount,
                 questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent_namespace,
+                maxTotalCost_costExponent,
                 evmBlockHeight,
                 paramsSignature
             );
@@ -384,7 +353,7 @@ contract Processes is IProcessStore, Chained {
         string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         bytes32 paramsSignature
     ) internal {
         uint8 mode = mode_envelopeType_censusOrigin[0];
@@ -450,17 +419,15 @@ contract Processes is IProcessStore, Chained {
         }
 
         // Store the new process
-        bytes32 processId = getProcessId(
-            msg.sender,
-            prevCount,
-            maxTotalCost_costExponent_namespace[2],
-            chainId
-        );
+        bytes32 processId =
+            getProcessId(msg.sender, prevCount, namespaceId, ethChainId);
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
         processData.envelopeType = mode_envelopeType_censusOrigin[1];
-        processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
+        processData.censusOrigin = CensusOrigin(
+            mode_envelopeType_censusOrigin[2]
+        );
 
         processData.entity = msg.sender;
         processData.startBlock = startBlock_blockCount[0];
@@ -473,19 +440,22 @@ contract Processes is IProcessStore, Chained {
         processData.status = status;
         // processData.questionIndex = 0;
         processData
-            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
+            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            0
+        ];
         processData
             .maxCount = questionCount_maxCount_maxValue_maxVoteOverwrites[1];
         processData
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
-            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
-        processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
-        processData.costExponent = maxTotalCost_costExponent_namespace[1];
-        processData.namespace = maxTotalCost_costExponent_namespace[2];
+            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            3
+        ];
+        processData.maxTotalCost = maxTotalCost_costExponent[0];
+        processData.costExponent = maxTotalCost_costExponent[1];
         processData.paramsSignature = paramsSignature;
 
-        emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
+        emit NewProcess(processId, namespaceId);
     }
 
     function newProcessEvm(
@@ -494,7 +464,7 @@ contract Processes is IProcessStore, Chained {
         address tokenContractAddress,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[3] memory maxTotalCost_costExponent_namespace, // [maxTotalCost, costExponent, namespace]
+        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         uint256 evmBlockHeight, // Ethereum block height at which the census will be considered
         bytes32 paramsSignature
     ) internal {
@@ -539,8 +509,14 @@ contract Processes is IProcessStore, Chained {
         uint256 balance = IERC20(tokenContractAddress).balanceOf(msg.sender);
         require(balance > 0, "Insufficient funds");
 
-        require(bytes(metadata_censusRoot_censusUri[0]).length > 0, "No metadata");
-        require(bytes(metadata_censusRoot_censusUri[1]).length > 0, "No censusRoot");
+        require(
+            bytes(metadata_censusRoot_censusUri[0]).length > 0,
+            "No metadata"
+        );
+        require(
+            bytes(metadata_censusRoot_censusUri[1]).length > 0,
+            "No censusRoot"
+        );
         require(
             questionCount_maxCount_maxValue_maxVoteOverwrites[0] > 0,
             "No questionCount"
@@ -567,12 +543,13 @@ contract Processes is IProcessStore, Chained {
         checkpoint.index = prevCount;
 
         // Store the new process
-        bytes32 processId = getProcessId(
-            tokenContractAddress,
-            prevCount,
-            maxTotalCost_costExponent_namespace[2],
-            chainId
-        );
+        bytes32 processId =
+            getProcessId(
+                tokenContractAddress,
+                prevCount,
+                namespaceId,
+                ethChainId
+            );
         Process storage processData = processes[processId];
 
         processData.mode = mode_envelopeType_censusOrigin[0];
@@ -592,48 +569,61 @@ contract Processes is IProcessStore, Chained {
         processData.status = Status.READY;
         // processData.questionIndex = 0;
         processData
-            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
+            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            0
+        ];
         processData
             .maxCount = questionCount_maxCount_maxValue_maxVoteOverwrites[1];
         processData
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
-            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
-        processData.maxTotalCost = maxTotalCost_costExponent_namespace[0];
-        processData.costExponent = maxTotalCost_costExponent_namespace[1];
-        processData.namespace = maxTotalCost_costExponent_namespace[2];
+            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
+            3
+        ];
+        processData.maxTotalCost = maxTotalCost_costExponent[0];
+        processData.costExponent = maxTotalCost_costExponent[1];
 
         processData.evmBlockHeight = evmBlockHeight;
         processData.paramsSignature = paramsSignature;
 
-        emit NewProcess(processId, maxTotalCost_costExponent_namespace[2]);
+        emit NewProcess(processId, namespaceId);
     }
 
     function setStatus(bytes32 processId, Status newStatus) public override {
-        require(
-            uint8(newStatus) <= uint8(Status.PAUSED), // [READY 0..3 PAUSED] => RESULTS (4) is not allowed
-            "Invalid status code"
-        );
-
         if (processes[processId].entity == address(0x0)) {
             // Not found locally
             if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
             revert("Not found: Try on predecessor");
         }
 
+        Status currentStatus = processes[processId].status;
+
+        // Only the results contract can set to RESULTS
+        if (msg.sender == resultsAddress) {
+            require(currentStatus != Status.CANCELED, "Canceled");
+            require(currentStatus != Status.RESULTS, "Already set");
+            require(newStatus == Status.RESULTS, "Not results contract");
+            processes[processId].status = newStatus;
+            emit StatusUpdated(processId, namespaceId, newStatus);
+            return;
+        }
+
         // Only the process creator
         require(processes[processId].entity == msg.sender, "Invalid entity");
+        require(
+            uint8(newStatus) <= uint8(Status.PAUSED), // [READY 0..3 PAUSED] => RESULTS (4) is not allowed
+            "Invalid status code"
+        );
 
         // Only processes managed by entities (with an off-chain census) can be updated
         CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
             origin == CensusOrigin.OFF_CHAIN_TREE ||
-            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-            origin == CensusOrigin.OFF_CHAIN_CA,
+                origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+                origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 
-        Status currentStatus = processes[processId].status;
         if (currentStatus != Status.READY && currentStatus != Status.PAUSED) {
             // When currentStatus is [ENDED, CANCELED, RESULTS], no update is allowed
             revert("Process terminated");
@@ -663,11 +653,7 @@ contract Processes is IProcessStore, Chained {
         // If questionIndex is already at the last one
         processes[processId].status = newStatus;
 
-        emit StatusUpdated(
-            processId,
-            processes[processId].namespace,
-            newStatus
-        );
+        emit StatusUpdated(processId, namespaceId, newStatus);
     }
 
     function incrementQuestionIndex(bytes32 processId) public override {
@@ -694,8 +680,8 @@ contract Processes is IProcessStore, Chained {
         CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
             origin == CensusOrigin.OFF_CHAIN_TREE ||
-            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-            origin == CensusOrigin.OFF_CHAIN_CA,
+                origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+                origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 
@@ -705,20 +691,12 @@ contract Processes is IProcessStore, Chained {
             processes[processId].questionIndex = nextIdx;
 
             // Not at the last question yet
-            emit QuestionIndexUpdated(
-                processId,
-                processes[processId].namespace,
-                nextIdx
-            );
+            emit QuestionIndexUpdated(processId, namespaceId, nextIdx);
         } else {
             // The last question was currently active => End the process
             processes[processId].status = Status.ENDED;
 
-            emit StatusUpdated(
-                processId,
-                processes[processId].namespace,
-                Status.ENDED
-            );
+            emit StatusUpdated(processId, namespaceId, Status.ENDED);
         }
     }
 
@@ -754,48 +732,15 @@ contract Processes is IProcessStore, Chained {
         CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
         require(
             origin == CensusOrigin.OFF_CHAIN_TREE ||
-            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-            origin == CensusOrigin.OFF_CHAIN_CA,
+                origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+                origin == CensusOrigin.OFF_CHAIN_CA,
             "Not off-chain"
         );
 
         processes[processId].censusRoot = censusRoot;
         processes[processId].censusUri = censusUri;
 
-        emit CensusUpdated(processId, processes[processId].namespace);
-    }
-
-    function setResults(
-        bytes32 processId,
-        uint32[][] memory tally,
-        uint32 height
-    ) public override onlyOracle(processId) {
-        require(height > 0, "No votes");
-
-        if (processes[processId].entity == address(0x0)) {
-            // Not found locally
-            if (predecessorAddress == address(0x0)) revert("Not found"); // No predecessor to ask
-            revert("Not found: Try on predecessor");
-        }
-
-        require(
-            tally.length == processes[processId].questionCount,
-            "Invalid length"
-        );
-
-        // cannot publish results on a canceled process or on a process
-        // that already has results
-        require(
-            processes[processId].status != Status.CANCELED &&
-                processes[processId].status != Status.RESULTS,
-            "Canceled or already set"
-        );
-
-        processes[processId].results.tally = tally;
-        processes[processId].results.height = height;
-        processes[processId].status = Status.RESULTS;
-
-        emit ResultsAvailable(processId);
+        emit CensusUpdated(processId, namespaceId);
     }
 
     function setProcessPrice(uint256 newPrice) public override onlyContractOwner {

@@ -5,6 +5,17 @@
 - The process contract is now payable
 - A price can be defined for every process that is created (to prevent spam)
 - The processes contract now has a `withdraw` function, callable by the owner
+- Split the Namespaces contract into Namespaces and Genesis
+  - The Genesis contract acts as a global register of Chains (chain ID, genesis, oracles, validators)
+  - The Namespaces contract acts as a global register where process contracts register themselves
+- The Processes contract has been adapted to the new Namespaces contract
+- The `Processes` method `setResults` and `getResults` are now part of a future contract `Results`
+  - Oracles now set a process' results on the Results contract
+  - The results contract can then set the `RESULTS` status on the process contract
+- `EnsPublicResolver` is now renamed to `EnsResolver` in TypeScript
+- Validators now have a `bytes32` data type
+- `getNextProcessId` no longer required the `namespace` parameter
+- Namespace indexes now start at index `1`. Zero is reserved.
 
 ## 0.15.0
 
