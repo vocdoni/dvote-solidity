@@ -229,7 +229,7 @@ export interface NamespacesContractMethods {
 
     // SETTERS
 
-    /** NOTE: This will effectively not be callable from any JS client. Registers the (processes) contract calling the function into a new namespace, assigning it to the given chainId. */
+    /** NOTE: This method should not be called from any JS client, only from a contract. Registers the (processes) contract calling the function into a new namespace, assigning it to the given chainId. */
     register(): Promise<number>,
 }
 
