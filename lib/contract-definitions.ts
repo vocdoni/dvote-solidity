@@ -230,7 +230,7 @@ export interface NamespacesContractMethods {
     // SETTERS
 
     /** NOTE: This method should not be called from any JS client, only from a contract. Registers the (processes) contract calling the function into a new namespace, assigning it to the given chainId. */
-    register(): Promise<number>,
+    register(): Promise<ContractTransaction>,
 }
 
 ///////////////////////////////////////////////////////////////////////////////
