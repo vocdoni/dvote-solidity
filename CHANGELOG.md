@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 1.0.0
+
+- Adapting the deploy script for `xdai` and `sokol`
+
 ## 0.16.1
 
 - Renaming the exported TypeScript interfaces for consistency
