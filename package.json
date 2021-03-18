@@ -11,11 +11,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.com/vocdoni/dvote-solidity.git"
+    "url": "git+https://github.com/vocdoni/dvote-solidity.git"
   },
   "author": "Vocdoni",
   "license": "AGPL",
-  "homepage": "https://gitlab.com/vocdoni/dvote-solidity#readme",
+  "homepage": "https://github.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^3.1.0",
     "eth-ens-namehash": "^2.0.8",
