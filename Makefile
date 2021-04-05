@@ -12,7 +12,7 @@ VOTING_CONTRACTS = $(wildcard contracts/*.sol)
 ENS_CONTRACTS = $(wildcard contracts/vendor/registry/*.sol contracts/vendor/resolver/*.sol)
 
 # Declare new contract artifacts on `build/solc` here
-ARTIFACT_BASE_NAMES = contracts_vendor_registry_ENSRegistry_sol_ENSRegistry contracts_vendor_resolver_PublicResolver_sol_PublicResolver contracts_genesis_sol_Genesis contracts_namespaces_sol_Namespaces contracts_processes_sol_Processes contracts_results_sol_Results contracts_token-storage-proof_sol_TokenStorageProof contracts_token-storage-proof-test_sol_TokenStorageProofTest
+ARTIFACT_BASE_NAMES = contracts_vendor_registry_ENSRegistry_sol_ENSRegistry contracts_vendor_resolver_PublicResolver_sol_PublicResolver contracts_genesis_sol_Genesis contracts_namespaces_sol_Namespaces contracts_processes_sol_Processes contracts_results_sol_Results contracts_token-storage-proof_sol_TokenStorageProof
 
 SOLC_ABI_ARTIFACTS := $(patsubst %, build/solc/%.abi, $(ARTIFACT_BASE_NAMES))
 SOLC_BIN_ARTIFACTS := $(patsubst %, build/solc/%.bin, $(ARTIFACT_BASE_NAMES))
@@ -26,7 +26,6 @@ NAMESPACES_ARTIFACT_PREFIX = $(filter %_sol_Namespaces, $(SOLC_ARTIFACT_PREFIXES
 PROCESSES_ARTIFACT_PREFIX = $(filter %_sol_Processes, $(SOLC_ARTIFACT_PREFIXES))
 RESULTS_ARTIFACT_PREFIX = $(filter %_sol_Results, $(SOLC_ARTIFACT_PREFIXES))
 TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProof, $(SOLC_ARTIFACT_PREFIXES))
-TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProofTest, $(SOLC_ARTIFACT_PREFIXES))
 
 #-----------------------------------------------------------------------
 # HELP
@@ -68,7 +67,7 @@ node_modules: package.json
 
 
 # Add new contract target files here
-contract-objects: build/ens-registry.json build/ens-resolver.json build/processes.json build/results.json build/genesis.json build/namespaces.json build/token-storage-proof.json build/token-storage-proof-test.json
+contract-objects: build/ens-registry.json build/ens-resolver.json build/processes.json build/results.json build/genesis.json build/namespaces.json build/token-storage-proof.json
 
 build:
 	@mkdir -p build
@@ -117,25 +116,15 @@ build/token-storage-proof.json: $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).abi $(TOK
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).bin)\"}" > $@
 
-build/token-storage-proof-test.json: $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).abi $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).bin
-	@stat $^ > /dev/null
-	@echo "Building $@"
-	echo "{\"abi\":$$(cat $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(TOKEN_STORAGE_PROOF_TEST_ARTIFACT_PREFIX).bin)\"}" > $@
-
 $(SOLC_ABI_ARTIFACTS): build/solc
 $(SOLC_BIN_ARTIFACTS): build/solc
 
 # Link the contracts from node_modules
-contracts/vendor: contracts/vendor/openzeppelin contracts/vendor/rlp/RLPReader.sol
+contracts/vendor: contracts/vendor/openzeppelin
 
 contracts/vendor/openzeppelin: node_modules
 	rm -f $@
 	ln -s ../../node_modules/@openzeppelin/contracts $@
-
-contracts/vendor/rlp/RLPReader.sol: node_modules
-	rm -Rf $(shell dirname $@)
-	mkdir -p $(shell dirname $@)
-	cat node_modules/solidity-rlp/contracts/RLPReader.sol | sed "s/pragma solidity \^0.5.0;/pragma solidity >=0.6.0 <0.7.0;/" > $@
 
 # Intermediate solidity compiled artifacts
 build/solc: $(VOTING_CONTRACTS) $(ENS_CONTRACTS) contracts/vendor
@@ -155,4 +144,3 @@ test: clean all
 clean: 
 	rm -Rf ./build
 	rm -Rf ./contracts/vendor/openzeppelin
-	rm -Rf ./contracts/vendor/rlp
