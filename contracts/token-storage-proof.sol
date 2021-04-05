@@ -3,17 +3,23 @@
 pragma solidity >=0.6.0 <0.7.0;
 
 import "./vendor/openzeppelin/token/ERC20/IERC20.sol";
-import "./vendor/rlp/RLPReader.sol";
 import "./common.sol";
 import "./lib.sol";
 
-
 contract TokenStorageProof is ITokenStorageProof {
-    using TrieProofs for bytes;
-    using RLPReader for RLPReader.RLPItem;
-    using RLPReader for bytes;
+    using RLP for bytes;
+    using RLP for RLP.RLPItem;
+    using TrieProof for bytes;
 
     uint8 private constant ACCOUNT_STORAGE_ROOT_INDEX = 2;
+
+    string private constant ERROR_BLOCKHASH_NOT_AVAILABLE = "BLOCKHASH_NOT_AVAILABLE";
+    string private constant ERROR_INVALID_BLOCK_HEADER = "INVALID_BLOCK_HEADER";
+    string private constant ERROR_UNPROCESSED_STORAGE_ROOT = "UNPROCESSED_STORAGE_ROOT";
+    string private constant ERROR_NOT_A_CONTRACT = "NOT_A_CONTRACT";
+    string private constant ERROR_NOT_ENOUGH_FUNDS = "NOT_ENOUGH_FUNDS";
+    string private constant ERROR_ALREADY_REGISTERED = "ALREADY_REGISTERED";
+     string private constant ERROR_INVALID_ADDRESS = "INVALID_ADDRESS";
 
     event TokenRegistered(address indexed token, address indexed registrar);
 
@@ -27,168 +33,109 @@ contract TokenStorageProof is ITokenStorageProof {
     uint32 public tokenCount = 0;
 
     function isRegistered(address ercTokenAddress) public view override returns (bool) {
-        require(ercTokenAddress != address(0x0), "Invalid address");
+        require(ercTokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
         return tokens[ercTokenAddress].registered;
     }
 
-    function getBalanceMappingPosition(address ercTokenAddress)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        require(ercTokenAddress != address(0x0), "Invalid address");
-        return tokens[ercTokenAddress].balanceMappingPosition;
-    }
-
     function registerToken(
-        address tokenAddress,
-        uint256 balanceMappingPosition,
+        address token,
         uint256 blockNumber,
+        bytes memory storageProof,
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof,
-        bytes memory storageProof
+        uint256 balanceMappingPosition
     ) public override {
         // Check that the address is a contract
         require(
-            ContractSupport.isContract(tokenAddress),
-            "The address must be a contract"
+            ContractSupport.isContract(token),
+            ERROR_NOT_A_CONTRACT
         );
-
         // check token is not registered
-        require(!isRegistered(tokenAddress), "Token already registered");
+        require(!isRegistered(token), ERROR_ALREADY_REGISTERED);
 
         // check msg.sender balance calling 'balanceOf' function on the ERC20 contract
-        IERC20 tokenContract = IERC20(tokenAddress);
+        IERC20 tokenContract = IERC20(token);
         uint256 balance = tokenContract.balanceOf(msg.sender);
-        require(balance > 0, "Insufficient funds");
+        require(balance > 0, ERROR_NOT_ENOUGH_FUNDS);
 
-        // TODO: UNCOMMENT THE SECTION BELOW
+        bytes32 root = processStorageRoot(token, blockNumber, blockHeaderRLP, accountStateProof);
 
-        /*
-        // check storage root hash valid for height
-        // check storage proof valid for balanceMappingPosition (value returned == balance)
         uint256 balanceFromTrie = getBalance(
-            tokenAddress,
             msg.sender,
-            blockNumber,
-            blockHeaderRLP,
-            accountStateProof,
             storageProof,
+            root,
             balanceMappingPosition
         );
+        require(balanceFromTrie > 0, ERROR_NOT_ENOUGH_FUNDS);
 
-        require(balanceFromTrie > 0, "No funds located");
-        */
-
-        ERC20Token storage newToken = tokens[tokenAddress];
+        ERC20Token storage newToken = tokens[token];
         newToken.registered = true;
         newToken.balanceMappingPosition = balanceMappingPosition;
-        tokenAddresses.push(tokenAddress);
+        tokenAddresses.push(token);
         tokenCount = tokenCount + 1;
 
-        emit TokenRegistered(tokenAddress, msg.sender);
+        emit TokenRegistered(token, msg.sender);
     }
 
-    function getStorageRoot(
-        address account,
+    function processStorageRoot(
+        address token,
         uint256 blockNumber,
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof
-    ) public view returns (bytes32) {
-        // Slots 0...256 store the most recent 256 block hashes are available
-        // Slots 256...511 store the most recent 256 blockhashes where blocknumber % 256 == 0
-        // Slots 512...767 store the most recent 256 blockhashes where blocknumber % 65536 == 0
+    )
+        internal view returns (bytes32 accountStorageRoot)
+    {
         bytes32 blockHash = blockhash(blockNumber);
-        require(blockHash != bytes32(0), "blockhash not available");
-        // get the state root from the RLP encoded block header and verify
-        bytes32 stateRoot = getBlockHeaderStateRoot(blockHeaderRLP, blockHash);
+        // Before Constantinople only the most recent 256 block hashes are available
+        require(blockHash != bytes32(0), ERROR_BLOCKHASH_NOT_AVAILABLE);
+
         // The path for an account in the state trie is the hash of its address
-        bytes32 proofPath = keccak256(abi.encodePacked(account));
+        bytes32 accountProofPath = keccak256(abi.encodePacked(token));
+
         // Get the account state from a merkle proof in the state trie. Returns an RLP encoded bytes array
-        bytes memory accountRLP = TrieProofs.verify(
-            accountStateProof,
-            stateRoot,
-            proofPath
-        ); // reverts if proof is invalid
+        bytes32 stateRoot = _getStateRoot(blockHeaderRLP, blockHash);
+        bytes memory accountRLP = accountStateProof.verify(stateRoot, accountProofPath);
+
         // Extract the storage root from the account node and convert to bytes32
-        return
-            bytes32(
-                accountRLP.toRlpItem().toList()[ACCOUNT_STORAGE_ROOT_INDEX]
-                    .toUint()
-            );
-    }
-
-    function getStorage(
-        // address account,
-        // uint256 blockNumber,
-        uint256 slot,
-        bytes32 stateRoot,
-        bytes memory storageProof
-    ) public pure returns (uint256) {
-        require(stateRoot != bytes32(0), "no data");
-
-        // The path for a storage value is the hash of its slot
-        bytes32 proofPath = keccak256(abi.encodePacked(slot));
-        return TrieProofs
-            .verify(storageProof, stateRoot, proofPath)
-            .toRlpItem()
-            .toUint();
-    }
-
-    function getHolderBalanceSlot(
-        address holder,
-        uint256 balanceMappingPosition
-    ) public pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(bytes32(uint256(holder)), balanceMappingPosition)
-            );
+        accountStorageRoot = bytes32(accountRLP.toRLPItem().toList()[ACCOUNT_STORAGE_ROOT_INDEX].toUint());
     }
 
     function getBalance(
-        address token,
         address holder,
-        uint256 blockNumber,
-        bytes memory blockHeaderRLP,
-        bytes memory accountStateProof,
         bytes memory storageProof,
+        bytes32 root,
         uint256 balanceMappingPosition
-    ) public override returns (uint256) {
-        require(isRegistered(token), "Token not registered");
+    )
+        internal pure returns (uint256)
+    {
+        require(root != bytes32(0), ERROR_UNPROCESSED_STORAGE_ROOT);
+        // The path for a storage value is the hash of its slot
+        bytes32 slot = getBalanceSlot(holder, balanceMappingPosition);
+        bytes32 storageProofPath = keccak256(abi.encodePacked(slot));
 
-        uint256 holderBalanceSlot = uint256(
-            getHolderBalanceSlot(holder, balanceMappingPosition)
-        );
-        bytes32 root = getStorageRoot(
-            holder,
-            blockNumber,
-            blockHeaderRLP,
-            accountStateProof
-        );
-        return
-            getStorage(
-                // token,
-                // blockNumber,
-                holderBalanceSlot,
-                root,
-                storageProof
-            );
+        bytes memory value;
+        value = TrieProof.verify(storageProof, root, storageProofPath);
+
+        return value.toRLPItem().toUint();
     }
 
-    // extract state root from block header, verifying block hash
-    function getBlockHeaderStateRoot(
-        bytes memory blockHeaderRLP,
-        bytes32 blockHash
-    ) public pure returns (bytes32 stateRoot) {
-        require(blockHeaderRLP.length > 123, "invalid block header"); // prevent from reading invalid memory
-        require(
-            keccak256(blockHeaderRLP) == blockHash,
-            "mismatch on the blockhash provided"
-        );
+    function getBalanceSlot(address holder, uint256 balanceMappingPosition) public pure override returns (bytes32) {
+        return keccak256(abi.encodePacked(bytes32(uint256(holder)), balanceMappingPosition));
+    }
+
+
+    function getBalanceMappingPosition(address ercTokenAddress) public view override returns (uint256) {
+        require(ercTokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
+        return tokens[ercTokenAddress].balanceMappingPosition;
+    }
+
+    /**
+    * @dev Extract state root from block header, verifying block hash
+    */
+    function _getStateRoot(bytes memory blockHeaderRLP, bytes32 blockHash) internal pure returns (bytes32 stateRoot) {
+        require(blockHeaderRLP.length > 123, ERROR_INVALID_BLOCK_HEADER); // prevent from reading invalid memory
+        require(keccak256(blockHeaderRLP) == blockHash, ERROR_INVALID_BLOCK_HEADER);
         // 0x7b = 0x20 (length) + 0x5b (position of state root in header, [91, 123])
-        assembly {
-            stateRoot := mload(add(blockHeaderRLP, 0x7b))
-        }
+        assembly { stateRoot := mload(add(blockHeaderRLP, 0x7b)) }
     }
 }

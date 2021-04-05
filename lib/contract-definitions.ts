@@ -1,6 +1,6 @@
-import { ContractTransaction, BigNumber } from "ethers"
+import { BigNumber, ContractTransaction } from "ethers"
 import { IMethodOverrides } from "./contract-utils"
-import { IProcessStatus, IProcessResults } from "./data-wrappers"
+import { IProcessResults, IProcessStatus } from "./data-wrappers"
 
 ///////////////////////////////////////////////////////////////////////////////
 // ENS TYPES
@@ -250,34 +250,16 @@ export interface Erc20StorageProofContractMethods {
     /** Retrieves the amount of ERC20 tokens registered on the contract.  */
     tokenCount(): Promise<number>,
 
-    /** Fetches a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number */
-    getProof(ercTokenAddress: string, blockNumber: number | BigNumber): Promise<Buffer>
-
-    /** Fetches a Merkle Proof for the sender, validating that he/she had some balance on the contract at a given block number */
-    getBalance(token: string, holder: string, blockNumber: number | BigNumber, storageProof: Buffer, balanceMappingPosition: number): Promise<BigNumber>
-
     /** Fetches the balance mapping position stored for a given token */
     getBalanceMappingPosition(ercTokenAddress: string): Promise<BigNumber>
 
-    /** Fetches the storage root for an account of the State Trie on a specific lock number */
-    getStorageRoot(account: string, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer): Promise<String>
-
-    /** Fetches the storage content of the Storage Tree of an account on the State trie given a proof for that account */
-    getStorage(slot: number | BigNumber, stateRoot: string, storageProof: Buffer): Promise<BigNumber>
-
     /** Fetches the holder storage slot given the holder address */
-    getHolderBalanceSlot(holder: string, balanceMappingPosition: number | BigNumber)
-
-    /** Fetches the balance of a holder of a token and validates the data through merkle proofs */
-    getBalance(token: string, holder: string, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, balanceMappingPosition: number | BigNumber): Promise<BigNumber>
-
-    /** Fetches the block header State root hash given an RLP encoded block */
-    getBlockHeaderStateRoot(blockHeaderRLP: Buffer, blockhash: string): Promise<string>
+    getBalanceSlot(holder: string, balanceMappingPosition: number | BigNumber)
 
     // SETTERS
 
     /** Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address */
-    registerToken(tokenAddress: string, balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, overrides?: IMethodOverrides): Promise<ContractTransaction>
+    registerToken(token: string, blockNumber: number | BigNumber, storageProof: Buffer, blockHeaderRLP: Buffer, accountStateProof: Buffer, balanceMappingPosition: number | BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -304,13 +286,3 @@ type Chained = {
     activateSuccessor(successor: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// TEST TYPES
-///////////////////////////////////////////////////////////////////////////////
-
-export interface Erc20StorageProofTestContractMethods {
-    exposedVerify(siblings: Buffer, rootHash: string, key: string): Promise<string>
-    testVerify(): Promise<number | BigNumber>
-    testExclusion(): Promise<string>
-    verifyAccountProof(proof: Buffer, hash: string, account: string): Promise<string>
-}

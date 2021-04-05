@@ -112,25 +112,18 @@ interface IGenesisStore {
 interface ITokenStorageProof {
     /// @notice Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
     function registerToken(
-        address tokenAddress,
-        uint256 balanceMappingPosition,
+        address token,
         uint256 blockNumber,
+        bytes memory storageProof,
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof,
-        bytes memory storageProof) external;
+        uint256 balanceMappingPosition) external;
 
     /// @notice Determines whether the given address is registered as an ERC token contract
     function isRegistered(address ercTokenAddress) external view returns (bool);
-    
-    /// @notice Returns the token balance of a holder at the given block number
-    function getBalance(
-        address token,
-        address holder,
-        uint256 blockNumber,
-        bytes memory blockHeaderRLP,
-        bytes memory accountStateProof,
-        bytes memory storageProof,
-        uint256 balanceMappingPosition) external returns (uint256);
+  
+    /// @notice Determines the balance slot of a holder of an ERC20 token given a balance slot
+    function getBalanceSlot(address holder, uint256 balanceMappingPosition) external pure returns(bytes32);
 
     /// @notice Returns the balance mapping position of a token for users to generate proofs
     function getBalanceMappingPosition(address ercTokenAddress) external view returns (uint256);
