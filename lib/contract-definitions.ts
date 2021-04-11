@@ -242,7 +242,7 @@ export interface Erc20StorageProofContractMethods {
     // GETTERS
 
     /** Determines whether the given address is registered as an ERC token contract */
-    isRegistered(ercTokenAddress: string): Promise<boolean>
+    isRegistered(tokenAdress: string): Promise<boolean>
 
     /** Retrieves the token addresses registered at the given index. If it doesn't exist, the request throws an error. */
     tokenAddresses(idx: number): Promise<string>,
@@ -251,15 +251,15 @@ export interface Erc20StorageProofContractMethods {
     tokenCount(): Promise<number>,
 
     /** Fetches the balance mapping position stored for a given token */
-    getBalanceMappingPosition(ercTokenAddress: string): Promise<BigNumber>
+    getBalanceMappingPosition(tokenAdress: string): Promise<BigNumber>
 
     /** Fetches the holder storage slot given the holder address */
-    getBalanceSlot(holder: string, balanceMappingPosition: number | BigNumber)
+    getHolderBalanceSlot(holder: string, balanceMappingPosition: number | BigNumber)
 
     // SETTERS
 
     /** Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address */
-    registerToken(token: string, blockNumber: number | BigNumber, storageProof: Buffer, blockHeaderRLP: Buffer, accountStateProof: Buffer, balanceMappingPosition: number | BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>
+    registerToken(tokenAdress: string,  balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, overrides?: IMethodOverrides): Promise<ContractTransaction>
 }
 
 ///////////////////////////////////////////////////////////////////////////////
