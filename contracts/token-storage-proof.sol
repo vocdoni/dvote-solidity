@@ -38,27 +38,27 @@ contract TokenStorageProof is ITokenStorageProof {
     }
 
     function registerToken(
-        address token,
+        address tokenAddress,
+        uint256 balanceMappingPosition,
         uint256 blockNumber,
-        bytes memory storageProof,
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof,
-        uint256 balanceMappingPosition
+        bytes memory storageProof
     ) public override {
         // Check that the address is a contract
         require(
-            ContractSupport.isContract(token),
+            ContractSupport.isContract(tokenAddress),
             ERROR_NOT_A_CONTRACT
         );
         // check token is not registered
-        require(!isRegistered(token), ERROR_ALREADY_REGISTERED);
+        require(!isRegistered(tokenAddress), ERROR_ALREADY_REGISTERED);
 
         // check msg.sender balance calling 'balanceOf' function on the ERC20 contract
-        IERC20 tokenContract = IERC20(token);
+        IERC20 tokenContract = IERC20(tokenAddress);
         uint256 balance = tokenContract.balanceOf(msg.sender);
         require(balance > 0, ERROR_NOT_ENOUGH_FUNDS);
 
-        bytes32 root = processStorageRoot(token, blockNumber, blockHeaderRLP, accountStateProof);
+        bytes32 root = processStorageRoot(tokenAddress, blockNumber, blockHeaderRLP, accountStateProof);
 
         uint256 balanceFromTrie = getBalance(
             msg.sender,
@@ -68,17 +68,17 @@ contract TokenStorageProof is ITokenStorageProof {
         );
         require(balanceFromTrie > 0, ERROR_NOT_ENOUGH_FUNDS);
 
-        ERC20Token storage newToken = tokens[token];
+        ERC20Token storage newToken = tokens[tokenAddress];
         newToken.registered = true;
         newToken.balanceMappingPosition = balanceMappingPosition;
-        tokenAddresses.push(token);
+        tokenAddresses.push(tokenAddress);
         tokenCount = tokenCount + 1;
 
-        emit TokenRegistered(token, msg.sender);
+        emit TokenRegistered(tokenAddress, msg.sender);
     }
 
     function processStorageRoot(
-        address token,
+        address tokenAddress,
         uint256 blockNumber,
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof
@@ -90,7 +90,7 @@ contract TokenStorageProof is ITokenStorageProof {
         require(blockHash != bytes32(0), ERROR_BLOCKHASH_NOT_AVAILABLE);
 
         // The path for an account in the state trie is the hash of its address
-        bytes32 accountProofPath = keccak256(abi.encodePacked(token));
+        bytes32 accountProofPath = keccak256(abi.encodePacked(tokenAddress));
 
         // Get the account state from a merkle proof in the state trie. Returns an RLP encoded bytes array
         bytes32 stateRoot = _getStateRoot(blockHeaderRLP, blockHash);
@@ -110,7 +110,7 @@ contract TokenStorageProof is ITokenStorageProof {
     {
         require(root != bytes32(0), ERROR_UNPROCESSED_STORAGE_ROOT);
         // The path for a storage value is the hash of its slot
-        bytes32 slot = getBalanceSlot(holder, balanceMappingPosition);
+        bytes32 slot = getHolderBalanceSlot(holder, balanceMappingPosition);
         bytes32 storageProofPath = keccak256(abi.encodePacked(slot));
 
         bytes memory value;
@@ -119,14 +119,14 @@ contract TokenStorageProof is ITokenStorageProof {
         return value.toRLPItem().toUint();
     }
 
-    function getBalanceSlot(address holder, uint256 balanceMappingPosition) public pure override returns (bytes32) {
+    function getHolderBalanceSlot(address holder, uint256 balanceMappingPosition) public pure override returns (bytes32) {
         return keccak256(abi.encodePacked(bytes32(uint256(holder)), balanceMappingPosition));
     }
 
 
-    function getBalanceMappingPosition(address ercTokenAddress) public view override returns (uint256) {
-        require(ercTokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
-        return tokens[ercTokenAddress].balanceMappingPosition;
+    function getBalanceMappingPosition(address tokenAddress) public view override returns (uint256) {
+        require(tokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
+        return tokens[tokenAddress].balanceMappingPosition;
     }
 
     /**

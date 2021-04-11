@@ -1,9 +1,9 @@
-import { Wallet, providers, Contract, ContractFactory, utils, ContractTransaction } from "ethers"
-import { keccak256 } from "web3-utils"
-import { ensHashAddress, EnsResolverContractMethods, EnsRegistryContractMethods, GenesisContractMethods, NamespacesContractMethods, ProcessesContractMethods, ResultsContractMethods, Erc20StorageProofContractMethods } from "../lib"
-import { getConfig } from "./config"
 import * as namehash from "eth-ens-namehash"
+import { Contract, ContractFactory, ContractTransaction, providers, utils, Wallet } from "ethers"
 import * as readline from 'readline'
+import { keccak256 } from "web3-utils"
+import { ensHashAddress, EnsRegistryContractMethods, EnsResolverContractMethods, Erc20StorageProofContractMethods, GenesisContractMethods, NamespacesContractMethods, ProcessesContractMethods, ResultsContractMethods } from "../lib"
+import { getConfig } from "./config"
 
 const { JsonRpcProvider } = providers
 
