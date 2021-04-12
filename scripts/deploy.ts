@@ -10,6 +10,7 @@ const { JsonRpcProvider } = providers
 // Global ENS registry and resolver for official ENS deployments (mainnet, goerli)
 const ENS_GLOBAL_REGISTRY = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
 const ENS_GLOBAL_PUBLIC_RESOLVER = "0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329"
+const ENS_RINKEBY_PUBLIC_RESOLVER = "0xf6305c19e814d2a75429Fd637d01F7ee0E77d615"
 // By default creating a process is free
 const DEFAULT_PROCESS_PRICE = utils.parseUnits("0", "ether")
 
@@ -127,9 +128,13 @@ async function deployEnsContracts() {
         }
     }
     else {
-        // Mainnet / Goerli: Simply use the global contracts
         ensRegistry = ENS_GLOBAL_REGISTRY
-        ensPublicResolver = ENS_GLOBAL_PUBLIC_RESOLVER
+        if (config.ethereum.networkId == "rinkeby") { // rinkeby
+            ensPublicResolver = ENS_RINKEBY_PUBLIC_RESOLVER
+        } else { // mainnet / goerli 
+            ensPublicResolver = ENS_GLOBAL_PUBLIC_RESOLVER
+        }
+        
     }
 
     // Deploy Vocdoni's Entity Resolver
@@ -237,7 +242,7 @@ async function deployCoreContracts() {
     let currentProcessesContractAddress = await provider.resolveName("processes" + ENS_DOMAIN_SUFFIX)
     if (config.features.processes || dependentProcessContractchanged) {
         let predecessorContractAddress = currentProcessesContractAddress
-        if (predecessorContractAddress == "" || predecessorContractAddress == "0x0") {
+        if (predecessorContractAddress == "" || predecessorContractAddress == "0x0" || predecessorContractAddress == null) {
             predecessorContractAddress = "0x0000000000000000000000000000000000000000"
         }
 
