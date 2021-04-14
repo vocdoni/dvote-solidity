@@ -17,7 +17,6 @@
   "license": "AGPL",
   "homepage": "https://github.com/vocdoni/dvote-solidity#readme",
   "dependencies": {
-    "@openzeppelin/contracts": "^3.1.0",
     "eth-ens-namehash": "^2.0.8",
     "ethers": "^5.0.24",
     "solidity-rlp": "^2.0.2",

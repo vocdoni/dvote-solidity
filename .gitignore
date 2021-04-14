@@ -2,8 +2,6 @@ build
 package-lock.json
 node_modules
 .stamps
-contracts/vendor/openzeppelin
-contracts/vendor/rlp
 .env
 config.yaml
 .stamps

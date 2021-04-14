@@ -119,13 +119,6 @@ build/token-storage-proof.json: $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).abi $(TOK
 $(SOLC_ABI_ARTIFACTS): build/solc
 $(SOLC_BIN_ARTIFACTS): build/solc
 
-# Link the contracts from node_modules
-contracts/vendor: contracts/vendor/openzeppelin
-
-contracts/vendor/openzeppelin: node_modules
-	rm -f $@
-	ln -s ../../node_modules/@openzeppelin/contracts $@
-
 # Intermediate solidity compiled artifacts
 build/solc: $(VOTING_CONTRACTS) $(ENS_CONTRACTS) contracts/vendor
 	@echo "Building contracts"
@@ -143,4 +136,3 @@ test: clean all
 
 clean: 
 	rm -Rf ./build
-	rm -Rf ./contracts/vendor/openzeppelin
