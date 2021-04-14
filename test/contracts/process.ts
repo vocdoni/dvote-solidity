@@ -1098,6 +1098,24 @@ describe("Process contract", () => {
             expect(current).to.eq(prev, "processCount should not have changed")
         })
 
+        it("should create a process if envelopeType costFromWeight is set", async () => {
+            const prev = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
+            tx = await contractInstance.newProcess(
+                [ProcessMode.make({}), ProcessEnvelopeType.make({costFromWeight: true}), ProcessCensusOrigin.OFF_CHAIN_TREE],
+                nullAddress, // token/entity ID
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
+                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                DEFAULT_EVM_BLOCK_HEIGHT,
+                DEFAULT_PARAMS_SIGNATURE
+            )
+            await tx.wait()
+            const current = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
+
+            expect(current).to.eq(prev + 1, "processCount should have incrementd by 1")
+        })
+
         it("should emit an event", async () => {
             expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(1)
             const expectedProcessId = await contractInstance.getProcessId(entityAccount.address, 0, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)

@@ -57,7 +57,7 @@ export type IProcessEnvelopeType = number
 export class ProcessEnvelopeType {
     private _type: IProcessEnvelopeType
     constructor(envelopeType: IProcessEnvelopeType) {
-        const allFlags = ProcessEnvelopeType.SERIAL | ProcessEnvelopeType.ANONYMOUS | ProcessEnvelopeType.ENCRYPTED_VOTES | ProcessEnvelopeType.UNIQUE_VALUES
+        const allFlags = ProcessEnvelopeType.SERIAL | ProcessEnvelopeType.ANONYMOUS | ProcessEnvelopeType.ENCRYPTED_VOTES | ProcessEnvelopeType.UNIQUE_VALUES | ProcessEnvelopeType.COST_FROM_WEIGHT
         if (envelopeType > allFlags) throw new Error("Invalid envelope type")
         this._type = envelopeType
     }
@@ -71,14 +71,16 @@ export class ProcessEnvelopeType {
     public static ENCRYPTED_VOTES: IProcessEnvelopeType = 1 << 2
     /** Whether choices for a question can only appear once or not. */
     public static UNIQUE_VALUES: IProcessEnvelopeType = 1 << 3
-
+    /** If true On EVM-based census processes (weighted), the user's balance will be used as the maxCost. This allows splitting the voting power among several choices, even including quadratic voting scenarios. */
+    public static COST_FROM_WEIGHT: IProcessEnvelopeType = 1 << 4
     /** Returns the value that represents the given envelope type */
-    public static make(flags: { serial?: boolean, anonymousVoters?: boolean, encryptedVotes?: boolean, uniqueValues?: boolean } = {}): IProcessEnvelopeType {
+    public static make(flags: { serial?: boolean, anonymousVoters?: boolean, encryptedVotes?: boolean, uniqueValues?: boolean, costFromWeight?: boolean } = {}): IProcessEnvelopeType {
         let result = 0
         result |= flags.serial ? ProcessEnvelopeType.SERIAL : 0
         result |= flags.anonymousVoters ? ProcessEnvelopeType.ANONYMOUS : 0
         result |= flags.encryptedVotes ? ProcessEnvelopeType.ENCRYPTED_VOTES : 0
         result |= flags.uniqueValues ? ProcessEnvelopeType.UNIQUE_VALUES : 0
+        result |= flags.costFromWeight ? ProcessEnvelopeType.COST_FROM_WEIGHT: 0
         return result
     }
 
@@ -90,6 +92,8 @@ export class ProcessEnvelopeType {
     get hasEncryptedVotes(): boolean { return (this._type & ProcessEnvelopeType.ENCRYPTED_VOTES) != 0 }
     /** Returns true if choices must be unique per question. */
     get hasUniqueValues(): boolean { return (this._type & ProcessEnvelopeType.UNIQUE_VALUES) != 0 }
+    /** Returns true if cost from weight is activated */
+    get hasCostFromWeight(): boolean { return (this._type & ProcessEnvelopeType.COST_FROM_WEIGHT) != 0}
 }
 
 // PROCESS CENSUS ORIGIN
