@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 1.1.0
+
+- EVM Census: storage-proof-validation enabled
+
 ## 1.0.0
 
 - Adapting the deploy script for `xdai` and `sokol`
