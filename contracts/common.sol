@@ -111,7 +111,7 @@ interface IGenesisStore {
 /// @notice The `ITokenStorageProof` interface defines the standard methods that allow checking ERC token balances.
 interface ITokenStorageProof {
     /// @notice Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
-    function registerToken(
+    function registerTokenWithProof(
         address tokenAddress,
         uint256 balanceMappingPosition,
         uint256 blockNumber,
@@ -119,12 +119,25 @@ interface ITokenStorageProof {
         bytes memory accountStateProof,
         bytes memory storageProof) external;
 
+    /// @notice Checks that the given contract is an ERC token, check the balance of the holder and registers the token
+    function registerToken(address tokenAddress, uint256 balanceMappingPosition) external;
+
+    /// @notice Sets the balanceMappingPosition of the given token address if unverified
+    function setBalanceMappingPosition(address tokenAddress, uint256 balanceMappingPosition) external;
+
     /// @notice Determines whether the given address is registered as an ERC token contract
     function isRegistered(address tokenAddress) external view returns (bool);
+
+     /// @notice Determines whether the given address is registered as an ERC token contract and verified
+    function isVerified(address tokenAddress) external view returns (bool);
   
     /// @notice Determines the balance slot of a holder of an ERC20 token given a balance slot
     function getHolderBalanceSlot(address holder, uint256 balanceMappingPosition) external pure returns(bytes32);
 
     /// @notice Returns the balance mapping position of a token for users to generate proofs
     function getBalanceMappingPosition(address tokenAddress) external view returns (uint256);
+
+    // EVENTS
+    event TokenRegistered(address indexed token, address indexed registrar);
+    event BalanceMappingPositionUpdated(address tokenAddress, address holder, uint256 balanceMappingPosition);
 }

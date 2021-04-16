@@ -19,25 +19,83 @@ contract TokenStorageProof is ITokenStorageProof {
     string private constant ERROR_NOT_A_CONTRACT = "NOT_A_CONTRACT";
     string private constant ERROR_NOT_ENOUGH_FUNDS = "NOT_ENOUGH_FUNDS";
     string private constant ERROR_ALREADY_REGISTERED = "ALREADY_REGISTERED";
-     string private constant ERROR_INVALID_ADDRESS = "INVALID_ADDRESS";
-
-    event TokenRegistered(address indexed token, address indexed registrar);
+    string private constant ERROR_NOT_REGISTERED = "NOT_REGISTERED";
+    string private constant ERROR_ALREADY_VERIFIED = "ALREADY_VERIFIED";
+    string private constant ERROR_INVALID_ADDRESS = "INVALID_ADDRESS";
 
     struct ERC20Token {
         uint256 balanceMappingPosition;
         bool registered;
+        bool verified;
     }
 
     mapping(address => ERC20Token) public tokens;
     address[] public tokenAddresses;
     uint32 public tokenCount = 0;
 
-    function isRegistered(address ercTokenAddress) public view override returns (bool) {
-        require(ercTokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
-        return tokens[ercTokenAddress].registered;
+    function isRegistered(address tokenAddress) public view override returns (bool) {
+        require(tokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
+        return tokens[tokenAddress].registered;
     }
 
-    function registerToken(
+    function isVerified(address tokenAddress) public view override returns (bool) {
+        require(tokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
+        return tokens[tokenAddress].verified;
+    }
+
+    function isHolder(address tokenAddress) internal view returns(bool) {
+        // check msg.sender balance calling 'balanceOf' function on the ERC20 contract
+        IERC20 tokenContract = IERC20(tokenAddress);
+        uint256 balance = tokenContract.balanceOf(msg.sender);
+        return balance > 0;
+    }
+
+    function setBalanceMappingPosition(address tokenAddress, uint256 balanceMappingPosition) public override {
+        // Check that the address is a contract
+        require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
+        
+        // Check token registered
+        require(isRegistered(tokenAddress), ERROR_NOT_REGISTERED);
+        
+        // Check token not already verified
+        require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
+        
+        // Check sender is holder 
+        require(isHolder(msg.sender), ERROR_NOT_ENOUGH_FUNDS);
+        
+        // Set balanceMappingPosition
+        ERC20Token storage token = tokens[tokenAddress];
+        token.balanceMappingPosition = balanceMappingPosition;
+        
+        // Event
+        emit BalanceMappingPositionUpdated(tokenAddress, msg.sender, balanceMappingPosition);
+    }
+
+    function registerToken(address tokenAddress, uint256 balanceMappingPosition) public override {
+        // Check that the address is a contract
+        require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
+        
+        // Check token not already registered
+        require(!isRegistered(tokenAddress), ERROR_ALREADY_REGISTERED);
+        
+        // Check token not already verified
+        require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
+        
+        // Check sender is holder 
+        require(isHolder(tokenAddress), ERROR_NOT_ENOUGH_FUNDS);
+        
+        // Register token
+        ERC20Token storage newToken = tokens[tokenAddress];
+        newToken.registered = true;
+        newToken.balanceMappingPosition = balanceMappingPosition;
+        tokenAddresses.push(tokenAddress);
+        tokenCount = tokenCount + 1;
+        
+        // Event
+        emit TokenRegistered(tokenAddress, msg.sender);
+    }
+
+    function registerTokenWithProof(
         address tokenAddress,
         uint256 balanceMappingPosition,
         uint256 blockNumber,
@@ -46,20 +104,18 @@ contract TokenStorageProof is ITokenStorageProof {
         bytes memory storageProof
     ) public override {
         // Check that the address is a contract
-        require(
-            ContractSupport.isContract(tokenAddress),
-            ERROR_NOT_A_CONTRACT
-        );
-        // check token is not registered
-        require(!isRegistered(tokenAddress), ERROR_ALREADY_REGISTERED);
-
-        // check msg.sender balance calling 'balanceOf' function on the ERC20 contract
-        IERC20 tokenContract = IERC20(tokenAddress);
-        uint256 balance = tokenContract.balanceOf(msg.sender);
-        require(balance > 0, ERROR_NOT_ENOUGH_FUNDS);
-
+        require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
+        
+        // Check token is not verified
+        require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
+        
+        // Check sender is holder 
+        require(isHolder(msg.sender), ERROR_NOT_ENOUGH_FUNDS);
+        
+        // Get storage root
         bytes32 root = processStorageRoot(tokenAddress, blockNumber, blockHeaderRLP, accountStateProof);
-
+        
+        // Check balance using the computed storage root and the provided proofs
         uint256 balanceFromTrie = getBalance(
             msg.sender,
             storageProof,
@@ -67,13 +123,20 @@ contract TokenStorageProof is ITokenStorageProof {
             balanceMappingPosition
         );
         require(balanceFromTrie > 0, ERROR_NOT_ENOUGH_FUNDS);
-
-        ERC20Token storage newToken = tokens[tokenAddress];
-        newToken.registered = true;
-        newToken.balanceMappingPosition = balanceMappingPosition;
-        tokenAddresses.push(tokenAddress);
-        tokenCount = tokenCount + 1;
-
+        
+        // Register token
+        ERC20Token storage token = tokens[tokenAddress];
+        token.verified = true;
+        if (token.registered && (token.balanceMappingPosition != balanceMappingPosition)) {
+            token.balanceMappingPosition = balanceMappingPosition;
+        } else {
+            token.registered = true;
+            token.balanceMappingPosition = balanceMappingPosition;
+            tokenAddresses.push(tokenAddress);
+            tokenCount = tokenCount + 1;
+        }
+        
+        // Event
         emit TokenRegistered(tokenAddress, msg.sender);
     }
 
