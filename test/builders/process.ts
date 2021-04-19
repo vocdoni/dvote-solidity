@@ -1,11 +1,12 @@
-import { ProcessesContractMethods, ProcessEnvelopeType, ProcessMode, IProcessEnvelopeType, IProcessMode, NamespacesContractMethods, ProcessContractParameters, IProcessCensusOrigin, ProcessCensusOrigin } from "../../lib/index"
 import { BigNumber, Contract, ContractFactory } from "ethers"
+import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
+import { IProcessCensusOrigin, IProcessEnvelopeType, IProcessMode, ProcessCensusOrigin, ProcessContractParameters, ProcessEnvelopeType, ProcessesContractMethods, ProcessMode } from "../../lib/index"
 import { getAccounts, TestAccount } from "../utils"
-import ResultsBuilder from "./results"
+import ERC20MockBuilder from "./erc20Mock"
 import NamespaceBuilder from "./namespace"
+import ResultsBuilder from "./results"
 import TokenStorageProofBuilder from "./token-storage-proof"
 
-import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
 
 // DEFAULT VALUES
 export const DEFAULT_PREDECESSOR_INSTANCE_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -26,7 +27,8 @@ export const DEFAULT_MAX_COUNT = 4
 export const DEFAULT_MAX_VALUE = 5
 export const DEFAULT_MAX_TOTAL_COST = 0
 export const DEFAULT_COST_EXPONENT = 10000
-export const DEFAULT_EVM_BLOCK_HEIGHT = 1000
+export const DEFAULT_EVM_BLOCK_HEIGHT = 0
+export const DEFAULT_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
 export const DEFAULT_PARAMS_SIGNATURE = "0x1111111111111111111111111111111111111111111111111111111111111111"
 export const DEFAULT_RESULTS_TALLY = [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9]]
 export const DEFAULT_RESULTS_HEIGHT = 10
@@ -53,6 +55,8 @@ export default class ProcessBuilder {
     maxValue: number = DEFAULT_MAX_VALUE
     maxTotalCost: number = DEFAULT_MAX_TOTAL_COST
     costExponent: number = DEFAULT_COST_EXPONENT
+    evmBlockHeight: number = DEFAULT_EVM_BLOCK_HEIGHT
+    tokenAddress: string
     resultsAddress: string
     namespaceAddress: string
     tokenStorageProofAddress: string
@@ -64,7 +68,7 @@ export default class ProcessBuilder {
         this.entityAccount = this.accounts[1]
     }
 
-    async build(processCount: number = 1): Promise<Contract & ProcessesContractMethods> {
+    async build(processCount: number = 1, evm: boolean = false): Promise<Contract & ProcessesContractMethods> {
         if (this.predecessorInstanceAddress != DEFAULT_PREDECESSOR_INSTANCE_ADDRESS && processCount > 0) throw new Error("Unable to create " + processCount + " processes without a null parent, since the contract is inactive. Call .build(0) instead.")
         const deployAccount = this.accounts[0]
 
@@ -80,6 +84,14 @@ export default class ProcessBuilder {
             const resultsInstance = await new ResultsBuilder().build()
             resultsAddress = resultsInstance.address
         }
+
+        if ((!this.tokenAddress || this.tokenAddress == "") && evm) {
+            // Deploy one
+            const erc20MockInstance = await new ERC20MockBuilder().build()
+            this.tokenAddress = erc20MockInstance.address
+
+        }
+
         let tokenStorageProofAddress = this.tokenStorageProofAddress
         if (!tokenStorageProofAddress) {
             const tokenStorageProofInstance = await new TokenStorageProofBuilder().build()
@@ -101,26 +113,51 @@ export default class ProcessBuilder {
         contractInstance = contractInstance.connect(this.entityAccount.wallet) as Contract & ProcessesContractMethods
 
         const extraParams = { value: BigNumber.from(this.processPrice || 0) }
-        for (let i = 0; i < processCount; i++) {
-            const params = ProcessContractParameters.fromParams({
-                mode: this.mode,
-                envelopeType: this.envelopeType,
-                censusOrigin: this.censusOrigin,
-                metadata: this.metadata,
-                censusRoot: this.censusRoot,
-                censusUri: this.censusUri,
-                startBlock: this.startBlock,
-                blockCount: this.blockCount,
-                questionCount: this.questionCount,
-                maxCount: this.maxCount,
-                maxValue: this.maxValue,
-                maxVoteOverwrites: this.maxVoteOverwrites,
-                maxTotalCost: this.maxTotalCost,
-                costExponent: this.costExponent,
-                paramsSignature: this.paramsSignature
-            }).toContractParams(extraParams)
+        if (evm) {
+            for (let i = 0; i < processCount; i++) {
+                const params = ProcessContractParameters.fromParams({
+                    mode: this.mode,
+                    envelopeType: this.envelopeType,
+                    censusOrigin: new ProcessCensusOrigin(11),
+                    metadata: this.metadata,
+                    censusRoot: this.censusRoot,
+                    startBlock: this.startBlock,
+                    blockCount: this.blockCount,
+                    questionCount: this.questionCount,
+                    maxCount: this.maxCount,
+                    maxValue: this.maxValue,
+                    maxVoteOverwrites: this.maxVoteOverwrites,
+                    maxTotalCost: this.maxTotalCost,
+                    costExponent: this.costExponent,
+                    tokenAddress: this.tokenAddress,
+                    evmBlockHeight: this.evmBlockHeight,
+                    paramsSignature: this.paramsSignature
+                }).toContractParamsEvm(extraParams)
+    
+                await contractInstance.newProcessEvm(...params)
+            }
+        } else {
+            for (let i = 0; i < processCount; i++) {
+                const params = ProcessContractParameters.fromParams({
+                    mode: this.mode,
+                    envelopeType: this.envelopeType,
+                    censusOrigin: this.censusOrigin,
+                    metadata: this.metadata,
+                    censusRoot: this.censusRoot,
+                    censusUri: this.censusUri,
+                    startBlock: this.startBlock,
+                    blockCount: this.blockCount,
+                    questionCount: this.questionCount,
+                    maxCount: this.maxCount,
+                    maxValue: this.maxValue,
+                    maxVoteOverwrites: this.maxVoteOverwrites,
+                    maxTotalCost: this.maxTotalCost,
+                    costExponent: this.costExponent,
+                    paramsSignature: this.paramsSignature
+                }).toContractParamsStd(extraParams)
 
-            await contractInstance.newProcess(...params)
+                await contractInstance.newProcessStd(...params)
+            }
         }
 
         return contractInstance as Contract & ProcessesContractMethods
@@ -217,6 +254,17 @@ export default class ProcessBuilder {
         this.paramsSignature = paramsSignature
         return this
     }
+
+    withEvmBlockHeight(evmBlockHeight: number) {
+        this.evmBlockHeight = evmBlockHeight
+        return this
+    }
+
+    withTokenAddress(tokenAddress: string) {
+        this.tokenAddress = tokenAddress
+        return this
+    }
+
     withPrice(processPrice: number | BigNumber) {
         if (this.processPrice < 0) throw new Error("Unable to create process contract, process price must be positive")
         this.processPrice = processPrice
@@ -225,7 +273,7 @@ export default class ProcessBuilder {
 
     // STATIC
 
-    static createDefaultProcess(contractInstance: Contract & ProcessesContractMethods) {
+    static createDefaultStdProcess(contractInstance: Contract & ProcessesContractMethods) {
         const params = ProcessContractParameters.fromParams({
             mode: DEFAULT_PROCESS_MODE,
             envelopeType: DEFAULT_ENVELOPE_TYPE,
@@ -242,7 +290,28 @@ export default class ProcessBuilder {
             maxTotalCost: DEFAULT_MAX_TOTAL_COST,
             costExponent: DEFAULT_COST_EXPONENT,
             paramsSignature: DEFAULT_PARAMS_SIGNATURE
-        }).toContractParams()
-        return contractInstance.newProcess(...params).then(tx => tx.wait())
+        }).toContractParamsStd()
+        return contractInstance.newProcessStd(...params).then(tx => tx.wait())
+    }
+
+    static createDefaultEvmProcess(contractInstance: Contract & ProcessesContractMethods) {
+        const params = ProcessContractParameters.fromParams({
+            mode: DEFAULT_PROCESS_MODE,
+            envelopeType: DEFAULT_ENVELOPE_TYPE,
+            censusOrigin: DEFAULT_CENSUS_ORIGIN,
+            metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
+            censusRoot: DEFAULT_CENSUS_ROOT,
+            startBlock: DEFAULT_START_BLOCK,
+            blockCount: DEFAULT_BLOCK_COUNT,
+            questionCount: DEFAULT_QUESTION_COUNT,
+            maxCount: DEFAULT_MAX_COUNT,
+            maxValue: DEFAULT_MAX_VALUE,
+            maxVoteOverwrites: DEFAULT_MAX_VOTE_OVERWRITES,
+            maxTotalCost: DEFAULT_MAX_TOTAL_COST,
+            costExponent: DEFAULT_COST_EXPONENT,
+            evmBlockHeight: DEFAULT_EVM_BLOCK_HEIGHT,
+            paramsSignature: DEFAULT_PARAMS_SIGNATURE
+        }).toContractParamsEvm()
+        return contractInstance.newProcessEvm(...params).then(tx => tx.wait())
     }
 }

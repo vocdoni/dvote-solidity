@@ -1,17 +1,17 @@
 
-import "mocha" // using @types/mocha
 import { expect } from "chai"
-import { Contract, Wallet, ContractFactory, ContractTransaction, utils } from "ethers"
-import { addCompletionHooks } from "../utils/mocha-hooks"
-import { getAccounts, TestAccount } from "../utils"
-import { ProcessesContractMethods, ProcessStatus, ProcessEnvelopeType, ProcessMode, ProcessContractParameters } from "../../lib"
-
-import ProcessBuilder, { DEFAULT_ETH_CHAIN_ID, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE } from "../builders/process"
-import NamespaceBuilder from "../builders/namespace"
-import TokenStorageProofBuilder from "../builders/token-storage-proof"
-
+import { Contract, ContractFactory, ContractTransaction, utils, Wallet } from "ethers"
+import "mocha" // using @types/mocha
 import { abi as processAbi, bytecode as processByteCode } from "../../build/processes.json"
+import { ProcessContractParameters, ProcessEnvelopeType, ProcessesContractMethods, ProcessMode, ProcessStatus } from "../../lib"
+import NamespaceBuilder from "../builders/namespace"
+import ProcessBuilder, { DEFAULT_ETH_CHAIN_ID, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE } from "../builders/process"
 import ResultsBuilder from "../builders/results"
+import TokenStorageProofBuilder from "../builders/token-storage-proof"
+import { getAccounts, TestAccount } from "../utils"
+import { addCompletionHooks } from "../utils/mocha-hooks"
+
+
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
@@ -311,9 +311,11 @@ describe("Chainable Process contract", () => {
             expect((await processInstance2.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(3)
             expect((await processInstance3.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(3)
 
+            // TODO: @jordipainan add test for evm process
+
             // Create two processes on processInstance2
-            await ProcessBuilder.createDefaultProcess(processInstance2)
-            await ProcessBuilder.createDefaultProcess(processInstance2)
+            await ProcessBuilder.createDefaultStdProcess(processInstance2)
+            await ProcessBuilder.createDefaultStdProcess(processInstance2)
 
             expect((await processInstance1.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(3)
             expect((await processInstance2.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(5)
@@ -329,10 +331,10 @@ describe("Chainable Process contract", () => {
             expect((await processInstance3.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(5)
 
             // Create four processes on processInstance3
-            await ProcessBuilder.createDefaultProcess(processInstance3)
-            await ProcessBuilder.createDefaultProcess(processInstance3)
-            await ProcessBuilder.createDefaultProcess(processInstance3)
-            await ProcessBuilder.createDefaultProcess(processInstance3)
+            await ProcessBuilder.createDefaultStdProcess(processInstance3)
+            await ProcessBuilder.createDefaultStdProcess(processInstance3)
+            await ProcessBuilder.createDefaultStdProcess(processInstance3)
+            await ProcessBuilder.createDefaultStdProcess(processInstance3)
 
             expect((await processInstance1.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(3)
             expect((await processInstance2.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(5)
@@ -390,7 +392,7 @@ describe("Chainable Process contract", () => {
 
             // try to create (not active yet)
             try {
-                await ProcessBuilder.createDefaultProcess(processInstanceNew)
+                await ProcessBuilder.createDefaultStdProcess(processInstanceNew)
 
                 throw new Error("The transaction should have thrown an error but didn't")
             }
@@ -413,7 +415,7 @@ describe("Chainable Process contract", () => {
             expect(await processInstanceNew.predecessorAddress()).to.eq(processInstanceOld.address)
             expect((await processInstanceNew.activationBlock()).toNumber()).to.be.gt(0)
 
-            await ProcessBuilder.createDefaultProcess(processInstanceNew) // should work fine
+            await ProcessBuilder.createDefaultStdProcess(processInstanceNew) // should work fine
         })
 
         it("should not allow to create new processes after a successor has been activated", async () => {
@@ -432,7 +434,7 @@ describe("Chainable Process contract", () => {
 
             // try to create (a successor is live)
             try {
-                await ProcessBuilder.createDefaultProcess(processInstanceOld)
+                await ProcessBuilder.createDefaultStdProcess(processInstanceOld)
 
                 throw new Error("The transaction should have thrown an error but didn't")
             }
