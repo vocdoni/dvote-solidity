@@ -128,7 +128,8 @@ interface ProcessMethods {
         overrides?: IMethodOverrides?
      * ]```
      * */
-    newProcess(...args: IProcessCreateParamsTuple): Promise<ContractTransaction>,
+    newProcessStd(...args: IProcessCreateStdParamsTuple): Promise<ContractTransaction>,
+    newProcessEvm(...args: IProcessCreateEvmParamsTuple): Promise<ContractTransaction>,
     /** Update the process status that corresponds to the given ID */
     setStatus(processId: string, status: IProcessStatus, overrides?: IMethodOverrides): Promise<ContractTransaction>,
     /** Increments the index of the current question (only when INCREMENTAL mode is set) */
@@ -137,13 +138,22 @@ interface ProcessMethods {
     setCensus(processId: string, censusRoot: string, censusUri: string, overrides?: IMethodOverrides): Promise<ContractTransaction>,
 }
 
-export type IProcessCreateParamsTuple = [
+export type IProcessCreateStdParamsTuple = [
     number[], // mode_envelopeType_censusOrigin
-    string,   // tokenContractAddress
     string[], // metadata_censusRoot_censusUri
     number[], // startBlock_blockCount
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent
+    string, // paramsSignature
+    IMethodOverrides? // (Optional) Ethereum transaction overrides
+]
+export type IProcessCreateEvmParamsTuple = [
+    number[], // mode_envelopeType_censusOrigin
+    string[], // metadata_censusRoot
+    number[], // startBlock_blockCount
+    number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
+    number[], // maxTotalCost_costExponent
+    string,   // tokenContractAddress
     number, // evmBlockHeight
     string, // paramsSignature
     IMethodOverrides? // (Optional) Ethereum transaction overrides
@@ -244,6 +254,9 @@ export interface Erc20StorageProofContractMethods {
     /** Determines whether the given address is registered as an ERC token contract */
     isRegistered(tokenAdress: string): Promise<boolean>
 
+    /** Determines wheter the given address have a verified balance mapping position */
+    isVerified(tokenAddress: string): Promise<boolean>
+
     /** Retrieves the token addresses registered at the given index. If it doesn't exist, the request throws an error. */
     tokenAddresses(idx: number): Promise<string>,
 
@@ -259,7 +272,11 @@ export interface Erc20StorageProofContractMethods {
     // SETTERS
 
     /** Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address */
-    registerToken(tokenAdress: string,  balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, overrides?: IMethodOverrides): Promise<ContractTransaction>
+    registerTokenWithProof(tokenAdress: string,  balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, overrides?: IMethodOverrides): Promise<ContractTransaction>
+
+    /** Checks that the given contract is an ERC token, validates that sender is holder of that token using the ERC20 method BalanceOf() and registers the token address */
+    registerToken(tokenAdress: string,  balanceMappingPosition: number | BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////

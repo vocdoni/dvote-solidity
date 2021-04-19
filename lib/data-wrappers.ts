@@ -1,4 +1,4 @@
-import { IProcessCreateParamsTuple, IProcessStateTuple } from "./contract-definitions"
+import { IProcessCreateEvmParamsTuple, IProcessCreateStdParamsTuple, IProcessStateTuple } from "./contract-definitions"
 import { IMethodOverrides } from "./contract-utils"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -186,7 +186,7 @@ export const processStatusValues = [
 
 // PROCESS CREATION/RETRIEVAL PARAMTERES
 
-/** Wraps and unwraps the parameters sent to `Process.newProcess()` and obtained from `Process.get()` for convenience */
+/** Wraps and unwraps the parameters sent to `Process.newProcessStd()` and to `Process.newProcessEvm()` and obtained from `Process.get()` for convenience */
 export class ProcessContractParameters {
     mode: ProcessMode;
     envelopeType: ProcessEnvelopeType;
@@ -194,7 +194,7 @@ export class ProcessContractParameters {
     entityAddress?: string;
     metadata: string;
     censusRoot: string;
-    censusUri: string;
+    censusUri?: string;
     startBlock: number;
     blockCount: number;
     status?: ProcessStatus;
@@ -205,7 +205,8 @@ export class ProcessContractParameters {
     maxVoteOverwrites: number;
     maxTotalCost: number;
     costExponent: number;
-    evmBlockHeight: number;
+    evmBlockHeight?: number;
+    tokenAddress?: string;
     paramsSignature?: string;
 
     /** Parse a plain parameters object  */
@@ -344,14 +345,41 @@ export class ProcessContractParameters {
     }
 
     /**
-     * Arrange the JSON object into the parameters for `newProcess()`
+     * Arrange the JSON object into the parameters for `newProcessEvm()`
      * 
      * @param transactionOptions Optional parameters to pass to the deployment contract transaction (ethers.js)
      */
-    toContractParams(transactionOptions?: IMethodOverrides): IProcessCreateParamsTuple {
-        const paramsResult: IProcessCreateParamsTuple = [
+    toContractParamsEvm(transactionOptions?: IMethodOverrides): IProcessCreateEvmParamsTuple {
+        const paramsResult: IProcessCreateEvmParamsTuple = [
             [this.mode.value, this.envelopeType.value, this.censusOrigin.value], // int mode_envelopeType_censusOrigin
+            [
+                this.metadata,
+                this.censusRoot,
+            ], // String metadata_censusRoot
+            [this.startBlock, this.blockCount], // int startBlock_blockCount
+            [
+                this.questionCount,
+                this.maxCount,
+                this.maxValue,
+                this.maxVoteOverwrites
+            ], // int questionCount_maxCount_maxValue_maxVoteOverwrites
+            [this.maxTotalCost, this.costExponent], // int maxTotalCost_costExponent
             this.entityAddress,
+            this.evmBlockHeight, // uint256 evmBlockHeight
+            this.paramsSignature // String paramsSignature
+        ]
+        if (transactionOptions) paramsResult.push(transactionOptions)
+        return paramsResult
+    }
+
+    /**
+     * Arrange the JSON object into the parameters for `newProcessStd()`
+     * 
+     * @param transactionOptions Optional parameters to pass to the deployment contract transaction (ethers.js)
+     */
+    toContractParamsStd(transactionOptions?: IMethodOverrides): IProcessCreateStdParamsTuple {
+        const paramsResult: IProcessCreateStdParamsTuple = [
+            [this.mode.value, this.envelopeType.value, this.censusOrigin.value], // int mode_envelopeType_censusOrigin
             [
                 this.metadata,
                 this.censusRoot,
@@ -365,7 +393,6 @@ export class ProcessContractParameters {
                 this.maxVoteOverwrites
             ], // int questionCount_maxCount_maxValue_maxVoteOverwrites
             [this.maxTotalCost, this.costExponent], // int maxTotalCost_costExponent
-            this.evmBlockHeight, // uint256 evmBlockHeight
             this.paramsSignature // String paramsSignature
         ]
         if (transactionOptions) paramsResult.push(transactionOptions)

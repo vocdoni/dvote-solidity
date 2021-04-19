@@ -8,7 +8,7 @@ import { abi as tokenStorageProofsAbi } from "../../build/token-storage-proof.js
 import { Erc20StorageProofContractMethods, ProcessCensusOrigin, ProcessContractParameters, ProcessEnvelopeType, ProcessesContractMethods, ProcessMode, ProcessStatus } from "../../lib"
 import GenesisBuilder from "../builders/genesis"
 import NamespaceBuilder, { DEFAULT_NAMESPACE } from "../builders/namespace"
-import ProcessBuilder, { DEFAULT_BLOCK_COUNT, DEFAULT_CENSUS_ORIGIN, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI, DEFAULT_COST_EXPONENT, DEFAULT_ETH_CHAIN_ID, DEFAULT_EVM_BLOCK_HEIGHT, DEFAULT_MAX_COUNT, DEFAULT_MAX_TOTAL_COST, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE, DEFAULT_QUESTION_COUNT, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_START_BLOCK } from "../builders/process"
+import ProcessBuilder, { DEFAULT_BLOCK_COUNT, DEFAULT_CENSUS_ORIGIN, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI, DEFAULT_COST_EXPONENT, DEFAULT_ETH_CHAIN_ID, DEFAULT_MAX_COUNT, DEFAULT_MAX_TOTAL_COST, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE, DEFAULT_QUESTION_COUNT, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_START_BLOCK } from "../builders/process"
 import ResultsBuilder from "../builders/results"
 import TokenStorageProofBuilder from "../builders/token-storage-proof"
 import { getAccounts, TestAccount } from "../utils"
@@ -296,14 +296,12 @@ describe("Process contract", () => {
 
         expect(processId1Actual).to.eq(processId1Expected)
 
-        tx = await contractInstance.newProcess(
+        tx = await contractInstance.newProcessStd(
             [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-            nullAddress, // token/entity ID
             [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
             [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-            DEFAULT_EVM_BLOCK_HEIGHT,
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -322,14 +320,12 @@ describe("Process contract", () => {
         const count3 = await contractInstance.getEntityProcessCount(entityAccount.address)
         expect(count3.toNumber()).to.eq(1)
 
-        tx = await contractInstance.newProcess(
+        tx = await contractInstance.newProcessStd(
             [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-            nullAddress, // token/entity ID
             [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
             [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-            DEFAULT_EVM_BLOCK_HEIGHT,
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -345,7 +341,7 @@ describe("Process contract", () => {
 
     describe("Process Creation", () => {
         it("should allow anyone to create a process", async () => {
-            expect(contractInstance.newProcess).to.be.ok
+            expect(contractInstance.newProcessStd).to.be.ok
 
             // one is already created by the builder
 
@@ -355,14 +351,12 @@ describe("Process contract", () => {
 
             // 2
             contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -372,14 +366,12 @@ describe("Process contract", () => {
             expect(processIdExpected).to.eq(processIdActual)
 
             contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -405,14 +397,12 @@ describe("Process contract", () => {
             contractInstance = contractInstance.connect(entityAccount.wallet) as any
 
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE,
                     { value: utils.parseUnits("0.01", "ether") }
                 )
@@ -425,14 +415,12 @@ describe("Process contract", () => {
             expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(1)
 
             processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE,
                 { value: utils.parseUnits("0.2", "ether") }
             )
@@ -464,14 +452,12 @@ describe("Process contract", () => {
                 mode = ProcessMode.make({ autoStart: true })
                 envelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
                 censusOrigin = ProcessCensusOrigin.OFF_CHAIN_TREE
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [mode, envelopeType, censusOrigin],
-                    nullAddress, // token/entity ID
                     [`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `0x30${idx}${namespace}`],
                     [10 + nonce, 11 + nonce],
                     [12 + nonce, 13 + nonce, 14 + nonce, 15 + nonce],
                     [16 + nonce, 17 + nonce],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -635,8 +621,8 @@ describe("Process contract", () => {
                 maxTotalCost: DEFAULT_MAX_TOTAL_COST,
                 costExponent: DEFAULT_COST_EXPONENT,
                 paramsSignature: DEFAULT_PARAMS_SIGNATURE
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params1)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params1)
             await tx.wait()
 
             let count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -694,8 +680,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params2)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params2)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -754,8 +740,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params3)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params3)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -803,8 +789,8 @@ describe("Process contract", () => {
                 maxTotalCost: DEFAULT_MAX_TOTAL_COST,
                 costExponent: DEFAULT_COST_EXPONENT,
                 paramsSignature: "0x1234567890123456789012345678901234567890123456789012345678901234"
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params1)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params1)
             await tx.wait()
 
             let count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -846,8 +832,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params2)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params2)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -889,8 +875,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params3)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params3)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -904,14 +890,12 @@ describe("Process contract", () => {
             const prev = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
             expect(prev).to.eq(1)
 
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -923,14 +907,12 @@ describe("Process contract", () => {
 
         it("should fail with auto start set and startBlock being zero", () => {
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [0, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -938,14 +920,12 @@ describe("Process contract", () => {
 
         it("should fail if not interruptible and blockCount is zero", () => {
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({ interruptible: false }), ProcessEnvelopeType.make({})],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, 0],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -953,40 +933,34 @@ describe("Process contract", () => {
 
         it("should fail if the metadata or census references are empty", () => {
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     ["", DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
 
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, "", DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
 
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, ""],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -994,14 +968,12 @@ describe("Process contract", () => {
 
         it("should fail if questionCount is zero", async () => {
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [0, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1014,14 +986,12 @@ describe("Process contract", () => {
 
         it("should fail if maxCount is zero or above 100", async () => {
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 0, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1032,14 +1002,12 @@ describe("Process contract", () => {
             }
 
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 101, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1052,14 +1020,12 @@ describe("Process contract", () => {
 
         it("should fail if maxValue is zero", async () => {
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, 0, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1075,14 +1041,12 @@ describe("Process contract", () => {
             expect(prev).to.eq(1)
 
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     ["", "", ""],
                     [0, 0],
                     [0, 0, 0, 0],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1100,14 +1064,12 @@ describe("Process contract", () => {
 
         it("should create a process if envelopeType costFromWeight is set", async () => {
             const prev = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({}), ProcessEnvelopeType.make({costFromWeight: true}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -1126,7 +1088,7 @@ describe("Process contract", () => {
                 contractInstance.on("NewProcess", (processId: string, namespace: number) => {
                     resolve({ namespace, processId })
                 })
-                // contractInstance.newProcess(
+                // contractInstance.newProcessStd(
                 //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
                 //     nullAddress, // token/entity ID
                 //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],

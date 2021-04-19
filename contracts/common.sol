@@ -26,16 +26,26 @@ interface IProcessStore {
     function getCreationInstance(bytes32 processId) external view returns (address);
 
     // SET
-    function newProcess(
+    function newProcessStd(
         uint8[3] memory mode_envelopeType_censusOrigin,
-        address tokenContractAddress,
         string[3] memory metadata_censusRoot_censusUri,
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[2] memory maxTotalCost_costExponent,
-        uint256 evmBlockHeight, // EVM only
         bytes32 paramsSignature
     ) payable external;
+
+    function newProcessEvm(
+        uint8[3] memory mode_envelopeType_censusOrigin,
+        string[2] memory metadata_censusRoot,
+        uint32[2] memory startBlock_blockCount,
+        uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
+        uint16[2] memory maxTotalCost_costExponent,
+        address tokenContractAddress,
+        uint256 evmBlockHeight,
+        bytes32 paramsSignature
+    ) payable external;
+
     function setStatus(bytes32 processId, Status newStatus) external;
     function incrementQuestionIndex(bytes32 processId) external;
     function setCensus(bytes32 processId, string memory censusRoot, string memory censusUri) external;

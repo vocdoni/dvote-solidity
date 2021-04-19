@@ -307,48 +307,6 @@ contract Processes is IProcessStore, Chained {
 
     // ENTITY METHODS
 
-    function newProcess(
-        uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
-        address tokenContractAddress,
-        string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
-        uint32[2] memory startBlock_blockCount,
-        uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
-        uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
-        uint256 evmBlockHeight, // EVM only
-        bytes32 paramsSignature
-    ) public override payable onlyIfActive {
-        require (msg.value >= processPrice, "Insufficient funds");
-
-        CensusOrigin origin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
-        if (
-            origin == CensusOrigin.OFF_CHAIN_TREE ||
-            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-            origin == CensusOrigin.OFF_CHAIN_CA
-        ) {
-            newProcessStd(
-                mode_envelopeType_censusOrigin,
-                metadata_censusRoot_censusUri,
-                startBlock_blockCount,
-                questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent,
-                paramsSignature
-            );
-        } else if (origin == CensusOrigin.ERC20) {
-            newProcessEvm(
-                mode_envelopeType_censusOrigin,
-                metadata_censusRoot_censusUri,
-                tokenContractAddress,
-                startBlock_blockCount,
-                questionCount_maxCount_maxValue_maxVoteOverwrites,
-                maxTotalCost_costExponent,
-                evmBlockHeight,
-                paramsSignature
-            );
-        } else {
-            revert("Unsupported census origin");
-        }
-    }
-
     // Creates a new process using an external census
     function newProcessStd(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
@@ -357,7 +315,16 @@ contract Processes is IProcessStore, Chained {
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         bytes32 paramsSignature
-    ) internal {
+    ) public override payable onlyIfActive {
+        require (msg.value >= processPrice, "Insufficient funds");
+        CensusOrigin origin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
+        require(
+            origin == CensusOrigin.OFF_CHAIN_TREE ||
+            origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
+            origin == CensusOrigin.OFF_CHAIN_CA,
+            "Unsupported census origin"
+        );
+
         uint8 mode = mode_envelopeType_censusOrigin[0];
 
         // Sanity checks
@@ -440,19 +407,14 @@ contract Processes is IProcessStore, Chained {
         processData.censusUri = metadata_censusRoot_censusUri[2];
 
         processData.status = status;
-        // processData.questionIndex = 0;
         processData
-            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[
-            0
-        ];
+            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
         processData
             .maxCount = questionCount_maxCount_maxValue_maxVoteOverwrites[1];
         processData
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
-            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
-            3
-        ];
+            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
         processData.maxTotalCost = maxTotalCost_costExponent[0];
         processData.costExponent = maxTotalCost_costExponent[1];
         processData.paramsSignature = paramsSignature;
@@ -460,16 +422,25 @@ contract Processes is IProcessStore, Chained {
         emit NewProcess(processId, namespaceId);
     }
 
+    // Creates a new process using an EVM census
     function newProcessEvm(
         uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
-        string[3] memory metadata_censusRoot_censusUri, //  [metadata, censusRoot, censusUri]
-        address tokenContractAddress,
+        string[2] memory metadata_censusRoot, //  [metadata, censusRoot]
         uint32[2] memory startBlock_blockCount,
         uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[2] memory maxTotalCost_costExponent, // [maxTotalCost, costExponent]
+        address tokenContractAddress,
         uint256 evmBlockHeight, // Ethereum block height at which the census will be considered
         bytes32 paramsSignature
-    ) internal {
+    ) public override payable onlyIfActive {
+        require (msg.value >= processPrice, "Insufficient funds");
+        CensusOrigin origin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
+        require(
+            origin > CensusOrigin.__10 &&
+            origin <= CensusOrigin.MINI_ME,
+            "Unsupported census origin"
+        );
+
         uint8 mode = mode_envelopeType_censusOrigin[0];
 
         // Sanity checks
@@ -485,10 +456,6 @@ contract Processes is IProcessStore, Chained {
         require(startBlock_blockCount[0] > 0, "Invalid start block");
         require(startBlock_blockCount[1] > 0, "Invalid blockCount");
 
-        require(
-            mode_envelopeType_censusOrigin[2] <= uint8(CensusOrigin.MINI_ME),
-            "Invalid census origin value"
-        );
         require(
             mode & MODE_DYNAMIC_CENSUS == 0,
             "Dynamic census not allowed on EVM processes"
@@ -512,11 +479,11 @@ contract Processes is IProcessStore, Chained {
         require(balance > 0, "Insufficient funds");
 
         require(
-            bytes(metadata_censusRoot_censusUri[0]).length > 0,
+            bytes(metadata_censusRoot[0]).length > 0,
             "No metadata"
         );
         require(
-            bytes(metadata_censusRoot_censusUri[1]).length > 0,
+            bytes(metadata_censusRoot[1]).length > 0,
             "No censusRoot"
         );
         require(
@@ -560,28 +527,22 @@ contract Processes is IProcessStore, Chained {
             mode_envelopeType_censusOrigin[2]
         );
 
-        processData.censusRoot = metadata_censusRoot_censusUri[1];
-        // processData.censusUri = "";
+        processData.censusRoot = metadata_censusRoot[1];
 
         processData.entity = tokenContractAddress;
         processData.startBlock = startBlock_blockCount[0];
         processData.blockCount = startBlock_blockCount[1];
-        processData.metadata = metadata_censusRoot_censusUri[0];
+        processData.metadata = metadata_censusRoot[0];
 
         processData.status = Status.READY;
-        // processData.questionIndex = 0;
         processData
-            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[
-            0
-        ];
+            .questionCount = questionCount_maxCount_maxValue_maxVoteOverwrites[0];
         processData
             .maxCount = questionCount_maxCount_maxValue_maxVoteOverwrites[1];
         processData
             .maxValue = questionCount_maxCount_maxValue_maxVoteOverwrites[2];
         processData
-            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[
-            3
-        ];
+            .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
         processData.maxTotalCost = maxTotalCost_costExponent[0];
         processData.costExponent = maxTotalCost_costExponent[1];
 
