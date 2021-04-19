@@ -6,16 +6,15 @@ import { abi as processAbi, bytecode as processByteCode } from "../../build/proc
 // import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
 import { abi as tokenStorageProofsAbi } from "../../build/token-storage-proof.json"
 import { Erc20StorageProofContractMethods, ProcessCensusOrigin, ProcessContractParameters, ProcessEnvelopeType, ProcessesContractMethods, ProcessMode, ProcessStatus } from "../../lib"
+import ERC20MockBuilder from "../builders/erc20Mock"
 import GenesisBuilder from "../builders/genesis"
 import NamespaceBuilder, { DEFAULT_NAMESPACE } from "../builders/namespace"
-import ProcessBuilder, { DEFAULT_BLOCK_COUNT, DEFAULT_CENSUS_ORIGIN, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI, DEFAULT_COST_EXPONENT, DEFAULT_ETH_CHAIN_ID, DEFAULT_EVM_BLOCK_HEIGHT, DEFAULT_MAX_COUNT, DEFAULT_MAX_TOTAL_COST, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE, DEFAULT_QUESTION_COUNT, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_START_BLOCK } from "../builders/process"
+import ProcessBuilder, { DEFAULT_BLOCK_COUNT, DEFAULT_CENSUS_ORIGIN, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI, DEFAULT_COST_EXPONENT, DEFAULT_ETH_CHAIN_ID, DEFAULT_MAX_COUNT, DEFAULT_MAX_TOTAL_COST, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES, DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_PARAMS_SIGNATURE, DEFAULT_PROCESS_PRICE, DEFAULT_QUESTION_COUNT, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_START_BLOCK } from "../builders/process"
 import ResultsBuilder from "../builders/results"
 import TokenStorageProofBuilder from "../builders/token-storage-proof"
 import { getAccounts, TestAccount } from "../utils"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 
-
-const solc = require("solc")
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
@@ -33,64 +32,7 @@ const nullAddress = "0x0000000000000000000000000000000000000000"
 const emptyArray: Array<number> = []
 const ethChainId = 0
 const DEFAULT_VOCHAIN_ID = 0
-
-const dummyErc20Contract = `
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.6.0;
-
-contract ERC20 {
-    mapping (address => uint256) private _balances;
-
-    mapping (address => mapping (address => uint256)) private _allowances;
-
-    uint256 private _totalSupply;
-
-    string private _name;
-    string private _symbol;
-    uint8 private _decimals;
-    constructor (string memory name, string memory symbol) public {
-        _name = name;
-        _symbol = symbol;
-        _decimals = 18;
-        _balances[msg.sender] = 1000000000000000000;
-        _totalSupply = 1000000000000000000;
-    }
-    function name() public view returns (string memory) {
-        return _name;
-    }
-    function symbol() public view returns (string memory) {
-        return _symbol;
-    }
-    function decimals() public view returns (uint8) {
-        return _decimals;
-    }
-    function totalSupply() public view returns (uint256) {
-        return _totalSupply;
-    }
-    function balanceOf(address account) public view returns (uint256) {
-        return _balances[account];
-    }
-    function transfer(address recipient, uint256 amount) public virtual returns (bool) {
-        return true;
-    }
-    function allowance(address owner, address spender) public view virtual returns (uint256) {
-        return _allowances[owner][spender];
-    }
-    function approve(address spender, uint256 amount) public virtual returns (bool) {
-        return true;
-    }
-    function transferFrom(address sender, address recipient, uint256 amount) public virtual returns (bool) {
-        return true;
-    }
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        return true;
-    }
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        return true;
-    }
-}
-`
+const DEFAULT_EVM_BLOCK_HEIGHT = 5
 
 addCompletionHooks()
 
@@ -115,7 +57,8 @@ describe("Process contract", () => {
         const namespaceInstance2 = await new NamespaceBuilder().build()
         const resultsInstance = await new ResultsBuilder().build()
         const somePredecessorAddr = (await new ProcessBuilder().build()).address
-        const storageProofAddress = (await new TokenStorageProofBuilder().build()).address
+        const storageProofInstance = await new TokenStorageProofBuilder().build()
+        const storageProofAddress = storageProofInstance.address
         const contractFactory1 = new ContractFactory(processAbi, processByteCode, entityAccount.wallet)
         const localInstance1: Contract & ProcessesContractMethods = await contractFactory1.deploy(nullAddress, namespaceInstance1.address, resultsInstance.address, storageProofAddress, ethChainId, DEFAULT_PROCESS_PRICE) as Contract & ProcessesContractMethods
 
@@ -287,7 +230,7 @@ describe("Process contract", () => {
         expect(proc10).to.not.eq(proc7)
     })
 
-    it("should compute the next processId", async () => {
+    it("should compute the next processId (off chain census)", async () => {
         // The entity already has 1 process at the moment
         const count1 = await contractInstance.getEntityProcessCount(entityAccount.address)
         expect(count1.toNumber()).to.eq(1)
@@ -296,14 +239,12 @@ describe("Process contract", () => {
 
         expect(processId1Actual).to.eq(processId1Expected)
 
-        tx = await contractInstance.newProcess(
+        tx = await contractInstance.newProcessStd(
             [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-            nullAddress, // token/entity ID
             [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
             [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-            DEFAULT_EVM_BLOCK_HEIGHT,
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -322,14 +263,12 @@ describe("Process contract", () => {
         const count3 = await contractInstance.getEntityProcessCount(entityAccount.address)
         expect(count3.toNumber()).to.eq(1)
 
-        tx = await contractInstance.newProcess(
+        tx = await contractInstance.newProcessStd(
             [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-            nullAddress, // token/entity ID
             [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
             [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-            DEFAULT_EVM_BLOCK_HEIGHT,
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -343,9 +282,80 @@ describe("Process contract", () => {
         expect(processId3Expected).to.eq(processId3Actual)
     })
 
+    it("should compute the next processId (EVM census)", async () => {
+        // ERC20 TOKEN CONTRACT
+        const dummyTokenInstance = await new ERC20MockBuilder().build()
+
+        let proofsAddress = await contractInstance.tokenStorageProofAddress()
+        let proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
+
+        await proofsInstance.registerToken(
+            dummyTokenInstance.address,
+            0,
+        )
+
+        const count1 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+        expect(count1.toNumber()).to.eq(0)
+        const processId1Expected = await contractInstance.getProcessId(dummyTokenInstance.address, count1.toNumber(), DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
+        const processId1Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+
+        expect(processId1Actual).to.eq(processId1Expected)
+        tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
+            [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.ERC20],
+            [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+            [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+            [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+            [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+            dummyTokenInstance.address,
+            DEFAULT_EVM_BLOCK_HEIGHT,
+            DEFAULT_PARAMS_SIGNATURE
+        )
+        await tx.wait()
+        
+        const processId2Expected = await contractInstance.getProcessId(dummyTokenInstance.address, 1, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
+        const processId2Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+
+        expect(processId1Actual).to.not.eq(processId2Actual)
+        expect(processId2Actual).to.eq(processId2Expected)
+
+        // Another process contract in a new namespace
+        const currNamespaceAddr = await contractInstance.namespaceAddress()
+        contractInstance = await new ProcessBuilder().withNamespaceAddress(currNamespaceAddr).build()
+        const count3 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+        expect(count3.toNumber()).to.eq(0)
+
+        proofsAddress = await contractInstance.tokenStorageProofAddress()
+        proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
+
+        await proofsInstance.registerToken(
+            dummyTokenInstance.address,
+            0,
+        )
+
+        tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
+            [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.ERC20],
+            [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+            [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+            [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+            [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+            dummyTokenInstance.address,
+            DEFAULT_EVM_BLOCK_HEIGHT,
+            DEFAULT_PARAMS_SIGNATURE
+        )
+        await tx.wait()
+
+        const count4 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+        expect(count4.toNumber()).to.eq(1)
+
+        const processId3Expected = await contractInstance.getProcessId(dummyTokenInstance.address, count4.toNumber(), DEFAULT_NAMESPACE + 1, DEFAULT_ETH_CHAIN_ID)
+        const processId3Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+
+        expect(processId3Expected).to.eq(processId3Actual)
+    })
+
     describe("Process Creation", () => {
-        it("should allow anyone to create a process", async () => {
-            expect(contractInstance.newProcess).to.be.ok
+        it("should allow anyone to create an off-chain census process", async () => {
+            expect(contractInstance.newProcessStd).to.be.ok
 
             // one is already created by the builder
 
@@ -355,14 +365,12 @@ describe("Process contract", () => {
 
             // 2
             contractInstance = contractInstance.connect(randomAccount1.wallet) as any
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -372,14 +380,12 @@ describe("Process contract", () => {
             expect(processIdExpected).to.eq(processIdActual)
 
             contractInstance = contractInstance.connect(randomAccount2.wallet) as any
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -389,7 +395,113 @@ describe("Process contract", () => {
             expect(processIdExpected).to.eq(processIdActual)
         })
 
-        it("should not create a process if msg.value provided is less than processPrice of the contract", async () => {
+        it("should allow to create an evm process if the token is registered", async() => {
+            // ERC20 TOKEN CONTRACT
+            const dummyTokenInstance = await new ERC20MockBuilder().build()
+
+            let proofsAddress = await contractInstance.tokenStorageProofAddress()
+            let proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
+
+            await proofsInstance.registerToken(
+                dummyTokenInstance.address,
+                0,
+            )
+
+            const count1 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+            expect(count1.toNumber()).to.eq(0)
+            const processId1Expected = await contractInstance.getProcessId(dummyTokenInstance.address, count1.toNumber(), DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
+            const processId1Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+
+            expect(processId1Actual).to.eq(processId1Expected)
+            tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.ERC20],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                dummyTokenInstance.address,
+                DEFAULT_EVM_BLOCK_HEIGHT,
+                DEFAULT_PARAMS_SIGNATURE
+            )
+            await tx.wait()
+            
+            const processId2Expected = await contractInstance.getProcessId(dummyTokenInstance.address, 1, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
+            const processId2Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+
+            expect(processId1Actual).to.not.eq(processId2Actual)
+            expect(processId2Actual).to.eq(processId2Expected)
+            const count2 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+            expect(count2.toNumber()).to.eq(1)
+        })
+
+        it("should not allow to create an evm process if the token is not registered", async() => {
+            // ERC20 TOKEN CONTRACT
+            const dummyTokenInstance = await new ERC20MockBuilder().build()
+            try {
+                tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
+                    [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.ERC20],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    dummyTokenInstance.address,
+                    DEFAULT_EVM_BLOCK_HEIGHT,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            } catch (err) {
+                expect(err.message).to.match(/revert Token not registered/)
+            }
+
+            const count1 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+            expect(count1.toNumber()).to.eq(0)
+        })
+
+        it("should not allow to create an evm process if the token is registered but the sender has no balance", async() => {
+            // ERC20 TOKEN CONTRACT
+            const dummyTokenInstance = await new ERC20MockBuilder().build()
+
+            let proofsAddress = await contractInstance.tokenStorageProofAddress()
+            let proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
+
+            await proofsInstance.registerToken(
+                dummyTokenInstance.address,
+                0,
+            )
+
+            let count1 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+            expect(count1.toNumber()).to.eq(0)
+            const processId1Expected = await contractInstance.getProcessId(dummyTokenInstance.address, count1.toNumber(), DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
+            const processId1Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+            expect(processId1Actual).to.eq(processId1Expected)
+
+            await deployAccount.wallet.sendTransaction({
+                to: randomAccount1.address,
+                value: utils.parseEther("1.0")
+            })
+            
+            try {
+                tx = await contractInstance.connect(randomAccount1.wallet).newProcessEvm(
+                    [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.ERC20],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    dummyTokenInstance.address,
+                    DEFAULT_EVM_BLOCK_HEIGHT,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+                await tx.wait()
+            } catch (err) {
+                expect(err.message).to.match(/revert/)
+            }
+
+            count1 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+            expect(count1.toNumber()).to.eq(0)
+        })
+
+        it("should not create a process if msg.value provided is less than processPrice of the contract (off chain census)", async () => {
             contractInstance = await new ProcessBuilder().withPrice(utils.parseUnits("0.1", "ether")).build()
 
             expect(contractInstance).to.be.ok
@@ -405,14 +517,12 @@ describe("Process contract", () => {
             contractInstance = contractInstance.connect(entityAccount.wallet) as any
 
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE,
                     { value: utils.parseUnits("0.01", "ether") }
                 )
@@ -425,14 +535,12 @@ describe("Process contract", () => {
             expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(1)
 
             processIdExpected = await contractInstance.getProcessId(entityAccount.address, 1, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE,
                 { value: utils.parseUnits("0.2", "ether") }
             )
@@ -440,6 +548,73 @@ describe("Process contract", () => {
             await tx.wait()
 
             expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(2)
+        })
+
+        it("should not create a process if msg.value provided is less than processPrice of the contract (EVM census)", async () => {
+            contractInstance = await new ProcessBuilder().withPrice(utils.parseUnits("0.1", "ether")).build()
+
+            expect(contractInstance).to.be.ok
+            expect(contractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+            expect(await contractInstance.predecessorAddress()).to.eq(nullAddress)
+            expect(await contractInstance.processPrice()).to.be.deep.eq(utils.parseUnits("0.1", "ether"))
+
+            // ERC20 TOKEN CONTRACT
+            const dummyTokenInstance = await new ERC20MockBuilder().build()
+
+            let proofsAddress = await contractInstance.tokenStorageProofAddress()
+            let proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
+
+            await proofsInstance.registerToken(
+                dummyTokenInstance.address,
+                0,
+            )
+
+            const count1 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+            expect(count1.toNumber()).to.eq(0)
+            const processId1Expected = await contractInstance.getProcessId(dummyTokenInstance.address, count1.toNumber(), DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
+            const processId1Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+            expect(processId1Actual).to.eq(processId1Expected)
+
+            try {
+                tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
+                    [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.ERC20],
+                    [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+                    [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                    [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                    [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                    dummyTokenInstance.address,
+                    DEFAULT_EVM_BLOCK_HEIGHT,
+                    DEFAULT_PARAMS_SIGNATURE
+                )
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            } catch (err) {
+                expect(err.message).to.match(/revert Insufficient funds/)
+            }
+
+            expect(count1.toNumber()).to.eq(0)
+
+            // should pass
+            tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.ERC20],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                dummyTokenInstance.address,
+                DEFAULT_EVM_BLOCK_HEIGHT,
+                DEFAULT_PARAMS_SIGNATURE,
+                { value: utils.parseUnits("0.2", "ether") }
+            )
+            await tx.wait()
+            
+            const processId2Expected = await contractInstance.getProcessId(dummyTokenInstance.address, 1, DEFAULT_NAMESPACE, DEFAULT_ETH_CHAIN_ID)
+            const processId2Actual = await contractInstance.getNextProcessId(dummyTokenInstance.address)
+
+            expect(processId1Actual).to.not.eq(processId2Actual)
+            expect(processId2Actual).to.eq(processId2Expected)
+            const count2 = await contractInstance.getEntityProcessCount(dummyTokenInstance.address)
+            expect(count2.toNumber()).to.eq(1)
         })
 
         it("retrieved metadata should match the one submitted (off chain census)", async () => {
@@ -464,14 +639,12 @@ describe("Process contract", () => {
                 mode = ProcessMode.make({ autoStart: true })
                 envelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
                 censusOrigin = ProcessCensusOrigin.OFF_CHAIN_TREE
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [mode, envelopeType, censusOrigin],
-                    nullAddress, // token/entity ID
                     [`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `0x30${idx}${namespace}`],
                     [10 + nonce, 11 + nonce],
                     [12 + nonce, 13 + nonce, 14 + nonce, 15 + nonce],
                     [16 + nonce, 17 + nonce],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -503,37 +676,23 @@ describe("Process contract", () => {
             let nextProcessId: string
             let created = 0
             let mode: number, envelopeType: number, censusOrigin: number, nonce: number
-            expect((await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()).to.eq(0, "Should be empty")
 
-            // ERC TOKEN CONTRACT
-            const output = solc.compile(JSON.stringify({
-                language: "Solidity",
-                sources: { "dummy.sol": { content: dummyErc20Contract } },
-                settings: { outputSelection: { "*": { "*": ["*"] } } }
-            }))
-            const { contracts } = JSON.parse(output)
-            const erc20Abi = contracts["dummy.sol"].ERC20.abi
-            const erc20Bytecode = contracts["dummy.sol"].ERC20.evm.bytecode.object
-
-            const dummyTokenFactory = new ContractFactory(erc20Abi, erc20Bytecode, deployAccount.wallet)
-            const dummyTokenInstance = await dummyTokenFactory.deploy("Dummy Token", "DUM") as Contract
+            // ERC20 TOKEN CONTRACT
+            const dummyTokenInstance = await new ERC20MockBuilder().build()
 
             const proofsAddress = await contractInstance.tokenStorageProofAddress()
             const proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
 
             expect(await proofsInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
             
-            /* TODO: Test token register
             await proofsInstance.connect(deployAccount.wallet).registerToken(
                 dummyTokenInstance.address,
                 0,
-                await proofsInstance.provider.getBlockNumber(),
-                Buffer.from("00000000000000000000000000000000000000000000000000", "hex"),
-                Buffer.from("000000000000000000000000000000000000000000000000000000", "hex"),
-                Buffer.from("0000000000000000000000000000000000000000000000000000000000", "hex")
             )
 
             expect(await proofsInstance.isRegistered(dummyTokenInstance.address)).to.eq(true)
+
+            expect((await contractInstance.getEntityProcessCount(dummyTokenInstance.address)).toNumber()).to.eq(0, "Should be empty")
 
             // Create processes and check
             for (let idx = 0; idx < 10; idx += 2) {
@@ -550,13 +709,13 @@ describe("Process contract", () => {
                     mode = ProcessMode.make({ autoStart: true })
                     envelopeType = ProcessEnvelopeType.make({ encryptedVotes: true })
                     censusOrigin = ProcessCensusOrigin.ERC20
-                    tx = await contractInstance.connect(deployAccount.wallet).newProcess(
+                    tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
                         [mode, envelopeType, censusOrigin],
-                        dummyTokenInstance.address,
-                        [`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `_SHOULD_BE_IGNORED_`],
+                        [`0x10${idx}${namespace}`, `0x20${idx}${namespace}`],
                         [10 + nonce, 11 + nonce],
                         [12 + nonce, 13 + nonce, 14 + nonce, 15 + nonce],
                         [16 + nonce, 17 + nonce],
+                        dummyTokenInstance.address,
                         DEFAULT_EVM_BLOCK_HEIGHT,
                         DEFAULT_PARAMS_SIGNATURE
                     )
@@ -583,8 +742,7 @@ describe("Process contract", () => {
                     expect(await contractInstance.getNextProcessId(dummyTokenInstance.address)).to.not.eq(nextProcessId)
                 }
             }
-            */
-        })// .timeout(15000)
+        }).timeout(15000)
 
         it("process ID computation should vary depending on entity, count, namespace and ethChainId", async () => {
             const ref = await contractInstance.getProcessId(entityAccount.address, 0, 0, 0)
@@ -635,8 +793,8 @@ describe("Process contract", () => {
                 maxTotalCost: DEFAULT_MAX_TOTAL_COST,
                 costExponent: DEFAULT_COST_EXPONENT,
                 paramsSignature: DEFAULT_PARAMS_SIGNATURE
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params1)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params1)
             await tx.wait()
 
             let count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -694,8 +852,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params2)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params2)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -754,8 +912,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params3)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params3)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -803,8 +961,8 @@ describe("Process contract", () => {
                 maxTotalCost: DEFAULT_MAX_TOTAL_COST,
                 costExponent: DEFAULT_COST_EXPONENT,
                 paramsSignature: "0x1234567890123456789012345678901234567890123456789012345678901234"
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params1)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params1)
             await tx.wait()
 
             let count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -846,8 +1004,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params2)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params2)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -889,8 +1047,8 @@ describe("Process contract", () => {
                 maxTotalCost: newMaxTotalCost,
                 costExponent: newCostExponent,
                 paramsSignature: newParamsSignature
-            }).toContractParams()
-            tx = await contractInstance.newProcess(...params3)
+            }).toContractParamsStd()
+            tx = await contractInstance.newProcessStd(...params3)
             await tx.wait()
 
             count = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
@@ -904,14 +1062,12 @@ describe("Process contract", () => {
             const prev = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
             expect(prev).to.eq(1)
 
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -923,14 +1079,12 @@ describe("Process contract", () => {
 
         it("should fail with auto start set and startBlock being zero", () => {
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [0, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -938,14 +1092,12 @@ describe("Process contract", () => {
 
         it("should fail if not interruptible and blockCount is zero", () => {
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({ interruptible: false }), ProcessEnvelopeType.make({})],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, 0],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -953,40 +1105,34 @@ describe("Process contract", () => {
 
         it("should fail if the metadata or census references are empty", () => {
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     ["", DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
 
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, "", DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
 
             expect(() => {
-                return contractInstance.newProcess(
+                return contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, ""],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
             }).to.throw
@@ -994,14 +1140,12 @@ describe("Process contract", () => {
 
         it("should fail if questionCount is zero", async () => {
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [0, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1014,14 +1158,12 @@ describe("Process contract", () => {
 
         it("should fail if maxCount is zero or above 100", async () => {
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 0, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1032,14 +1174,12 @@ describe("Process contract", () => {
             }
 
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, 101, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1052,14 +1192,12 @@ describe("Process contract", () => {
 
         it("should fail if maxValue is zero", async () => {
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, 0, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1075,14 +1213,12 @@ describe("Process contract", () => {
             expect(prev).to.eq(1)
 
             try {
-                tx = await contractInstance.newProcess(
+                tx = await contractInstance.newProcessStd(
                     [ProcessMode.make({}), ProcessEnvelopeType.make({}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                    nullAddress, // token/entity ID
                     ["", "", ""],
                     [0, 0],
                     [0, 0, 0, 0],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                    DEFAULT_EVM_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -1100,14 +1236,12 @@ describe("Process contract", () => {
 
         it("should create a process if envelopeType costFromWeight is set", async () => {
             const prev = (await contractInstance.getEntityProcessCount(entityAccount.address)).toNumber()
-            tx = await contractInstance.newProcess(
+            tx = await contractInstance.newProcessStd(
                 [ProcessMode.make({}), ProcessEnvelopeType.make({costFromWeight: true}), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                nullAddress, // token/entity ID
                 [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
                 [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                DEFAULT_EVM_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -1126,15 +1260,6 @@ describe("Process contract", () => {
                 contractInstance.on("NewProcess", (processId: string, namespace: number) => {
                     resolve({ namespace, processId })
                 })
-                // contractInstance.newProcess(
-                //     [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make(), ProcessCensusOrigin.OFF_CHAIN_TREE],
-                //     nullAddress, // token/entity ID
-                //     [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT, DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI],
-                //     [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
-                //     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
-                //     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
-                //     DEFAULT_PARAMS_SIGNATURE
-                // ).then(tx => tx.wait()).catch(reject)
             })
 
             expect(result).to.be.ok

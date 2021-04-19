@@ -6,22 +6,15 @@ import { getAccounts, TestAccount } from "../utils"
 
 // BUILDER
 export default class TokenStorageProofBuilder {
-    accounts: TestAccount[]
-
-    entityAccount: TestAccount
+    deployAccount: TestAccount
 
     constructor() {
-        this.accounts = getAccounts()
-        this.entityAccount = this.accounts[1]
+        this.deployAccount = getAccounts()[0]
     }
 
     async build(): Promise<Contract & Erc20StorageProofContractMethods> {
-        const deployAccount = this.accounts[0]
-        const contractFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofByteCode, deployAccount.wallet)
+        const contractFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofByteCode, this.deployAccount.wallet)
         let contractInstance = await contractFactory.deploy() as Contract & Erc20StorageProofContractMethods
-
-        // TODO: Register a token
-
-        return contractInstance.connect(this.entityAccount.wallet) as Contract & Erc20StorageProofContractMethods
+        return contractInstance.connect(this.deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
     }
 }
