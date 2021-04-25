@@ -176,7 +176,7 @@ export type IProcessCreateEvmParamsTuple = [
 ]
 export type IProcessStateTuple = [
     number[], // mode_envelopeType_censusOrigin
-    string,   // entityAddress
+    string[],   // entityAddress_owner
     string[], // metadata_censusRoot_censusUri
     number[], // startBlock_blockCount
     IProcessStatus, // status

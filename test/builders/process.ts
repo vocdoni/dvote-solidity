@@ -129,7 +129,6 @@ export default class ProcessBuilder {
                     maxVoteOverwrites: this.maxVoteOverwrites,
                     maxTotalCost: this.maxTotalCost,
                     costExponent: this.costExponent,
-                    tokenAddress: this.tokenAddress,
                     evmBlockHeight: this.evmBlockHeight,
                     paramsSignature: this.paramsSignature
                 }).toContractParamsEvm(extraParams)
@@ -257,11 +256,6 @@ export default class ProcessBuilder {
 
     withEvmBlockHeight(evmBlockHeight: number) {
         this.evmBlockHeight = evmBlockHeight
-        return this
-    }
-
-    withTokenAddress(tokenAddress: string) {
-        this.tokenAddress = tokenAddress
         return this
     }
 

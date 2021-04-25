@@ -119,6 +119,7 @@ contract Processes is IProcessStore, Chained {
         uint32 startBlock; // Vochain block number on which the voting process starts
         uint32 blockCount; // Amount of Vochain blocks during which the voting process should be active
         address entity; // The address of the Entity (or contract) holding the process
+        address owner; // Creator of a process on behalf of the entity
         uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
@@ -242,6 +243,7 @@ contract Processes is IProcessStore, Chained {
         processData.censusOrigin = CensusOrigin(mode_envelopeType_censusOrigin[2]);
         processData.censusRoot = metadata_censusRoot[1];
         processData.entity = tokenContractAddress;
+        processData.owner = msg.sender;
         processData.startBlock = startBlock_blockCount[0];
         processData.blockCount = startBlock_blockCount[1];
         processData.metadata = metadata_censusRoot[0];
@@ -511,7 +513,7 @@ contract Processes is IProcessStore, Chained {
         override
         returns (
             uint8[3] memory mode_envelopeType_censusOrigin, // [mode, envelopeType, censusOrigin]
-            address entityAddress,
+            address[2] memory entityAddress_owner,
             string[3] memory metadata_censusRoot_censusUri, // [metadata, censusRoot, censusUri]
             uint32[2] memory startBlock_blockCount, // [startBlock, blockCount]
             Status status, // status
@@ -537,7 +539,10 @@ contract Processes is IProcessStore, Chained {
             proc.envelopeType,
             uint8(proc.censusOrigin)
         ];
-        entityAddress = proc.entity;
+        entityAddress_owner = [
+            proc.entity,
+            proc.owner
+        ];
         metadata_censusRoot_censusUri = [
             proc.metadata,
             proc.censusRoot,
@@ -675,7 +680,13 @@ contract Processes is IProcessStore, Chained {
         }
 
         // Only the process creator
-        require(processes[processId].entity == msg.sender, "Invalid entity");
+        CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
+        if (origin >= CensusOrigin.ERC20 &&
+            origin <= CensusOrigin.MINI_ME) {
+                require(processes[processId].owner == msg.sender, "Not creator");
+        } else {
+            require(processes[processId].entity == msg.sender, "Invalid entity");
+        }
         // Only if READY
         require(
             processes[processId].status == Status.READY,
@@ -685,15 +696,6 @@ contract Processes is IProcessStore, Chained {
         require(
             processes[processId].envelopeType & ENV_TYPE_SERIAL != 0,
             "Process not serial"
-        );
-
-        // Only processes managed by entities (with an off-chain census) can be updated
-        CensusOrigin origin = CensusOrigin(processes[processId].censusOrigin);
-        require(
-            origin == CensusOrigin.OFF_CHAIN_TREE ||
-                origin == CensusOrigin.OFF_CHAIN_TREE_WEIGHTED ||
-                origin == CensusOrigin.OFF_CHAIN_CA,
-            "Not off-chain"
         );
 
         uint8 nextIdx = processes[processId].questionIndex.add8(1);

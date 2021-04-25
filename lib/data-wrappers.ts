@@ -193,6 +193,7 @@ export class ProcessContractParameters {
     censusOrigin: ProcessCensusOrigin;
     /** Entity or Token Address */
     entityAddress?: string;
+    owner?: string;
     metadata: string;
     censusRoot: string;
     censusUri?: string;
@@ -300,8 +301,15 @@ export class ProcessContractParameters {
         result.envelopeType = new ProcessEnvelopeType(params[0][1])
         result.censusOrigin = new ProcessCensusOrigin(params[0][2] as IProcessCensusOrigin)
 
+        /*
         if (typeof params[1] != "string") throw new Error("Invalid entityAddress")
         result.entityAddress = params[1]
+        */
+        if (!Array.isArray(params[1]) || params[1].length != 2 || params[1].some((item) => typeof item != "string"))
+            throw new Error("Invalid parameters entity_owner")
+
+        result.entityAddress = params[1][0]
+        result.owner = params[1][1]
 
         if (!Array.isArray(params[2]) || params[2].length != 3 || params[2].some((item) => typeof item != "string"))
             throw new Error("Invalid parameters metadata_censusRoot_censusUri list")

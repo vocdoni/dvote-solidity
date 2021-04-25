@@ -15,7 +15,6 @@ import TokenStorageProofBuilder from "../builders/token-storage-proof"
 import { getAccounts, TestAccount } from "../utils"
 import { addCompletionHooks } from "../utils/mocha-hooks"
 
-
 let accounts: TestAccount[]
 let deployAccount: TestAccount
 let entityAccount: TestAccount
@@ -653,7 +652,7 @@ describe("Process contract", () => {
                 const params = await contractInstance.get(nextProcessId)
                 expect(params).to.be.ok
                 expect(params[0]).to.deep.eq([mode, envelopeType, censusOrigin])
-                expect(params[1]).to.eq(entityAccount.address)
+                expect(params[1]).to.deep.eq([entityAccount.address, nullAddress])
                 expect(params[2]).to.deep.eq([`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, `0x30${idx}${namespace}`])
                 expect(params[3][0]).to.eq(10 + nonce)
                 expect(params[3][1]).to.eq(11 + nonce)
@@ -728,7 +727,7 @@ describe("Process contract", () => {
                     const params = await contractInstance.get(nextProcessId)
                     expect(params).to.be.ok
                     expect(params[0]).to.deep.eq([mode, envelopeType, censusOrigin])
-                    expect(params[1]).to.eq(dummyTokenInstance.address)
+                    expect(params[1]).to.deep.eq([dummyTokenInstance.address, deployAccount.address])
                     expect(params[2]).to.deep.eq([`0x10${idx}${namespace}`, `0x20${idx}${namespace}`, ""])
                     expect(params[3][0]).to.eq(10 + nonce)
                     expect(params[3][1]).to.eq(11 + nonce)
@@ -780,7 +779,6 @@ describe("Process contract", () => {
                 mode: ProcessMode.make({}),
                 envelopeType: ProcessEnvelopeType.make({}),
                 censusOrigin: DEFAULT_CENSUS_ORIGIN,
-                // tokenAddress: "",
                 metadata: DEFAULT_METADATA_CONTENT_HASHED_URI,
                 censusRoot: DEFAULT_CENSUS_ROOT,
                 censusUri: DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI,
@@ -805,6 +803,7 @@ describe("Process contract", () => {
             expect(processData1.mode.value).to.eq(ProcessMode.make({}))
             expect(processData1.envelopeType.value).to.eq(ProcessEnvelopeType.make({}))
             expect(processData1.entityAddress).to.eq(entityAccount.address)
+            expect(processData1.owner).to.eq(nullAddress)
             expect(processData1.metadata).to.eq(DEFAULT_METADATA_CONTENT_HASHED_URI)
             expect(processData1.censusRoot).to.eq(DEFAULT_CENSUS_ROOT)
             expect(processData1.censusUri).to.eq(DEFAULT_CENSUS_TREE_CONTENT_HASHED_URI)
@@ -865,6 +864,7 @@ describe("Process contract", () => {
             expect(processData2.envelopeType.value).to.eq(newEnvelopeType)
             expect(processData2.censusOrigin.value).to.eq(newCensusOrigin)
             expect(processData2.entityAddress).to.eq(entityAccount.address)
+            expect(processData2.owner).to.eq(nullAddress)
             expect(processData2.metadata).to.eq(newMetadata)
             expect(processData2.censusRoot).to.eq(newCensusRoot)
             expect(processData2.censusUri).to.eq(newCensusUri)
@@ -925,6 +925,7 @@ describe("Process contract", () => {
             expect(processData3.envelopeType.value).to.eq(newEnvelopeType)
             expect(processData2.censusOrigin.value).to.eq(newCensusOrigin)
             expect(processData3.entityAddress).to.eq(entityAccount.address)
+            expect(processData3.owner).to.eq(nullAddress)
             expect(processData3.metadata).to.eq(newMetadata)
             expect(processData3.censusRoot).to.eq(newCensusRoot)
             expect(processData3.censusUri).to.eq(newCensusUri)
@@ -2628,7 +2629,7 @@ describe("Process contract", () => {
             expect(processData2.questionIndex).to.eq(2, "The process should now be at question 2")
         })
 
-        it("Should only allow the process creator to increment", async () => {
+        it("Should only allow the process creator to increment (off-chain census)", async () => {
             contractInstance = await new ProcessBuilder()
                 .withMode(ProcessMode.make({ autoStart: true })) // status = ready
                 .withEnvelopeType(ProcessEnvelopeType.make({ serial: true }))
@@ -2655,6 +2656,49 @@ describe("Process contract", () => {
             const processData1 = ProcessContractParameters.fromContract(await contractInstance.get(processId))
             expect(processData1.entityAddress).to.eq(entityAccount.address)
             expect(processData1.questionIndex).to.eq(0, "The process should remain at question 0")
+        })
+
+        it("Should only allow the process creator to increment (EVM census)", async() => {
+            // ERC20 TOKEN CONTRACT
+            const dummyTokenInstance = await new ERC20MockBuilder().build()
+
+            let proofsAddress = await contractInstance.tokenStorageProofAddress()
+            let proofsInstance = new Contract(proofsAddress, tokenStorageProofsAbi, deployAccount.wallet) as Contract & Erc20StorageProofContractMethods
+
+            await proofsInstance.registerToken(
+                dummyTokenInstance.address,
+                0,
+            )
+
+            // create process
+            tx = await contractInstance.connect(deployAccount.wallet).newProcessEvm(
+                [ProcessMode.make({ autoStart: true }), ProcessEnvelopeType.make({ serial: true }), ProcessCensusOrigin.ERC20],
+                [DEFAULT_METADATA_CONTENT_HASHED_URI, DEFAULT_CENSUS_ROOT],
+                [DEFAULT_START_BLOCK, DEFAULT_BLOCK_COUNT],
+                [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
+                [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
+                dummyTokenInstance.address,
+                DEFAULT_EVM_BLOCK_HEIGHT,
+                DEFAULT_PARAMS_SIGNATURE
+            )
+            await tx.wait()
+
+            const pid = await contractInstance.getProcessId(dummyTokenInstance.address, 0, DEFAULT_NAMESPACE, DEFAULT_VOCHAIN_ID)
+            const processActual = ProcessContractParameters.fromContract(await contractInstance.get(pid))
+            expect(processActual.questionIndex).to.eq(0)
+            // set question index
+            tx = await contractInstance.connect(deployAccount.wallet).incrementQuestionIndex(pid)
+            
+            const processChanged = ProcessContractParameters.fromContract(await contractInstance.get(pid))
+            expect(processChanged.questionIndex).to.eq(1)
+
+            try {
+                tx = await contractInstance.connect(randomAccount1.wallet).incrementQuestionIndex(pid)
+                await tx.wait()
+                throw new Error("The transaction should have thrown an error but didn't")
+            } catch (err) {
+                expect(err.message).to.match(/revert Not creator/, "The transaction threw an unexpected error:\n" + err.message)
+            }
         })
 
         it("Should fail if the process is paused", async () => {
