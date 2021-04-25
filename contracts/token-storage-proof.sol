@@ -22,6 +22,7 @@ contract TokenStorageProof is ITokenStorageProof {
     string private constant ERROR_NOT_REGISTERED = "NOT_REGISTERED";
     string private constant ERROR_ALREADY_VERIFIED = "ALREADY_VERIFIED";
     string private constant ERROR_INVALID_ADDRESS = "INVALID_ADDRESS";
+    string private constant ERROR_SAME_VALUE = "SAME_VALUE";
 
     struct ERC20Token {
         uint256 balanceMappingPosition;
@@ -43,10 +44,10 @@ contract TokenStorageProof is ITokenStorageProof {
         return tokens[tokenAddress].verified;
     }
 
-    function isHolder(address tokenAddress) internal view returns(bool) {
+    function isHolder(address tokenAddress, address holder) public view override returns(bool) {
         // check msg.sender balance calling 'balanceOf' function on the ERC20 contract
         IERC20 tokenContract = IERC20(tokenAddress);
-        uint256 balance = tokenContract.balanceOf(msg.sender);
+        uint256 balance = tokenContract.balanceOf(holder);
         return balance > 0;
     }
 
@@ -61,12 +62,13 @@ contract TokenStorageProof is ITokenStorageProof {
         require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
         
         // Check sender is holder 
-        require(isHolder(msg.sender), ERROR_NOT_ENOUGH_FUNDS);
+        require(isHolder(tokenAddress, msg.sender), ERROR_NOT_ENOUGH_FUNDS);
         
         // Set balanceMappingPosition
         ERC20Token storage token = tokens[tokenAddress];
-        token.balanceMappingPosition = balanceMappingPosition;
+        require(token.balanceMappingPosition != balanceMappingPosition, ERROR_SAME_VALUE);
         
+        token.balanceMappingPosition = balanceMappingPosition;
         // Event
         emit BalanceMappingPositionUpdated(tokenAddress, msg.sender, balanceMappingPosition);
     }
@@ -82,7 +84,7 @@ contract TokenStorageProof is ITokenStorageProof {
         require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
         
         // Check sender is holder 
-        require(isHolder(tokenAddress), ERROR_NOT_ENOUGH_FUNDS);
+        require(isHolder(tokenAddress, msg.sender), ERROR_NOT_ENOUGH_FUNDS);
         
         // Register token
         ERC20Token storage newToken = tokens[tokenAddress];
@@ -110,7 +112,7 @@ contract TokenStorageProof is ITokenStorageProof {
         require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
         
         // Check sender is holder 
-        require(isHolder(msg.sender), ERROR_NOT_ENOUGH_FUNDS);
+        require(isHolder(tokenAddress, msg.sender), ERROR_NOT_ENOUGH_FUNDS);
         
         // Get storage root
         bytes32 root = processStorageRoot(tokenAddress, blockNumber, blockHeaderRLP, accountStateProof);

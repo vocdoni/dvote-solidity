@@ -140,6 +140,9 @@ interface ITokenStorageProof {
 
      /// @notice Determines whether the given address is registered as an ERC token contract and verified
     function isVerified(address tokenAddress) external view returns (bool);
+
+    /// @notice Determines if the msg.sender of the tx is holder for the given token address
+    function isHolder(address tokenAddress, address holder) external view returns (bool);
   
     /// @notice Determines the balance slot of a holder of an ERC20 token given a balance slot
     function getHolderBalanceSlot(address holder, uint256 balanceMappingPosition) external pure returns(bytes32);
@@ -148,6 +151,6 @@ interface ITokenStorageProof {
     function getBalanceMappingPosition(address tokenAddress) external view returns (uint256);
 
     // EVENTS
-    event TokenRegistered(address indexed token, address indexed registrar);
+    event TokenRegistered(address indexed tokenAddress, address indexed registrar);
     event BalanceMappingPositionUpdated(address tokenAddress, address holder, uint256 balanceMappingPosition);
 }
