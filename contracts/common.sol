@@ -14,7 +14,7 @@ interface IProcessStore {
     function getProcessId(address entityAddress, uint256 processCountIndex, uint32 namespaceId, uint32 chainId) external pure returns (bytes32);
     function get(bytes32 processId) external view returns (
         uint8[3] memory mode_envelopeType_censusOrigin,
-        address entityAddress,
+        address[2] memory entityAddress_owner,
         string[3] memory metadata_censusRoot_censusUri,
         uint32[2] memory startBlock_blockCount,
         Status status,

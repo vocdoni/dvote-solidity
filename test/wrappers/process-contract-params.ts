@@ -82,7 +82,7 @@ describe("Process contract parameter wrapper", () => {
         it("should unwrap the 'get' response values", () => {
             const json1 = ProcessContractParameters.fromContract([
                 [1, 2, 3],
-                "0x3",
+                ["0x3", "0x0"],
                 ["0x4", "0x5", "0x6"],
                 [7, 8],
                 0,
@@ -95,6 +95,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json1.envelopeType.value).to.eq(2)
             expect(json1.censusOrigin.value).to.eq(3)
             expect(json1.entityAddress).to.eq("0x3")
+            expect(json1.owner).to.eq("0x0")
             expect(json1.metadata).to.eq("0x4")
             expect(json1.censusRoot).to.eq("0x5")
             expect(json1.censusUri).to.eq("0x6")
@@ -112,7 +113,7 @@ describe("Process contract parameter wrapper", () => {
     
             const json2 = ProcessContractParameters.fromContract([
                 [10, 3, 2],
-                "0x30",
+                ["0x30", "0x40"],
                 ["0x40", "0x50", "0x60"],
                 [70, 80],
                 1,
@@ -125,6 +126,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json2.envelopeType.value).to.eq(3)
             expect(json2.censusOrigin.value).to.eq(2)
             expect(json2.entityAddress).to.eq("0x30")
+            expect(json2.owner).to.eq("0x40")
             expect(json2.metadata).to.eq("0x40")
             expect(json2.censusRoot).to.eq("0x50")
             expect(json2.censusUri).to.eq("0x60")
@@ -220,7 +222,7 @@ describe("Process contract parameter wrapper", () => {
         it("should unwrap the 'get' response values", () => {
             const json1 = ProcessContractParameters.fromContract([
                 [1, 2, 11],
-                "0x3",
+                ["0x3", "0x0"],
                 ["0x4", "0x5", ""],
                 [7, 8],
                 0,
@@ -234,6 +236,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json1.censusOrigin.value).to.eq(11)
             expect(json1.censusUri).to.eq("")
             expect(json1.entityAddress).to.eq("0x3")
+            expect(json1.owner).to.eq("0x0")
             expect(json1.metadata).to.eq("0x4")
             expect(json1.censusRoot).to.eq("0x5")
             expect(json1.startBlock).to.eq(7)
@@ -250,7 +253,7 @@ describe("Process contract parameter wrapper", () => {
     
             const json2 = ProcessContractParameters.fromContract([
                 [10, 3, 12],
-                "0x30",
+                ["0x30", "0x40"],
                 ["0x40", "0x50", ""],
                 [70, 80],
                 1,
@@ -263,6 +266,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json2.envelopeType.value).to.eq(3)
             expect(json2.censusOrigin.value).to.eq(12)
             expect(json2.entityAddress).to.eq("0x30")
+            expect(json2.owner).to.eq("0x40")
             expect(json2.metadata).to.eq("0x40")
             expect(json2.censusRoot).to.eq("0x50")
             expect(json2.censusUri).to.eq("")
