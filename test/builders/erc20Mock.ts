@@ -56,8 +56,6 @@ contract ERC20 {
 export default class ERC20MockBuilder {
     accounts: TestAccount[]
 
-    owner: TestAccount
-
     constructor() {
         this.accounts = getAccounts()
     }
@@ -79,6 +77,6 @@ export default class ERC20MockBuilder {
         const dummyTokenFactory = new ContractFactory(erc20Abi, erc20Bytecode, deployAccount.wallet)
         const dummyTokenInstance = await dummyTokenFactory.deploy("Dummy Token", "DUM") as Contract
 
-        return dummyTokenInstance.connect(this.owner.wallet) as Contract
+        return dummyTokenInstance
     }
 }
