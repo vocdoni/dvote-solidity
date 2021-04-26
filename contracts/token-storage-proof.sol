@@ -24,125 +24,110 @@ contract TokenStorageProof is ITokenStorageProof {
     string private constant ERROR_INVALID_ADDRESS = "INVALID_ADDRESS";
     string private constant ERROR_SAME_VALUE = "SAME_VALUE";
 
+    modifier onlyHolder(address tokenAddress) {
+        _isHolder(tokenAddress, msg.sender);
+        _;
+    }
+
     struct ERC20Token {
-        uint256 balanceMappingPosition;
         bool registered;
         bool verified;
+        uint256 balanceMappingPosition;
     }
 
     mapping(address => ERC20Token) public tokens;
     address[] public tokenAddresses;
     uint32 public tokenCount = 0;
 
-    function isRegistered(address tokenAddress) public view override returns (bool) {
-        require(tokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
-        return tokens[tokenAddress].registered;
-    }
-
-    function isVerified(address tokenAddress) public view override returns (bool) {
-        require(tokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
-        return tokens[tokenAddress].verified;
-    }
-
-    function isHolder(address tokenAddress, address holder) public view override returns(bool) {
-        // check msg.sender balance calling 'balanceOf' function on the ERC20 contract
-        IERC20 tokenContract = IERC20(tokenAddress);
-        uint256 balance = tokenContract.balanceOf(holder);
-        return balance > 0;
-    }
-
-    function setBalanceMappingPosition(address tokenAddress, uint256 balanceMappingPosition) public override {
-        // Check that the address is a contract
-        require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
-        
-        // Check token registered
-        require(isRegistered(tokenAddress), ERROR_NOT_REGISTERED);
-        
-        // Check token not already verified
-        require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
-        
-        // Check sender is holder 
-        require(isHolder(tokenAddress, msg.sender), ERROR_NOT_ENOUGH_FUNDS);
-        
-        // Set balanceMappingPosition
-        ERC20Token storage token = tokens[tokenAddress];
-        require(token.balanceMappingPosition != balanceMappingPosition, ERROR_SAME_VALUE);
-        
-        token.balanceMappingPosition = balanceMappingPosition;
-        // Event
-        emit BalanceMappingPositionUpdated(tokenAddress, msg.sender, balanceMappingPosition);
-    }
-
-    function registerToken(address tokenAddress, uint256 balanceMappingPosition) public override {
+    function registerToken(address tokenAddress, uint256 balanceMappingPosition) public override onlyHolder(tokenAddress) {
         // Check that the address is a contract
         require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
         
         // Check token not already registered
-        require(!isRegistered(tokenAddress), ERROR_ALREADY_REGISTERED);
-        
-        // Check token not already verified
-        require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
-        
-        // Check sender is holder 
-        require(isHolder(tokenAddress, msg.sender), ERROR_NOT_ENOUGH_FUNDS);
+        require(!tokens[tokenAddress].registered, ERROR_ALREADY_REGISTERED);
         
         // Register token
-        ERC20Token storage newToken = tokens[tokenAddress];
+        ERC20Token memory newToken;
         newToken.registered = true;
         newToken.balanceMappingPosition = balanceMappingPosition;
         tokenAddresses.push(tokenAddress);
+        tokens[tokenAddress] = newToken;
         tokenCount = tokenCount + 1;
         
         // Event
-        emit TokenRegistered(tokenAddress, msg.sender);
+        emit TokenRegistered(tokenAddress);
     }
 
-    function registerTokenWithProof(
+    function setVerifiedBalanceMappingPosition(
         address tokenAddress,
         uint256 balanceMappingPosition,
         uint256 blockNumber,
         bytes memory blockHeaderRLP,
         bytes memory accountStateProof,
         bytes memory storageProof
-    ) public override {
+    ) public override onlyHolder(tokenAddress) {
         // Check that the address is a contract
         require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
         
+        // Check token is registered
+        require(tokens[tokenAddress].registered, ERROR_NOT_REGISTERED);
+
         // Check token is not verified
-        require(!isVerified(tokenAddress), ERROR_ALREADY_VERIFIED);
-        
-        // Check sender is holder 
-        require(isHolder(tokenAddress, msg.sender), ERROR_NOT_ENOUGH_FUNDS);
+        require(!tokens[tokenAddress].verified, ERROR_ALREADY_VERIFIED);
         
         // Get storage root
-        bytes32 root = processStorageRoot(tokenAddress, blockNumber, blockHeaderRLP, accountStateProof);
+        bytes32 root = _processStorageRoot(tokenAddress, blockNumber, blockHeaderRLP, accountStateProof);
         
         // Check balance using the computed storage root and the provided proofs
-        uint256 balanceFromTrie = getBalance(
+        uint256 balanceFromTrie = _getBalance(
             msg.sender,
             storageProof,
             root,
             balanceMappingPosition
         );
+
+        // Check balance obtained > 0 
         require(balanceFromTrie > 0, ERROR_NOT_ENOUGH_FUNDS);
         
-        // Register token
-        ERC20Token storage token = tokens[tokenAddress];
-        token.verified = true;
-        if (token.registered && (token.balanceMappingPosition != balanceMappingPosition)) {
-            token.balanceMappingPosition = balanceMappingPosition;
-        } else {
-            token.registered = true;
-            token.balanceMappingPosition = balanceMappingPosition;
-            tokenAddresses.push(tokenAddress);
-            tokenCount = tokenCount + 1;
-        }
+        // Modify storage
+        tokens[tokenAddress].verified = true;
+        tokens[tokenAddress].balanceMappingPosition = balanceMappingPosition;
         
-        // Event
-        emit TokenRegistered(tokenAddress, msg.sender);
+        // Emit event
+        emit BalanceMappingPositionUpdated(tokenAddress, balanceMappingPosition);
     }
 
-    function processStorageRoot(
+    function setBalanceMappingPosition(address tokenAddress, uint256 balanceMappingPosition) public override onlyHolder(tokenAddress) {
+        // Check that the address is a contract
+        require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
+        
+        // Check token registered
+        require(tokens[tokenAddress].registered, ERROR_NOT_REGISTERED);
+        
+        // Check token not already verified
+        require(!tokens[tokenAddress].verified, ERROR_ALREADY_VERIFIED);
+        
+        // Check not same balance mapping position
+        require(tokens[tokenAddress].balanceMappingPosition != balanceMappingPosition, ERROR_SAME_VALUE);
+        
+        // Modify storage
+        tokens[tokenAddress].balanceMappingPosition = balanceMappingPosition;
+        
+        // Emit event
+        emit BalanceMappingPositionUpdated(tokenAddress, balanceMappingPosition);
+    }
+
+
+    function isRegistered(address tokenAddress) external view override returns (bool) {
+        return tokens[tokenAddress].registered;
+    }
+    
+    function _isHolder(address tokenAddress, address holder) internal view {
+        // check msg.sender balance calling 'balanceOf' function on the ERC20 contract
+       require (IERC20(tokenAddress).balanceOf(holder) > 0, ERROR_NOT_ENOUGH_FUNDS);
+    }
+
+    function _processStorageRoot(
         address tokenAddress,
         uint256 blockNumber,
         bytes memory blockHeaderRLP,
@@ -165,7 +150,7 @@ contract TokenStorageProof is ITokenStorageProof {
         accountStorageRoot = bytes32(accountRLP.toRLPItem().toList()[ACCOUNT_STORAGE_ROOT_INDEX].toUint());
     }
 
-    function getBalance(
+    function _getBalance(
         address holder,
         bytes memory storageProof,
         bytes32 root,
@@ -175,7 +160,7 @@ contract TokenStorageProof is ITokenStorageProof {
     {
         require(root != bytes32(0), ERROR_UNPROCESSED_STORAGE_ROOT);
         // The path for a storage value is the hash of its slot
-        bytes32 slot = getHolderBalanceSlot(holder, balanceMappingPosition);
+        bytes32 slot = _getHolderBalanceSlot(holder, balanceMappingPosition);
         bytes32 storageProofPath = keccak256(abi.encodePacked(slot));
 
         bytes memory value;
@@ -184,14 +169,8 @@ contract TokenStorageProof is ITokenStorageProof {
         return value.toRLPItem().toUint();
     }
 
-    function getHolderBalanceSlot(address holder, uint256 balanceMappingPosition) public pure override returns (bytes32) {
+    function _getHolderBalanceSlot(address holder, uint256 balanceMappingPosition) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(bytes32(uint256(holder)), balanceMappingPosition));
-    }
-
-
-    function getBalanceMappingPosition(address tokenAddress) public view override returns (uint256) {
-        require(tokenAddress != address(0x0), ERROR_INVALID_ADDRESS);
-        return tokens[tokenAddress].balanceMappingPosition;
     }
 
     /**

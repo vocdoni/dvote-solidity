@@ -129,6 +129,22 @@ interface ProcessMethods {
      * ]```
      * */
     newProcessStd(...args: IProcessCreateStdParamsTuple): Promise<ContractTransaction>,
+    /**
+     * Publish a new voting process using the given parameters
+     * 
+     * ```[
+        mode_envelopeType_censusOrigin: number[],
+        metadata_censusRoot: string[],
+        tokenContractAddress: string,  
+        startBlock_blockCount: number[],
+        questionCount_maxCount_maxValue_maxVoteOverwrites: number[],
+        maxTotalCost_costExponent_namespace: number[],
+        paramsSignature: string,
+        tokenContractAddress: string,
+        evmBlockHeight: number,
+        overrides?: IMethodOverrides?
+     * ]```
+     * */
     newProcessEvm(...args: IProcessCreateEvmParamsTuple): Promise<ContractTransaction>,
     /** Update the process status that corresponds to the given ID */
     setStatus(processId: string, status: IProcessStatus, overrides?: IMethodOverrides): Promise<ContractTransaction>,
@@ -254,12 +270,6 @@ export interface Erc20StorageProofContractMethods {
     /** Determines whether the given address is registered as an ERC token contract */
     isRegistered(tokenAddress: string): Promise<boolean>
 
-    /** Determines wheter the given address have a verified balance mapping position */
-    isVerified(tokenAddress: string): Promise<boolean>
-
-    /** Determines if the msg.sender of the tx is holder for the given token address */
-    isHolder(tokenAddress: string, holder: string): Promise<boolean>
-
     /** Retrieves the token addresses registered at the given index. If it doesn't exist, the request throws an error. */
     tokenAddresses(idx: number): Promise<string>,
 
@@ -269,20 +279,27 @@ export interface Erc20StorageProofContractMethods {
     /** Fetches the balance mapping position stored for a given token */
     getBalanceMappingPosition(tokenAddress: string): Promise<BigNumber>
 
-    /** Fetches the holder storage slot given the holder address */
-    getHolderBalanceSlot(holder: string, balanceMappingPosition: number | BigNumber)
+    /** Fetched the token data given a token address */
+    tokens(tokenAddress: string): Promise<ITokenDataTuple>
 
     // SETTERS
-
-    /** Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address */
-    registerTokenWithProof(tokenAddress: string,  balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, overrides?: IMethodOverrides): Promise<ContractTransaction>
 
     /** Checks that the given contract is an ERC token, validates that sender is holder of that token using the ERC20 method BalanceOf() and registers the token address */
     registerToken(tokenAddress: string,  balanceMappingPosition: number | BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>
 
     /** Sets the balanceMapping position of a token if the balance mapping position is not verified and the message sender is a token holder */
     setBalanceMappingPosition(tokenAddress: string, balanceMappingPosition: number | BigNumber, overrides?: IMethodOverrides): Promise<ContractTransaction>
+
+    /** Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address */
+    setVerifiedBalanceMappingPosition(tokenAddress: string,  balanceMappingPosition: number | BigNumber, blockNumber: number | BigNumber, blockHeaderRLP: Buffer, accountStateProof: Buffer, storageProof: Buffer, overrides?: IMethodOverrides): Promise<ContractTransaction>
+
 }
+
+export type ITokenDataTuple = [
+    boolean,
+    boolean,
+    number
+]
 
 ///////////////////////////////////////////////////////////////////////////////
 // BASE TYPES

@@ -27,20 +27,20 @@ interface IProcessStore {
 
     // SET
     function newProcessStd(
-        uint8[3] memory mode_envelopeType_censusOrigin,
-        string[3] memory metadata_censusRoot_censusUri,
-        uint32[2] memory startBlock_blockCount,
-        uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
-        uint16[2] memory maxTotalCost_costExponent,
+        uint8[3] calldata mode_envelopeType_censusOrigin,
+        string[3] calldata metadata_censusRoot_censusUri,
+        uint32[2] calldata startBlock_blockCount,
+        uint8[4] calldata questionCount_maxCount_maxValue_maxVoteOverwrites,
+        uint16[2] calldata maxTotalCost_costExponent,
         bytes32 paramsSignature
     ) payable external;
 
     function newProcessEvm(
-        uint8[3] memory mode_envelopeType_censusOrigin,
-        string[2] memory metadata_censusRoot,
-        uint32[2] memory startBlock_blockCount,
-        uint8[4] memory questionCount_maxCount_maxValue_maxVoteOverwrites,
-        uint16[2] memory maxTotalCost_costExponent,
+        uint8[3] calldata mode_envelopeType_censusOrigin,
+        string[2] calldata metadata_censusRoot,
+        uint32[2] calldata startBlock_blockCount,
+        uint8[4] calldata questionCount_maxCount_maxValue_maxVoteOverwrites,
+        uint16[2] calldata maxTotalCost_costExponent,
         address tokenContractAddress,
         uint256 evmBlockHeight,
         bytes32 paramsSignature
@@ -120,8 +120,14 @@ interface IGenesisStore {
 
 /// @notice The `ITokenStorageProof` interface defines the standard methods that allow checking ERC token balances.
 interface ITokenStorageProof {
-    /// @notice Checks that the given contract is an ERC token, validates that the balance of the sender matches the one obtained from the storage position and registers the token address
-    function registerTokenWithProof(
+    /// @notice Checks that the given contract is an ERC token, check the balance of the holder and registers the token
+    function registerToken(address tokenAddress, uint256 balanceMappingPosition) external;
+
+    /// @notice Sets an unverified balanceMappingPosition of the given token address
+    function setBalanceMappingPosition(address tokenAddress, uint256 balanceMappingPosition) external;
+
+    /// @notice Validates that the balance of the sender matches the one obtained from the storage position and updates the balance mapping position
+    function setVerifiedBalanceMappingPosition(
         address tokenAddress,
         uint256 balanceMappingPosition,
         uint256 blockNumber,
@@ -129,28 +135,10 @@ interface ITokenStorageProof {
         bytes memory accountStateProof,
         bytes memory storageProof) external;
 
-    /// @notice Checks that the given contract is an ERC token, check the balance of the holder and registers the token
-    function registerToken(address tokenAddress, uint256 balanceMappingPosition) external;
-
-    /// @notice Sets the balanceMappingPosition of the given token address if unverified
-    function setBalanceMappingPosition(address tokenAddress, uint256 balanceMappingPosition) external;
-
     /// @notice Determines whether the given address is registered as an ERC token contract
     function isRegistered(address tokenAddress) external view returns (bool);
 
-     /// @notice Determines whether the given address is registered as an ERC token contract and verified
-    function isVerified(address tokenAddress) external view returns (bool);
-
-    /// @notice Determines if the msg.sender of the tx is holder for the given token address
-    function isHolder(address tokenAddress, address holder) external view returns (bool);
-  
-    /// @notice Determines the balance slot of a holder of an ERC20 token given a balance slot
-    function getHolderBalanceSlot(address holder, uint256 balanceMappingPosition) external pure returns(bytes32);
-
-    /// @notice Returns the balance mapping position of a token for users to generate proofs
-    function getBalanceMappingPosition(address tokenAddress) external view returns (uint256);
-
     // EVENTS
-    event TokenRegistered(address indexed tokenAddress, address indexed registrar);
-    event BalanceMappingPositionUpdated(address tokenAddress, address holder, uint256 balanceMappingPosition);
+    event TokenRegistered(address tokenAddress);
+    event BalanceMappingPositionUpdated(address tokenAddress, uint256 balanceMappingPosition);
 }

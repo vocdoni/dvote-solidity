@@ -40,8 +40,9 @@ describe("TokenStorageProof contract", () => {
 
         contractInstance = await new TokenStorageProofBuilder().build()
 
-        expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
-        expect(await contractInstance.isVerified(dummyTokenInstance.address)).to.eq(false)
+        const tokenData = await contractInstance.tokens(dummyTokenInstance.address)
+        expect(tokenData[0]).to.be.false
+        expect(tokenData[1]).to.be.false
 
         expect(await contractInstance.tokenCount()).to.eq(0)
         expect(() => contractInstance.tokenAddresses(0)).to.throw
@@ -51,10 +52,13 @@ describe("TokenStorageProof contract", () => {
             0,
         )
 
-        expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(true)
+        const tokenData2 = await contractInstance.tokens(dummyTokenInstance.address)
+        expect(tokenData2[0]).to.be.true
+        expect(tokenData2[1]).to.be.false
         expect(await contractInstance.tokenCount()).to.eq(1)
         expect(await contractInstance.tokenAddresses(0)).to.deep.eq(dummyTokenInstance.address)
     })
+
 
     it("should emit an event when the token is successfully registered", async() => {
         const dummyTokenInstance = await new ERC20MockBuilder().build()
@@ -64,14 +68,13 @@ describe("TokenStorageProof contract", () => {
             dummyTokenInstance.address,
             0,
         )
-        const result: { tokenAddress: string, registrar: string } = await new Promise((resolve, reject) => {
-            contractInstance.on("TokenRegistered", (tokenAddress: string, registrar: string) => {
-                resolve({ tokenAddress, registrar })
+        const result: { tokenAddress: string} = await new Promise((resolve, reject) => {
+            contractInstance.on("TokenRegistered", (tokenAddress: string) => {
+                resolve({ tokenAddress})
             })
         })
         expect(result).to.be.ok
         expect(result.tokenAddress).to.equal(dummyTokenInstance.address)
-        expect(result.registrar).to.equal(deployAccount.address)
     })
 
     it("should fail registering a token contract with registerToken() if the registrant is not holder", async () => {
@@ -79,8 +82,9 @@ describe("TokenStorageProof contract", () => {
 
         contractInstance = await new TokenStorageProofBuilder().build()
 
-        expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
-        expect(await contractInstance.isVerified(dummyTokenInstance.address)).to.eq(false)
+        const tokenData = await contractInstance.tokens(dummyTokenInstance.address)
+        expect(tokenData[0]).to.be.false
+        expect(tokenData[1]).to.be.false
 
         expect(await contractInstance.tokenCount()).to.eq(0)
         expect(() => contractInstance.tokenAddresses(0)).to.throw
@@ -92,7 +96,9 @@ describe("TokenStorageProof contract", () => {
             expect(err.message).to.match(/revert NOT_ENOUGH_FUNDS/)
         }
 
-        expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
+        const tokenData2 = await contractInstance.tokens(dummyTokenInstance.address)
+        expect(tokenData2[0]).to.be.false
+        expect(tokenData2[1]).to.be.false
         expect(await contractInstance.tokenCount()).to.eq(0)
     })
 
@@ -101,8 +107,9 @@ describe("TokenStorageProof contract", () => {
 
         contractInstance = await new TokenStorageProofBuilder().build()
 
-        expect(await contractInstance.isRegistered(dummyTokenInstance.address)).to.eq(false)
-        expect(await contractInstance.isVerified(dummyTokenInstance.address)).to.eq(false)
+        const tokenData = await contractInstance.tokens(dummyTokenInstance.address)
+        expect(tokenData[0]).to.be.false
+        expect(tokenData[1]).to.be.false
 
         expect(await contractInstance.tokenCount()).to.eq(0)
         expect(() => contractInstance.tokenAddresses(0)).to.throw
@@ -113,9 +120,9 @@ describe("TokenStorageProof contract", () => {
         )
 
         await contractInstance.setBalanceMappingPosition(dummyTokenInstance.address, 5)
-        const tokenInfo = await contractInstance.tokens(dummyTokenInstance.address)
-        expect(tokenInfo.balanceMappingPosition).to.be.deep.equal(BigNumber.from(5))
-        expect(await contractInstance.isVerified(dummyTokenInstance.address)).to.eq(false)
+        const tokenData2 = await contractInstance.tokens(dummyTokenInstance.address)
+        expect(tokenData2[0]).to.be.true
+        expect(tokenData2[1]).to.be.false
         
         // TODO: @jordipainan Check with verified 
 
@@ -146,14 +153,13 @@ describe("TokenStorageProof contract", () => {
         )
         await contractInstance.setBalanceMappingPosition(dummyTokenInstance.address, 5)
 
-        const result: { tokenAddress: string, holder: string, balanceMappingPosition: number | BigNumber } = await new Promise((resolve, reject) => {
-            contractInstance.on("BalanceMappingPositionUpdated", (tokenAddress: string, holder: string, balanceMappingPosition: number | BigNumber) => {
-                resolve({ tokenAddress, holder, balanceMappingPosition })
+        const result: { tokenAddress: string, balanceMappingPosition: number | BigNumber } = await new Promise((resolve, reject) => {
+            contractInstance.on("BalanceMappingPositionUpdated", (tokenAddress: string, balanceMappingPosition: number | BigNumber) => {
+                resolve({ tokenAddress, balanceMappingPosition })
             })
         })
         expect(result).to.be.ok
         expect(result.tokenAddress).to.equal(dummyTokenInstance.address)
-        expect(result.holder).to.equal(deployAccount.address)
         expect(result.balanceMappingPosition).to.be.deep.equal(BigNumber.from(5))
     })
 })
