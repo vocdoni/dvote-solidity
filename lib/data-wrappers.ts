@@ -191,6 +191,7 @@ export class ProcessContractParameters {
     mode: ProcessMode;
     envelopeType: ProcessEnvelopeType;
     censusOrigin: ProcessCensusOrigin;
+    /** Entity or Token Address */
     entityAddress?: string;
     metadata: string;
     censusRoot: string;
@@ -206,7 +207,6 @@ export class ProcessContractParameters {
     maxTotalCost: number;
     costExponent: number;
     evmBlockHeight?: number;
-    tokenAddress?: string;
     paramsSignature?: string;
 
     /** Parse a plain parameters object  */

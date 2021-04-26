@@ -1265,7 +1265,7 @@ describe("Process contract", () => {
             expect(result).to.be.ok
             expect(result.processId).to.equal(expectedProcessId)
             expect(result.namespace).to.equal(DEFAULT_NAMESPACE)
-        }).timeout(10000)
+        }).timeout(15000)
     })
 
     describe("Process Status", () => {
