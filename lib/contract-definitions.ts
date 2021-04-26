@@ -141,7 +141,7 @@ interface ProcessMethods {
         maxTotalCost_costExponent_namespace: number[],
         paramsSignature: string,
         tokenContractAddress: string,
-        evmBlockHeight: number,
+        sourceBlockHeight: number,
         overrides?: IMethodOverrides?
      * ]```
      * */
@@ -170,7 +170,7 @@ export type IProcessCreateEvmParamsTuple = [
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent
     string,   // tokenContractAddress
-    number, // evmBlockHeight
+    number, // sourceBlockHeight
     string, // paramsSignature
     IMethodOverrides? // (Optional) Ethereum transaction overrides
 ]
@@ -182,7 +182,7 @@ export type IProcessStateTuple = [
     IProcessStatus, // status
     number[], // questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent
-    BigNumber // evmBlockHeight
+    BigNumber // sourceBlockHeight
 ]
 
 ///////////////////////////////////////////////////////////////////////////////

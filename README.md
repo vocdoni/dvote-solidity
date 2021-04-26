@@ -188,7 +188,7 @@ struct Process {
   // - 10000 => 1.0000
   // - 65535 => 6.5535
   uint16 costExponent;
-  uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
+  uint256 sourceBlockHeight; // Source block number to use as a snapshot for the on-chain census
   bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
 }
 ```

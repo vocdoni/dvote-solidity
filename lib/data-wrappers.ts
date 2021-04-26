@@ -207,7 +207,7 @@ export class ProcessContractParameters {
     maxVoteOverwrites: number;
     maxTotalCost: number;
     costExponent: number;
-    evmBlockHeight?: number;
+    sourceBlockHeight?: number;
     paramsSignature?: string;
 
     /** Parse a plain parameters object  */
@@ -231,7 +231,7 @@ export class ProcessContractParameters {
             throw new Error("Invalid maxTotalCost")
         else if (params.costExponent < 0 || params.costExponent > 65355)
             throw new Error("Invalid costExponent")
-        // evmBlockHeight > see below
+        // sourceBlockHeight > see below
         else if (!params.paramsSignature)
             throw new Error("Invalid paramsSignature")
 
@@ -260,8 +260,8 @@ export class ProcessContractParameters {
             else if (result.mode.hasDynamicCensus) {
                 throw new Error("EVM processes cannot have dynamic censuses")
             }
-            else if (!params.evmBlockHeight || typeof params.evmBlockHeight != "number" || params.evmBlockHeight < 0) {
-                throw new Error("Invalid evmBlockHeight for an EVM census-based process")
+            else if (!params.sourceBlockHeight || typeof params.sourceBlockHeight != "number" || params.sourceBlockHeight < 0) {
+                throw new Error("Invalid sourceBlockHeight for an EVM census-based process")
             }
         }
 
@@ -277,7 +277,7 @@ export class ProcessContractParameters {
         result.maxVoteOverwrites = params.maxVoteOverwrites
         result.maxTotalCost = params.maxTotalCost
         result.costExponent = params.costExponent
-        result.evmBlockHeight = params.evmBlockHeight || 0
+        result.sourceBlockHeight = params.sourceBlockHeight || 0
         result.paramsSignature = params.paramsSignature
 
         return result
@@ -343,8 +343,8 @@ export class ProcessContractParameters {
         result.maxTotalCost = params[6][0]
         result.costExponent = params[6][1]
 
-        if (typeof params[7] == "number") result.evmBlockHeight = params[7]
-        else if (params[7] && params[7]._isBigNumber) result.evmBlockHeight = params[7].toNumber()
+        if (typeof params[7] == "number") result.sourceBlockHeight = params[7]
+        else if (params[7] && params[7]._isBigNumber) result.sourceBlockHeight = params[7].toNumber()
         else throw new Error("Invalid blockCount")
 
         result.paramsSignature = null
@@ -373,7 +373,7 @@ export class ProcessContractParameters {
             ], // int questionCount_maxCount_maxValue_maxVoteOverwrites
             [this.maxTotalCost, this.costExponent], // int maxTotalCost_costExponent
             this.entityAddress,
-            this.evmBlockHeight, // uint256 evmBlockHeight
+            this.sourceBlockHeight, // uint256 sourceBlockHeight
             this.paramsSignature // String paramsSignature
         ]
         if (transactionOptions) paramsResult.push(transactionOptions)
@@ -424,7 +424,7 @@ export type IProcessCreateParams = {
     maxVoteOverwrites: number,
     maxTotalCost: number,
     costExponent: number,
-    evmBlockHeight?: number,
+    sourceBlockHeight?: number,
     paramsSignature: string
 }
 

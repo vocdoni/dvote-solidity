@@ -27,7 +27,7 @@ export const DEFAULT_MAX_COUNT = 4
 export const DEFAULT_MAX_VALUE = 5
 export const DEFAULT_MAX_TOTAL_COST = 0
 export const DEFAULT_COST_EXPONENT = 10000
-export const DEFAULT_EVM_BLOCK_HEIGHT = 0
+export const DEFAULT_SOURCE_BLOCK_HEIGHT = 0
 export const DEFAULT_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
 export const DEFAULT_PARAMS_SIGNATURE = "0x1111111111111111111111111111111111111111111111111111111111111111"
 export const DEFAULT_RESULTS_TALLY = [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9]]
@@ -55,7 +55,7 @@ export default class ProcessBuilder {
     maxValue: number = DEFAULT_MAX_VALUE
     maxTotalCost: number = DEFAULT_MAX_TOTAL_COST
     costExponent: number = DEFAULT_COST_EXPONENT
-    evmBlockHeight: number = DEFAULT_EVM_BLOCK_HEIGHT
+    sourceBlockHeight: number = DEFAULT_SOURCE_BLOCK_HEIGHT
     tokenAddress: string
     resultsAddress: string
     namespaceAddress: string
@@ -129,7 +129,7 @@ export default class ProcessBuilder {
                     maxVoteOverwrites: this.maxVoteOverwrites,
                     maxTotalCost: this.maxTotalCost,
                     costExponent: this.costExponent,
-                    evmBlockHeight: this.evmBlockHeight,
+                    sourceBlockHeight: this.sourceBlockHeight,
                     paramsSignature: this.paramsSignature
                 }).toContractParamsEvm(extraParams)
     
@@ -254,8 +254,8 @@ export default class ProcessBuilder {
         return this
     }
 
-    withEvmBlockHeight(evmBlockHeight: number) {
-        this.evmBlockHeight = evmBlockHeight
+    withSourceBlockHeight(sourceBlockHeight: number) {
+        this.sourceBlockHeight = sourceBlockHeight
         return this
     }
 
@@ -303,7 +303,7 @@ export default class ProcessBuilder {
             maxVoteOverwrites: DEFAULT_MAX_VOTE_OVERWRITES,
             maxTotalCost: DEFAULT_MAX_TOTAL_COST,
             costExponent: DEFAULT_COST_EXPONENT,
-            evmBlockHeight: DEFAULT_EVM_BLOCK_HEIGHT,
+            sourceBlockHeight: DEFAULT_SOURCE_BLOCK_HEIGHT,
             paramsSignature: DEFAULT_PARAMS_SIGNATURE
         }).toContractParamsEvm()
         return contractInstance.newProcessEvm(...params).then(tx => tx.wait())

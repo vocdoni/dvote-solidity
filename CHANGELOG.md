@@ -52,7 +52,7 @@
 
 ## 0.12.6
 
-- Using `_isBigNumber` instead of comparing `evmBlockHeight` with `BigNumber`
+- Using `_isBigNumber` instead of comparing `sourceBlockHeight` with `BigNumber`
 
 ## 0.12.5
 
@@ -89,7 +89,7 @@
   - Splitting `newProcess` into two internal functions for off-chain censuses and EVM based censuses
   - Adding `censusOrigin` and `enum CensusOrigin {OFF_CHAIN, ERC20, ERC721, ERC1155, ERC777, MINI_ME}`
   - Using `startBlock` and `blockCount` as `uint32`
-  - Storing the evmBlockHeight as the census snapshot point for EVM processes
+  - Storing the sourceBlockHeight as the census snapshot point for EVM processes
 - Adding `Chainable` and `Ownable` as base contracts of `Processes`
 - Adding the `TokenStorageProof` contract and `ITokenStorageProof`
 - Adding the library `ContractSupport`

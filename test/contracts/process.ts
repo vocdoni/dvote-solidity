@@ -31,7 +31,7 @@ const nullAddress = "0x0000000000000000000000000000000000000000"
 const emptyArray: Array<number> = []
 const ethChainId = 0
 const DEFAULT_VOCHAIN_ID = 0
-const DEFAULT_EVM_BLOCK_HEIGHT = 5
+const DEFAULT_SOURCE_BLOCK_HEIGHT = 5
 
 addCompletionHooks()
 
@@ -306,7 +306,7 @@ describe("Process contract", () => {
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
             dummyTokenInstance.address,
-            DEFAULT_EVM_BLOCK_HEIGHT,
+            DEFAULT_SOURCE_BLOCK_HEIGHT,
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -338,7 +338,7 @@ describe("Process contract", () => {
             [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
             [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
             dummyTokenInstance.address,
-            DEFAULT_EVM_BLOCK_HEIGHT,
+            DEFAULT_SOURCE_BLOCK_HEIGHT,
             DEFAULT_PARAMS_SIGNATURE
         )
         await tx.wait()
@@ -419,7 +419,7 @@ describe("Process contract", () => {
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                 dummyTokenInstance.address,
-                DEFAULT_EVM_BLOCK_HEIGHT,
+                DEFAULT_SOURCE_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
@@ -444,7 +444,7 @@ describe("Process contract", () => {
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                     dummyTokenInstance.address,
-                    DEFAULT_EVM_BLOCK_HEIGHT,
+                    DEFAULT_SOURCE_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -488,7 +488,7 @@ describe("Process contract", () => {
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                     dummyTokenInstance.address,
-                    DEFAULT_EVM_BLOCK_HEIGHT,
+                    DEFAULT_SOURCE_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -582,7 +582,7 @@ describe("Process contract", () => {
                     [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                     [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                     dummyTokenInstance.address,
-                    DEFAULT_EVM_BLOCK_HEIGHT,
+                    DEFAULT_SOURCE_BLOCK_HEIGHT,
                     DEFAULT_PARAMS_SIGNATURE
                 )
                 await tx.wait()
@@ -601,7 +601,7 @@ describe("Process contract", () => {
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                 dummyTokenInstance.address,
-                DEFAULT_EVM_BLOCK_HEIGHT,
+                DEFAULT_SOURCE_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE,
                 { value: utils.parseUnits("0.2", "ether") }
             )
@@ -715,7 +715,7 @@ describe("Process contract", () => {
                         [12 + nonce, 13 + nonce, 14 + nonce, 15 + nonce],
                         [16 + nonce, 17 + nonce],
                         dummyTokenInstance.address,
-                        DEFAULT_EVM_BLOCK_HEIGHT,
+                        DEFAULT_SOURCE_BLOCK_HEIGHT,
                         DEFAULT_PARAMS_SIGNATURE
                     )
                     const receipt = await tx.wait()
@@ -2678,7 +2678,7 @@ describe("Process contract", () => {
                 [DEFAULT_QUESTION_COUNT, DEFAULT_MAX_COUNT, DEFAULT_MAX_VALUE, DEFAULT_MAX_VOTE_OVERWRITES],
                 [DEFAULT_MAX_TOTAL_COST, DEFAULT_COST_EXPONENT],
                 dummyTokenInstance.address,
-                DEFAULT_EVM_BLOCK_HEIGHT,
+                DEFAULT_SOURCE_BLOCK_HEIGHT,
                 DEFAULT_PARAMS_SIGNATURE
             )
             await tx.wait()
