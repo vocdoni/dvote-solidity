@@ -109,7 +109,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json1.maxVoteOverwrites).to.eq(15)
             expect(json1.maxTotalCost).to.eq(16)
             expect(json1.costExponent).to.eq(17)
-            expect(json1.evmBlockHeight).to.eq(18)
+            expect(json1.sourceBlockHeight).to.eq(18)
     
             const json2 = ProcessContractParameters.fromContract([
                 [10, 3, 2],
@@ -140,7 +140,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json2.maxVoteOverwrites).to.eq(150)
             expect(json2.maxTotalCost).to.eq(160)
             expect(json2.costExponent).to.eq(170)
-            expect(json2.evmBlockHeight).to.eq(180)
+            expect(json2.sourceBlockHeight).to.eq(180)
         })
     })
     describe("EVM process", () => {
@@ -160,7 +160,7 @@ describe("Process contract parameter wrapper", () => {
                 maxTotalCost: 77,
                 costExponent: 88,
                 tokenAddress: "0x01",
-                evmBlockHeight: 10,
+                sourceBlockHeight: 10,
                 paramsSignature: "0x0110"
             }).toContractParamsEvm()
     
@@ -196,7 +196,7 @@ describe("Process contract parameter wrapper", () => {
                 maxTotalCost: 777,
                 costExponent: 888,
                 tokenAddress: "0x0",
-                evmBlockHeight: 12,
+                sourceBlockHeight: 12,
                 paramsSignature: "0x1100"
             }).toContractParamsEvm({ gasLimit: 100 })
     
@@ -249,7 +249,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json1.maxVoteOverwrites).to.eq(15)
             expect(json1.maxTotalCost).to.eq(16)
             expect(json1.costExponent).to.eq(17)
-            expect(json1.evmBlockHeight).to.eq(18)
+            expect(json1.sourceBlockHeight).to.eq(18)
     
             const json2 = ProcessContractParameters.fromContract([
                 [10, 3, 12],
@@ -280,7 +280,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json2.maxVoteOverwrites).to.eq(150)
             expect(json2.maxTotalCost).to.eq(160)
             expect(json2.costExponent).to.eq(170)
-            expect(json2.evmBlockHeight).to.eq(180)
+            expect(json2.sourceBlockHeight).to.eq(180)
         })
     })
 })

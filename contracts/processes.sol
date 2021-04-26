@@ -120,7 +120,7 @@ contract Processes is IProcessStore, Chained {
         uint32 blockCount; // Amount of Vochain blocks during which the voting process should be active
         address entity; // The address of the Entity (or contract) holding the process
         address owner; // Creator of a process on behalf of the entity
-        uint256 evmBlockHeight; // EVM block number to use as a snapshot for the on-chain census
+        uint256 sourceBlockHeight; // Source block number to use as a snapshot for the on-chain census
         bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
         string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
         string censusRoot; // Hex string with the Census Root. Depending on the census origin, it will be a Merkle Root or a public key.
@@ -158,7 +158,7 @@ contract Processes is IProcessStore, Chained {
         uint8[4] calldata questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionCount, maxCount, maxValue, maxVoteOverwrites]
         uint16[2] calldata maxTotalCost_costExponent, // [maxTotalCost, costExponent]
         address tokenContractAddress,
-        uint256 evmBlockHeight, // Ethereum block height at which the census will be considered
+        uint256 sourceBlockHeight, // Ethereum block height at which the census will be considered
         bytes32 paramsSignature
     ) 
         public
@@ -258,7 +258,7 @@ contract Processes is IProcessStore, Chained {
             .maxVoteOverwrites = questionCount_maxCount_maxValue_maxVoteOverwrites[3];
         processData.maxTotalCost = maxTotalCost_costExponent[0];
         processData.costExponent = maxTotalCost_costExponent[1];
-        processData.evmBlockHeight = evmBlockHeight;
+        processData.sourceBlockHeight = sourceBlockHeight;
         processData.paramsSignature = paramsSignature;
 
         // Index the process for the entity
@@ -520,7 +520,7 @@ contract Processes is IProcessStore, Chained {
             uint8[5]
                 memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites, // [questionIndex, questionCount, maxCount, maxValue, maxVoteOverwrites]
             uint16[2] memory maxTotalCost_costExponent,
-            uint256 evmBlockHeight
+            uint256 sourceBlockHeight
         )
     {
         if (processes[processId].entity == address(0x0)) {
@@ -558,7 +558,7 @@ contract Processes is IProcessStore, Chained {
             proc.maxVoteOverwrites
         ];
         maxTotalCost_costExponent = [proc.maxTotalCost, proc.costExponent];
-        evmBlockHeight = proc.evmBlockHeight;
+        sourceBlockHeight = proc.sourceBlockHeight;
     }
 
     /// @notice Gets the signature of the process parameters, so that authentication can be performed on the Vochain as well

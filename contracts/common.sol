@@ -20,7 +20,7 @@ interface IProcessStore {
         Status status,
         uint8[5] memory questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[2] memory maxTotalCost_costExponent,
-        uint256 evmBlockHeight // EVM only
+        uint256 sourceBlockHeight // EVM only
     );
     function getParamsSignature(bytes32 processId) external view returns (bytes32);
     function getCreationInstance(bytes32 processId) external view returns (address);
@@ -42,7 +42,7 @@ interface IProcessStore {
         uint8[4] calldata questionCount_maxCount_maxValue_maxVoteOverwrites,
         uint16[2] calldata maxTotalCost_costExponent,
         address tokenContractAddress,
-        uint256 evmBlockHeight,
+        uint256 sourceBlockHeight,
         bytes32 paramsSignature
     ) payable external;
 
