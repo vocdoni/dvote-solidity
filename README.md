@@ -31,7 +31,6 @@ In vocdoni, everything is a process, the main building block of any decentralize
   - When they can vote (startBlock, blockCount, current status)
   - How ballots should be dealt with (envelopeType, uniqueValues, maxValue, costExponent, ...)
 - Acts as the persistent source of truth
-- Stores the results
 
 ### Results
 
@@ -158,14 +157,6 @@ A Voting Process is defined by the following fields within the contract:
 struct Process {
   uint8 mode; // The selected process mode. See: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
   uint8 envelopeType; // One of valid envelope types, see: https://vocdoni.io/docs/#/architecture/smart-contracts/process?id=flags
-  CensusOrigin censusOrigin; // How the census proofs are computed (Off-chain vs EVM Merkle Tree)
-  address entity; // The address of the Entity (or contract) holding the process
-  uint32 startBlock; // Vochain block number on which the voting process starts
-  uint32 blockCount; // Amount of Vochain blocks during which the voting process should be active
-  string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
-  string censusRoot; // Hex string with the Census Root. Depending on the census origin, it will be a Merkle Root or a public key.
-  string censusUri; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
-  Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
   uint8 questionIndex; // The index of the currently active question (only assembly processes)
   // How many questions are available to vote
   // questionCount >= 1
@@ -177,6 +168,8 @@ struct Process {
   // N => valid votes will range from 0 to N (inclusive)
   uint8 maxValue;
   uint8 maxVoteOverwrites; // How many times a vote can be replaced (only the last one counts)
+  CensusOrigin censusOrigin; // How the census proofs are computed (Off-chain vs EVM Merkle Tree)
+  Status status; // One of 0 [ready], 1 [ended], 2 [canceled], 3 [paused], 4 [results]
   // Limits up to how much cost, the values of a vote can add up to (if applicable).
   // 0 => No limit / Not applicable
   uint16 maxTotalCost;
@@ -188,8 +181,15 @@ struct Process {
   // - 10000 => 1.0000
   // - 65535 => 6.5535
   uint16 costExponent;
+  uint32 startBlock; // Vochain block number on which the voting process starts
+  uint32 blockCount; // Amount of Vochain blocks during which the voting process should be active
+  address entity; // The address of the Entity (or contract) holding the process
+  address owner; // Creator of a process on behalf of the entity
   uint256 sourceBlockHeight; // Source block number to use as a snapshot for the on-chain census
   bytes32 paramsSignature; // entity.sign({...}) // fields that the oracle uses to authentify process creation
+  string metadata; // Content Hashed URI of the JSON meta data (See Data Origins)
+  string censusRoot; // Hex string with the Census Root. Depending on the census origin, it will be a Merkle Root or a public key.
+  string censusUri; // Content Hashed URI of the exported Merkle Tree (not including the public keys)
 }
 ```
 
