@@ -1,5 +1,23 @@
 # DVote Solidity Changelog
 
+## 1.2.0
+
+- Token Storage Proof
+  - Added `verified` attribute on ERC20Token: Indicates if the `balanceMappingPosition` stored is verified or not
+  - Any token holder can register a token without a proof. If a token holder wants to register a token with a verified balanceMappingPosition, two transactions are required: First `registerToken()`, second `setVerifiedBalanceMappingPosition()`
+  - Any token holder can change an unverified balanceMappingPosition
+  - `isRegistered()` can only be called externally
+  - For getting the token info stored on the contract: `tokens(tokenAddress)` will return `{registered, verified, balanceMappingPosition}`
+
+- Processes
+  -  Added `costFromWeight` on `EnvelopeType`: On EVM-based census processes (weighted), the user's balance will be used as the maxCost. Allow splitting the voting power.
+  - Added Process attribute `owner`: Creator of a process on behalf of the entity (on-chain census)
+  - Added `onlyTokenRegistered` && `onlyHolder` modifiers
+  - Process creation divided into two different methods: `newProcessEVM` && `newProcessStd` for on-chain && off-chain processes respectively
+  - `evmBlockHeight` Process attribute changed to `sourceBlockHeight`
+  - `get(processId)` returns `[2]string entityAddress_owner` instead of `string entityAddress`
+  - Now the owner of an on-chain census can update the question index of a process if the process allows to do so
+
 ## 1.1.0
 
 - EVM Census: storage-proof-validation enabled
