@@ -276,9 +276,6 @@ export interface Erc20StorageProofContractMethods {
     /** Retrieves the amount of ERC20 tokens registered on the contract.  */
     tokenCount(): Promise<number>,
 
-    /** Fetches the balance mapping position stored for a given token */
-    getBalanceMappingPosition(tokenAddress: string): Promise<BigNumber>
-
     /** Fetched the token data given a token address */
     tokens(tokenAddress: string): Promise<ITokenDataTuple>
 
