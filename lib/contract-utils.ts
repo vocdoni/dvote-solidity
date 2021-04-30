@@ -1,4 +1,4 @@
-import { utils, BigNumber } from "ethers"
+import { utils } from "ethers"
 
 ///////////////////////////////////////////////////////////////////////////////
 // ETHERS
@@ -6,9 +6,9 @@ import { utils, BigNumber } from "ethers"
 
 export type IMethodOverrides = {
     gasLimit?: number
-    gasPrice?: BigNumber
+    gasPrice?: number
     nonce?: number
-    value?: BigNumber
+    value?: number
     chainId?: number
 }
 export declare const defaultMethodOverrides: IMethodOverrides

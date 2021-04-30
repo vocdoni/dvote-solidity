@@ -188,27 +188,31 @@ export const processStatusValues = [
 
 /** Wraps and unwraps the parameters sent to `Process.newProcessStd()` and to `Process.newProcessEvm()` and obtained from `Process.get()` for convenience */
 export class ProcessContractParameters {
-    mode: ProcessMode;
-    envelopeType: ProcessEnvelopeType;
-    censusOrigin: ProcessCensusOrigin;
+    mode: ProcessMode = new ProcessMode(ProcessMode.make());
+    envelopeType: ProcessEnvelopeType = new ProcessEnvelopeType(ProcessEnvelopeType.make());
+    censusOrigin: ProcessCensusOrigin = new ProcessCensusOrigin(ProcessCensusOrigin.OFF_CHAIN_TREE);
     /** Entity or Token Address */
-    entityAddress?: string;
-    owner?: string;
-    metadata: string;
-    censusRoot: string;
-    censusUri?: string;
-    startBlock: number;
-    blockCount: number;
-    status?: ProcessStatus;
-    questionIndex?: number;
-    questionCount: number;
-    maxCount: number;
-    maxValue: number;
-    maxVoteOverwrites: number;
-    maxTotalCost: number;
-    costExponent: number;
+    entityAddress?: string | undefined | null;
+    owner?: string | undefined | null;
+    metadata: string = "";
+    censusRoot: string = "";
+    censusUri?: string | undefined | null;
+    startBlock: number = 0;
+    blockCount: number = 1;
+    status: ProcessStatus = new ProcessStatus(ProcessStatus.READY);
+    questionIndex?: number = 0;
+    questionCount: number = 0;
+    maxCount: number = 0;
+    maxValue: number = 0;
+    maxVoteOverwrites: number = 0;
+    maxTotalCost: number = 0;
+    costExponent: number = 0;
     sourceBlockHeight?: number;
-    paramsSignature?: string;
+    paramsSignature?: string | undefined | null;
+
+    constructor (processContractParameters?: Partial<ProcessContractParameters>) {
+        Object.assign(this, processContractParameters)
+    }
 
     /** Parse a plain parameters object  */
     static fromParams(params: IProcessCreateParams): ProcessContractParameters {
@@ -277,7 +281,7 @@ export class ProcessContractParameters {
         result.maxVoteOverwrites = params.maxVoteOverwrites
         result.maxTotalCost = params.maxTotalCost
         result.costExponent = params.costExponent
-        result.sourceBlockHeight = params.sourceBlockHeight || 0
+        result.sourceBlockHeight = params.sourceBlockHeight
         result.paramsSignature = params.paramsSignature
 
         return result
@@ -344,9 +348,7 @@ export class ProcessContractParameters {
         result.costExponent = params[6][1]
 
         if (typeof params[7] == "number") result.sourceBlockHeight = params[7]
-        else if (params[7] && params[7]._isBigNumber) result.sourceBlockHeight = params[7].toNumber()
-        else throw new Error("Invalid blockCount")
-
+        else { result.sourceBlockHeight = undefined }
         result.paramsSignature = null
 
         return result

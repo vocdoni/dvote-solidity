@@ -1,5 +1,4 @@
 import { expect } from "chai"
-import { BigNumber } from "ethers"
 import "mocha" // using @types/mocha
 import { ProcessContractParameters } from "../../lib"
 import { addCompletionHooks } from "../utils/mocha-hooks"
@@ -88,7 +87,7 @@ describe("Process contract parameter wrapper", () => {
                 0,
                 [11, 12, 13, 14, 15],
                 [16, 17],
-                BigNumber.from(18)
+                18
             ])
     
             expect(json1.mode.value).to.eq(1)
@@ -119,7 +118,7 @@ describe("Process contract parameter wrapper", () => {
                 1,
                 [110, 120, 99, 140, 150],
                 [160, 170],
-                BigNumber.from(180)
+                180
             ])
     
             expect(json2.mode.value).to.eq(10)
@@ -228,7 +227,7 @@ describe("Process contract parameter wrapper", () => {
                 0,
                 [11, 12, 13, 14, 15],
                 [16, 17],
-                BigNumber.from(18)
+                18
             ])
     
             expect(json1.mode.value).to.eq(1)
@@ -259,7 +258,7 @@ describe("Process contract parameter wrapper", () => {
                 1,
                 [110, 120, 99, 140, 150],
                 [160, 170],
-                BigNumber.from(180)
+                18
             ])
     
             expect(json2.mode.value).to.eq(10)
@@ -280,7 +279,7 @@ describe("Process contract parameter wrapper", () => {
             expect(json2.maxVoteOverwrites).to.eq(150)
             expect(json2.maxTotalCost).to.eq(160)
             expect(json2.costExponent).to.eq(170)
-            expect(json2.sourceBlockHeight).to.eq(180)
+            expect(json2.sourceBlockHeight).to.eq(18)
         })
     })
 })

@@ -26,9 +26,11 @@ export function addCompletionHooks() {
 
     after(completed)
 
+    /*
     afterEach(function () {
         if (this.currentTest.state === 'failed') {
             failed()
         }
     })
+    */
 }

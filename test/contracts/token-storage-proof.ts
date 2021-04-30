@@ -21,7 +21,6 @@ describe("TokenStorageProof contract", () => {
         accounts = getAccounts()
         deployAccount = accounts[0]
         randomAccount1 = accounts[2]
-        tx = null
     })
 
     it("should deploy the contract", async () => {

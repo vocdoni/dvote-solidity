@@ -1,16 +1,16 @@
 
-import "mocha" // using @types/mocha
 import { expect } from "chai"
-import { Contract, ContractFactory, utils, ContractTransaction } from "ethers"
-import { addCompletionHooks } from "../utils/mocha-hooks"
-import { getAccounts, incrementTimestamp, TestAccount } from "../utils"
-import { EnsResolverContractMethods, ensHashAddress } from "../../lib"
+import { Contract, ContractFactory, ContractTransaction, utils } from "ethers"
+import "mocha" // using @types/mocha
+import { abi as ensPublicResolverAbi, bytecode as ensPublicResolverByteCode } from "../../build/ens-resolver.json"
+import { ensHashAddress, EnsResolverContractMethods } from "../../lib"
 import EntityResolverBuilder from "../builders/entities"
+import { getAccounts, TestAccount } from "../utils"
+import { addCompletionHooks } from "../utils/mocha-hooks"
 // import { BigNumber } from "ethers"
 
 const emptyAddress = "0x0000000000000000000000000000000000000000"
 
-import { abi as ensPublicResolverAbi, bytecode as ensPublicResolverByteCode } from "../../build/ens-resolver.json"
 
 let accounts: TestAccount[]
 let baseAccount: TestAccount
@@ -34,7 +34,6 @@ describe('Entity Resolver', function () {
         randomAccount = accounts[2]
         randomAccount1 = accounts[3]
         randomAccount2 = accounts[4]
-        tx = null
 
         entityId = utils.keccak256(entityAccount.address)
         contractInstance = await new EntityResolverBuilder().build()

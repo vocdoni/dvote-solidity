@@ -101,7 +101,7 @@ interface ProcessMethods {
     getParamsSignature(processId: string): Promise<{ paramsSignature: string }>
     /** Gets the address of the process instance where the given processId was originally created. 
      * This allows to know where to send update transactions, after a fork has occurred. */
-    getCreationInstance(processId): Promise<string>,
+    getCreationInstance(processId: string): Promise<string>,
 
     // GLOBAL METHODS
 
@@ -160,7 +160,7 @@ export type IProcessCreateStdParamsTuple = [
     number[], // startBlock_blockCount
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent
-    string, // paramsSignature
+    string | null | undefined, // paramsSignature
     IMethodOverrides? // (Optional) Ethereum transaction overrides
 ]
 export type IProcessCreateEvmParamsTuple = [
@@ -169,9 +169,9 @@ export type IProcessCreateEvmParamsTuple = [
     number[], // startBlock_blockCount
     number[], // questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent
-    string,   // tokenContractAddress
-    number, // sourceBlockHeight
-    string, // paramsSignature
+    string | null | undefined,   // tokenContractAddress
+    number | null | undefined, // sourceBlockHeight
+    string | null | undefined, // paramsSignature
     IMethodOverrides? // (Optional) Ethereum transaction overrides
 ]
 export type IProcessStateTuple = [
@@ -182,7 +182,7 @@ export type IProcessStateTuple = [
     IProcessStatus, // status
     number[], // questionIndex_questionCount_maxCount_maxValue_maxVoteOverwrites
     number[], // maxTotalCost_costExponent
-    BigNumber // sourceBlockHeight
+    number | null | undefined // sourceBlockHeight
 ]
 
 ///////////////////////////////////////////////////////////////////////////////

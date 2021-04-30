@@ -1,14 +1,12 @@
 
-import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { Contract, ContractFactory, ContractTransaction } from "ethers"
-import { addCompletionHooks } from "../utils/mocha-hooks"
-import { getAccounts, TestAccount } from "../utils"
-import { GenesisContractMethods } from "../../lib"
-
-import GenesisBuilder, { DEFAULT_CHAIN_ID, DEFAULT_GENESIS, DEFAULT_VALIDATORS, DEFAULT_ORACLES } from "../builders/genesis"
-
+import "mocha" // using @types/mocha
 import { abi as genesisAbi, bytecode as genesisByteCode } from "../../build/genesis.json"
+import { GenesisContractMethods } from "../../lib"
+import GenesisBuilder, { DEFAULT_CHAIN_ID, DEFAULT_GENESIS, DEFAULT_ORACLES, DEFAULT_VALIDATORS } from "../builders/genesis"
+import { getAccounts, TestAccount } from "../utils"
+import { addCompletionHooks } from "../utils/mocha-hooks"
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
@@ -31,8 +29,6 @@ describe("Genesis contract", () => {
         randomAccount2 = accounts[3]
         authorizedOracleAccount1 = accounts[4]
         authorizedOracleAccount2 = accounts[5]
-
-        tx = null
 
         contractInstance = await new GenesisBuilder().build()
     })
@@ -155,7 +151,7 @@ describe("Genesis contract", () => {
     })
 
     describe("Genesis updates", () => {
-        let genesis
+        let genesis: string
         beforeEach(() => {
             genesis = "0x1234567890123456789012345678901234567890123123123"
         })
@@ -493,7 +489,7 @@ describe("Genesis contract", () => {
 
         it("should emit an event", async () => {
             // 3 by default
-            expect((await contractInstance.get(DEFAULT_CHAIN_ID))[2].length).to.eq(3)
+            expect((await contractInstance.get(DEFAULT_CHAIN_ID)).oracles.length).to.eq(3)
 
             // Register validator
             contractInstance = contractInstance.connect(deployAccount.wallet) as any

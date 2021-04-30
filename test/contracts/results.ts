@@ -1,15 +1,15 @@
-import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { Contract, ContractFactory, ContractTransaction } from "ethers"
-import { addCompletionHooks } from "../utils/mocha-hooks"
-import { getAccounts, TestAccount } from "../utils"
-import { GenesisContractMethods, ProcessesContractMethods, ProcessContractParameters, ProcessMode, ProcessStatus, ResultsContractMethods } from "../../lib"
-
-import ProcessBuilder, { DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY, DEFAULT_ETH_CHAIN_ID } from "../builders/process"
-import ResultsBuilder from "../builders/results"
-import GenesisBuilder from "../builders/genesis"
+import "mocha" // using @types/mocha
 import { abi as resultsAbi, bytecode as resultsByteCode } from "../../build/results.json"
+import { ProcessContractParameters, ProcessesContractMethods, ProcessMode, ProcessStatus, ResultsContractMethods } from "../../lib"
+import GenesisBuilder from "../builders/genesis"
 import { DEFAULT_NAMESPACE } from "../builders/namespace"
+import ProcessBuilder, { DEFAULT_ETH_CHAIN_ID, DEFAULT_RESULTS_HEIGHT, DEFAULT_RESULTS_TALLY } from "../builders/process"
+import ResultsBuilder from "../builders/results"
+import { getAccounts, TestAccount } from "../utils"
+import { addCompletionHooks } from "../utils/mocha-hooks"
+
 
 const DEFAULT_VOCHAIN_ID = 0
 
@@ -39,8 +39,6 @@ describe("Results contract", () => {
         randomAccount2 = accounts[3]
         authorizedOracleAccount1 = accounts[4]
         authorizedOracleAccount2 = accounts[5]
-
-        tx = null
 
         const genesisInstance = await new GenesisBuilder().withOracles([authorizedOracleAccount1.address, authorizedOracleAccount2.address]).build()
         contractInstance = await new ResultsBuilder().withGenesisAddress(genesisInstance.address).build()

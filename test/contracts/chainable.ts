@@ -41,8 +41,6 @@ describe("Chainable Process contract", () => {
         authorizedOracleAccount1 = accounts[4]
         authorizedOracleAccount2 = accounts[5]
 
-        tx = null
-
         contractInstance = await new ProcessBuilder().build()
         const namespaceId = await contractInstance.namespaceId()
         processId = await contractInstance.getProcessId(entityAccount.address, 0, namespaceId, DEFAULT_ETH_CHAIN_ID)

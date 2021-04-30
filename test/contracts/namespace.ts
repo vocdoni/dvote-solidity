@@ -1,15 +1,15 @@
 
-import "mocha" // using @types/mocha
 import { expect } from "chai"
 import { Contract, ContractFactory, ContractTransaction } from "ethers"
-import { addCompletionHooks } from "../utils/mocha-hooks"
-import { getAccounts, TestAccount } from "../utils"
-import { NamespacesContractMethods } from "../../lib"
-
-import NamespaceBuilder, { DEFAULT_NAMESPACE } from "../builders/namespace"
-
+import "mocha" // using @types/mocha
 import { abi as namespaceAbi, bytecode as namespaceByteCode } from "../../build/namespaces.json"
+import { NamespacesContractMethods } from "../../lib"
+import NamespaceBuilder, { DEFAULT_NAMESPACE } from "../builders/namespace"
 import ProcessBuilder from "../builders/process"
+import { getAccounts, TestAccount } from "../utils"
+import { addCompletionHooks } from "../utils/mocha-hooks"
+
+
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
@@ -32,8 +32,6 @@ describe("Namespace contract", () => {
         randomAccount2 = accounts[3]
         authorizedOracleAccount1 = accounts[4]
         authorizedOracleAccount2 = accounts[5]
-
-        tx = null
 
         contractInstance = await new NamespaceBuilder().build()
     })

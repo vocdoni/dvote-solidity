@@ -56,14 +56,15 @@ export default class ProcessBuilder {
     maxTotalCost: number = DEFAULT_MAX_TOTAL_COST
     costExponent: number = DEFAULT_COST_EXPONENT
     sourceBlockHeight: number = DEFAULT_SOURCE_BLOCK_HEIGHT
-    tokenAddress: string
-    resultsAddress: string
-    namespaceAddress: string
-    tokenStorageProofAddress: string
+    tokenAddress?: string
+    resultsAddress?: string
+    namespaceAddress?: string
+    tokenStorageProofAddress?: string
     ethChainId: number = DEFAULT_ETH_CHAIN_ID
     paramsSignature: string = DEFAULT_PARAMS_SIGNATURE
 
-    constructor() {
+    constructor (processBuilder?: Partial<ProcessBuilder>) {
+        Object.assign(this, processBuilder)
         this.accounts = getAccounts()
         this.entityAccount = this.accounts[1]
     }

@@ -6,6 +6,9 @@ import * as Processes from "./processes.json"
 import * as Results from "./results.json"
 import * as ERC20StorageProofs from "./token-storage-proof.json"
 
+export * from "./contract-definitions"
+export * from "./contract-utils"
+export * from "./data-wrappers"
 export { EnsRegistry }
 export { EnsResolver }
 export { Genesis }
@@ -14,6 +17,3 @@ export { Processes }
 export { Results }
 export { ERC20StorageProofs }
 
-export * from "./data-wrappers"
-export * from "./contract-definitions"
-export * from "./contract-utils"
