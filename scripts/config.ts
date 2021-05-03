@@ -74,7 +74,9 @@ const configSchema = yup.object({
         /** The Ethereum chain ID being used */
         chainId: yup.number().min(0).required(),
         /** The Web3 endpoint to use for deploying the contracts */
-        web3Endpoint: yup.string().required()
+        web3Endpoint: yup.string().required(),
+        /** ENS base domain */
+        ensRootDomain: yup.string().required()
     }),
     wallet: yup.object({
         /** privateKey to be used (if set). Otherwise, the mnemonic and hdPath are used */

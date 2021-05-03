@@ -9,8 +9,9 @@ const { JsonRpcProvider } = providers
 
 // Global ENS registry and resolver for official ENS deployments (mainnet, goerli)
 const ENS_GLOBAL_REGISTRY = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
-const ENS_GLOBAL_PUBLIC_RESOLVER = "0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329"
-const ENS_RINKEBY_PUBLIC_RESOLVER = "0xf6305c19e814d2a75429Fd637d01F7ee0E77d615"
+const ENS_GOERLI_GLOBAL_PUBLIC_RESOLVER = "0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329"
+const ENS_MAINNET_GLOBAL_PUBLIC_RESOLVER = "0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41"
+const ENS_RINKEBY_GLOBAL_PUBLIC_RESOLVER = "0xf6305c19e814d2a75429Fd637d01F7ee0E77d615"
 // By default creating a process is free
 const DEFAULT_PROCESS_PRICE = utils.parseUnits("0", "ether")
 
@@ -49,16 +50,14 @@ else {
     rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: ENS_GLOBAL_REGISTRY }
 }
 
-
-
 const provider = new JsonRpcProvider(config.ethereum.web3Endpoint, rpcParams)
 const wallet = config.wallet.privateKey ?
     new Wallet(config.wallet.privateKey).connect(provider) :
     Wallet.fromMnemonic(config.wallet.mnemonic, config.wallet.hdPath).connect(provider)
 
 const ENS_DOMAIN_SUFFIX = config.vocdoni.environment == "prod" ?
-    ".vocdoni.eth" :
-    `.${config.vocdoni.environment}.vocdoni.eth`
+    config.ethereum.ensRootDomain :
+    `.${config.vocdoni.environment}.${config.ethereum.ensRootDomain}`
 
 // MAIN CODE
 
@@ -130,9 +129,11 @@ async function deployEnsContracts() {
     else {
         ensRegistry = ENS_GLOBAL_REGISTRY
         if (config.ethereum.networkId == "rinkeby") { // rinkeby
-            ensPublicResolver = ENS_RINKEBY_PUBLIC_RESOLVER
-        } else { // mainnet / goerli 
-            ensPublicResolver = ENS_GLOBAL_PUBLIC_RESOLVER
+            ensPublicResolver = ENS_RINKEBY_GLOBAL_PUBLIC_RESOLVER
+        } else if (config.ethereum.networkId == "goerli") { // goerli 
+            ensPublicResolver = ENS_GOERLI_GLOBAL_PUBLIC_RESOLVER
+        } else if (config.ethereum.networkId == "mainnet") { //mainnet
+            ensPublicResolver = ENS_MAINNET_GLOBAL_PUBLIC_RESOLVER
         }
         
     }
@@ -327,11 +328,12 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
         }
         const rootOwner = await ensRegistryInstance.owner(rootNode)
         console.log("Root owner", rootOwner)
-        const ethNode = await registerEnsNodeOwner("eth", "", rootNode, ensRegistryInstance)
-        vocdoniEthNode = await registerEnsNodeOwner("vocdoni", "eth", ethNode, ensRegistryInstance)
+        const splitDomain = config.ethereum.ensRootDomain.split(".")
+        const ethNode = await registerEnsNodeOwner(splitDomain[1], "", rootNode, ensRegistryInstance)
+        vocdoniEthNode = await registerEnsNodeOwner(splitDomain[0], splitDomain[1], ethNode, ensRegistryInstance)
     } else {
         // show vocdoni.eth owner 
-        vocdoniEthNode = namehash.hash("vocdoni.eth")
+        vocdoniEthNode = namehash.hash(config.ethereum.ensRootDomain)
         const rootOwner = await ensRegistryInstance.owner(rootNode)
         console.log("Root owner", rootOwner)
     }
@@ -339,27 +341,27 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     let entitiesVocdoniEthNode: string, processesVocdoniEthNode: string, genesisVocdoniEthNode: string, namespacesVocdoniEthNode: string, resultsVocdoniEthNode: string, proofsVocdoniEthNode: string, erc20ProofsVocdoniEthNode: string
 
     if (config.vocdoni.environment == "prod") {
-        entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
-        processesVocdoniEthNode = await registerEnsNodeOwner("processes", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
-        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
-        namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
-        resultsVocdoniEthNode = await registerEnsNodeOwner("results", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
-        proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
+        entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", `.${config.ethereum.ensRootDomain}`, vocdoniEthNode, ensRegistryInstance)
+        processesVocdoniEthNode = await registerEnsNodeOwner("processes", `.${config.ethereum.ensRootDomain}`, vocdoniEthNode, ensRegistryInstance)
+        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", `.${config.ethereum.ensRootDomain}`, vocdoniEthNode, ensRegistryInstance)
+        namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", `.${config.ethereum.ensRootDomain}`, vocdoniEthNode, ensRegistryInstance)
+        resultsVocdoniEthNode = await registerEnsNodeOwner("results", `.${config.ethereum.ensRootDomain}`, vocdoniEthNode, ensRegistryInstance)
+        proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", `.${config.ethereum.ensRootDomain}`, vocdoniEthNode, ensRegistryInstance)
 
-        erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", "proofs.vocdoni.eth", proofsVocdoniEthNode, ensRegistryInstance)
+        erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", `proofs.${config.ethereum.ensRootDomain}`, proofsVocdoniEthNode, ensRegistryInstance)
     }
     else {
         // "stg" or "dev"
-        const envVocdoniEthNode = await registerEnsNodeOwner(config.vocdoni.environment, "vocdoni.eth", vocdoniEthNode, ensRegistryInstance)
+        const envVocdoniEthNode = await registerEnsNodeOwner(config.vocdoni.environment, config.ethereum.ensRootDomain, vocdoniEthNode, ensRegistryInstance)
 
-        entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
-        processesVocdoniEthNode = await registerEnsNodeOwner("processes", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
-        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
-        namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
-        resultsVocdoniEthNode = await registerEnsNodeOwner("results", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
-        proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", config.vocdoni.environment + ".vocdoni.eth", envVocdoniEthNode, ensRegistryInstance)
+        entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", config.vocdoni.environment + `.${config.ethereum.ensRootDomain}`, envVocdoniEthNode, ensRegistryInstance)
+        processesVocdoniEthNode = await registerEnsNodeOwner("processes", config.vocdoni.environment + `.${config.ethereum.ensRootDomain}`, envVocdoniEthNode, ensRegistryInstance)
+        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", config.vocdoni.environment + `.${config.ethereum.ensRootDomain}`, envVocdoniEthNode, ensRegistryInstance)
+        namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", config.vocdoni.environment + `.${config.ethereum.ensRootDomain}`, envVocdoniEthNode, ensRegistryInstance)
+        resultsVocdoniEthNode = await registerEnsNodeOwner("results", config.vocdoni.environment + `.${config.ethereum.ensRootDomain}`, envVocdoniEthNode, ensRegistryInstance)
+        proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", config.vocdoni.environment + `.${config.ethereum.ensRootDomain}`, envVocdoniEthNode, ensRegistryInstance)
 
-        erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", "proofs." + config.vocdoni.environment + ".vocdoni.eth", proofsVocdoniEthNode, ensRegistryInstance)
+        erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", "proofs." + config.vocdoni.environment + `.${config.ethereum.ensRootDomain}`, proofsVocdoniEthNode, ensRegistryInstance)
     }
 
     console.log()
