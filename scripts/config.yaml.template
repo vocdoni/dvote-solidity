@@ -32,6 +32,7 @@ ethereum:
   web3Endpoint: https://dai.poa.network
   # web3Endpoint: https://sokol.poa.network
   # web3Endpoint: http://127.0.0.1:8545
+  ensRootDomain: "voc.eth"
 wallet:
   # privateKey is used when it is set. Otherwise, mnemonic and hdPath are used
   privateKey:

@@ -8,7 +8,7 @@ const GATEWAY_URL = process.env.GATEWAY_URL
 const MNEMONIC = process.env.MNEMONIC
 const PATH = "m/44'/60'/0'/0/0"
 const NETWORK_ID = "goerli"
-const entitiesDomain = "entities.dev.vocdoni.eth"
+const entitiesDomain = "entities.dev.voc.eth"
 
 const { abi: entityResolverAbi } = require("../build/entity-resolver.json")
 
