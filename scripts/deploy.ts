@@ -352,16 +352,17 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     }
     else {
         // "stg" or "dev"
+        const baseDomain = `${config.vocdoni.environment}.${config.ethereum.ensRootDomain}`
         const envVocdoniEthNode = await registerEnsNodeOwner(config.vocdoni.environment, config.ethereum.ensRootDomain, vocdoniEthNode, ensRegistryInstance)
-        const parentDomain = `${config.vocdoni.environment}.${config.ethereum.ensRootDomain}`
-        entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", parentDomain, envVocdoniEthNode, ensRegistryInstance)
-        processesVocdoniEthNode = await registerEnsNodeOwner("processes", parentDomain, envVocdoniEthNode, ensRegistryInstance)
-        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", parentDomain, envVocdoniEthNode, ensRegistryInstance)
-        namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", parentDomain, envVocdoniEthNode, ensRegistryInstance)
-        resultsVocdoniEthNode = await registerEnsNodeOwner("results", parentDomain, envVocdoniEthNode, ensRegistryInstance)
-        proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", parentDomain, envVocdoniEthNode, ensRegistryInstance)
 
-        erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", "proofs." + parentDomain, proofsVocdoniEthNode, ensRegistryInstance)
+        entitiesVocdoniEthNode = await registerEnsNodeOwner("entities", baseDomain, envVocdoniEthNode, ensRegistryInstance)
+        processesVocdoniEthNode = await registerEnsNodeOwner("processes", baseDomain, envVocdoniEthNode, ensRegistryInstance)
+        genesisVocdoniEthNode = await registerEnsNodeOwner("genesis", baseDomain, envVocdoniEthNode, ensRegistryInstance)
+        namespacesVocdoniEthNode = await registerEnsNodeOwner("namespaces", baseDomain, envVocdoniEthNode, ensRegistryInstance)
+        resultsVocdoniEthNode = await registerEnsNodeOwner("results", baseDomain, envVocdoniEthNode, ensRegistryInstance)
+        proofsVocdoniEthNode = await registerEnsNodeOwner("proofs", baseDomain, envVocdoniEthNode, ensRegistryInstance)
+
+        erc20ProofsVocdoniEthNode = await registerEnsNodeOwner("erc20", "proofs." + baseDomain, proofsVocdoniEthNode, ensRegistryInstance)
     }
 
     console.log()
