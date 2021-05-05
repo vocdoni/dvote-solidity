@@ -17,6 +17,7 @@ contract TokenStorageProof is ITokenStorageProof {
     string private constant ERROR_INVALID_BLOCK_HEADER = "INVALID_BLOCK_HEADER";
     string private constant ERROR_UNPROCESSED_STORAGE_ROOT = "UNPROCESSED_STORAGE_ROOT";
     string private constant ERROR_NOT_A_CONTRACT = "NOT_A_CONTRACT";
+    string private constant ERROR_TOKEN_NOT_SUPPORTED = "TOKEN_NOT_SUPPORTED";
     string private constant ERROR_NOT_ENOUGH_FUNDS = "NOT_ENOUGH_FUNDS";
     string private constant ERROR_ALREADY_REGISTERED = "ALREADY_REGISTERED";
     string private constant ERROR_NOT_REGISTERED = "NOT_REGISTERED";
@@ -42,6 +43,9 @@ contract TokenStorageProof is ITokenStorageProof {
     function registerToken(address tokenAddress, uint256 balanceMappingPosition) public override onlyHolder(tokenAddress) {
         // Check that the address is a contract
         require(ContractSupport.isContract(tokenAddress), ERROR_NOT_A_CONTRACT);
+
+        // Check contract supports balanceOf()
+        require(ContractSupport.supportsBalanceOf(tokenAddress), ERROR_TOKEN_NOT_SUPPORTED);
         
         // Check token not already registered
         require(!tokens[tokenAddress].registered, ERROR_ALREADY_REGISTERED);
