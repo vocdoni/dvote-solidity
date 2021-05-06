@@ -138,7 +138,9 @@ interface ITokenStorageProof {
     /// @notice Determines whether the given address is registered as an ERC token contract
     function isRegistered(address tokenAddress) external view returns (bool);
 
+    /// @notice Determines how many tokens are registered
+    function tokenCount() external view returns(uint256);
+
     // EVENTS
-    event TokenRegistered(address tokenAddress);
     event BalanceMappingPositionUpdated(address tokenAddress, uint256 balanceMappingPosition);
 }
