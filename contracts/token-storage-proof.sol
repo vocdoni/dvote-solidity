@@ -37,7 +37,6 @@ contract TokenStorageProof is ITokenStorageProof {
 
     mapping(address => ERC20Token) public tokens;
     address[] public tokenAddresses;
-    uint32 public tokenCount = 0;
 
     function registerToken(address tokenAddress, uint256 balanceMappingPosition) public override onlyHolder(tokenAddress) {
         // Check that the address is a contract
@@ -52,10 +51,10 @@ contract TokenStorageProof is ITokenStorageProof {
         newToken.balanceMappingPosition = balanceMappingPosition;
         tokenAddresses.push(tokenAddress);
         tokens[tokenAddress] = newToken;
-        tokenCount = tokenCount + 1;
-        
-        // Event
-        emit TokenRegistered(tokenAddress);
+    }
+
+    function tokenCount() public view override returns(uint256 count) {
+        return tokenAddresses.length;
     }
 
     function setVerifiedBalanceMappingPosition(
