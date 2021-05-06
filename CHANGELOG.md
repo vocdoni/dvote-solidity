@@ -1,5 +1,12 @@
 # DVote Solidity Changelog
 
+## 1.3.0
+
+- Token Storage Proof
+  - When registering a token any event is emitted
+  - Deleted `uint32 tokenCount` state variable
+  - Added `tokenCount()` function which returns the `tokenAddresses.length`
+
 ## 1.2.0
 
 - Token Storage Proof
