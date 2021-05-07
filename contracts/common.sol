@@ -139,7 +139,7 @@ interface ITokenStorageProof {
     function isRegistered(address tokenAddress) external view returns (bool);
 
     /// @notice Determines how many tokens are registered
-    function tokenCount() external view returns(uint256);
+    function tokenCount() external view returns(uint32);
 
     // EVENTS
     event BalanceMappingPositionUpdated(address tokenAddress, uint256 balanceMappingPosition);

@@ -1,5 +1,9 @@
 # DVote Solidity Changelog
 
+## 1.3.1
+
+- `tokenCount()` TokenStorageProof contract method wrapper returns `number`
+
 ## 1.3.0
 
 - Token Storage Proof
