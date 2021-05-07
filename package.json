@@ -5,7 +5,7 @@
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "scripts": {
-    "test": "./node_modules/.bin/mocha -r ts-node/register --timeout 5000 test/contracts/* test/wrappers/*",
+    "test": "./node_modules/.bin/mocha -r ts-node/register --timeout 5000 test/contracts/* test/wrappers/* && rm -rf ./blockchain-test-data",
     "build": "make all",
     "prepublishOnly": "make test"
   },

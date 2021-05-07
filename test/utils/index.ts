@@ -6,6 +6,7 @@ export const mnemonic = "myth like bonus scare over problem client lizard pionee
 const localProvider = new providers.Web3Provider(ganache.provider({
     time: new Date(),
     mnemonic,
+    db_path: "./blockchain-test-data"
 }))
 
 const wallets: Wallet[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(idx => {

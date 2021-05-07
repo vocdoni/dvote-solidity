@@ -8,3 +8,4 @@ contracts/vendor/rlp
 config.yaml
 .stamps
 .DS_Store
+blockchain-test-data
