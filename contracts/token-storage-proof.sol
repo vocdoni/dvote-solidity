@@ -53,8 +53,8 @@ contract TokenStorageProof is ITokenStorageProof {
         tokens[tokenAddress] = newToken;
     }
 
-    function tokenCount() public view override returns(uint256) {
-        return tokenAddresses.length;
+    function tokenCount() public view override returns(uint32) {
+        return uint32(tokenAddresses.length);
     }
 
     function setVerifiedBalanceMappingPosition(

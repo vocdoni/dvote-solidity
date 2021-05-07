@@ -44,7 +44,7 @@ describe("TokenStorageProof contract", () => {
         expect(tokenData[0]).to.be.false
         expect(tokenData[1]).to.be.false
 
-        expect((await contractInstance.tokenCount()).toNumber()).to.eq(0)
+        expect(await contractInstance.tokenCount()).to.eq(0)
         expect(() => contractInstance.tokenAddresses(0)).to.throw
 
         await contractInstance.connect(deployAccount.wallet).registerToken(
@@ -55,7 +55,7 @@ describe("TokenStorageProof contract", () => {
         const tokenData2 = await contractInstance.tokens(dummyTokenInstance.address)
         expect(tokenData2[0]).to.be.true
         expect(tokenData2[1]).to.be.false
-        expect((await contractInstance.tokenCount()).toNumber()).to.eq(1)
+        expect(await contractInstance.tokenCount()).to.eq(1)
         expect(await contractInstance.tokenAddresses(0)).to.deep.eq(dummyTokenInstance.address)
     })
 
@@ -68,7 +68,7 @@ describe("TokenStorageProof contract", () => {
         expect(tokenData[0]).to.be.false
         expect(tokenData[1]).to.be.false
 
-        expect((await contractInstance.tokenCount()).toNumber()).to.eq(0)
+        expect(await contractInstance.tokenCount()).to.eq(0)
         expect(() => contractInstance.tokenAddresses(0)).to.throw
 
         try {
@@ -81,7 +81,7 @@ describe("TokenStorageProof contract", () => {
         const tokenData2 = await contractInstance.tokens(dummyTokenInstance.address)
         expect(tokenData2[0]).to.be.false
         expect(tokenData2[1]).to.be.false
-        expect((await contractInstance.tokenCount()).toNumber()).to.eq(0)
+        expect(await contractInstance.tokenCount()).to.eq(0)
     })
 
     it("should set the balance mapping position only if the sender is token holder and the mapping position is not verified", async() => {
@@ -93,7 +93,7 @@ describe("TokenStorageProof contract", () => {
         expect(tokenData[0]).to.be.false
         expect(tokenData[1]).to.be.false
 
-        expect((await contractInstance.tokenCount()).toNumber()).to.eq(0)
+        expect(await contractInstance.tokenCount()).to.eq(0)
         expect(() => contractInstance.tokenAddresses(0)).to.throw
 
         await contractInstance.registerToken(

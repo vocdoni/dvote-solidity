@@ -274,7 +274,7 @@ export interface Erc20StorageProofContractMethods {
     tokenAddresses(idx: number): Promise<string>,
 
     /** Retrieves the amount of ERC20 tokens registered on the contract.  */
-    tokenCount(): Promise<BigNumber>,
+    tokenCount(): Promise<number>,
 
     /** Fetched the token data given a token address */
     tokens(tokenAddress: string): Promise<ITokenDataTuple>
