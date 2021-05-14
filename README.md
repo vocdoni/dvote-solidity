@@ -383,26 +383,26 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
   - Address: `0x00cEBf9E1E81D3CC17fbA0a49306EBA77a8F26cD`
 - Domains:
   - Production
-    - `entities.vocdoni.eth`
-    - `genesis.vocdoni.eth`
-    - `namespaces.vocdoni.eth`
-    - `processes.vocdoni.eth`
-    - `results.vocdoni.eth`
-    - `erc20.proofs.vocdoni.eth`
+    - `entities.voc.eth`
+    - `genesis.voc.eth`
+    - `namespaces.voc.eth`
+    - `processes.voc.eth`
+    - `results.voc.eth`
+    - `erc20.proofs.voc.eth`
   - Staging
-    - `entities.stg.vocdoni.eth`
-    - `genesis.stg.vocdoni.eth`
-    - `namespaces.stg.vocdoni.eth`
-    - `processes.stg.vocdoni.eth`
-    - `results.stg.vocdoni.eth`
-    - `erc20.proofs.stg.vocdoni.eth`
+    - `entities.stg.voc.eth`
+    - `genesis.stg.voc.eth`
+    - `namespaces.stg.voc.eth`
+    - `processes.stg.voc.eth`
+    - `results.stg.voc.eth`
+    - `erc20.proofs.stg.voc.eth`
   - Development
-    - `entities.dev.vocdoni.eth`
-    - `genesis.dev.vocdoni.eth`
-    - `namespaces.dev.vocdoni.eth`
-    - `processes.dev.vocdoni.eth`
-    - `results.dev.vocdoni.eth`
-    - `erc20.proofs.dev.vocdoni.eth`
+    - `entities.dev.voc.eth`
+    - `genesis.dev.voc.eth`
+    - `namespaces.dev.voc.eth`
+    - `processes.dev.voc.eth`
+    - `results.dev.voc.eth`
+    - `erc20.proofs.dev.voc.eth`
 
 <!--
 ### Sokol
@@ -411,18 +411,18 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
   - Address: `0xDb6C74071116D17a47D9c191cbE6d640111Ee5C2`
 - ENS Resolver:
   - Address: `0xf3c50b2f86C0FC53e06CeaB88236BB404c3F2F9d`
-  - Domain: `entities.vocdoni.eth`
+  - Domain: `entities.voc.eth`
 - Process:
   - Address: `0xd92D591322A2375C1F010DF36FFC23257c71a418`
-  - Domain: `processes.vocdoni.eth`
+  - Domain: `processes.voc.eth`
   - Predecessor: `0x0000000000000000000000000000000000000000`
 - Token Storage Proofs:
   - ERC20
     - Address: `0xeA2bafa402AbDF2888eB23224df998FaF8AA79a8`
-    - Domain: `erc20.proofs.vocdoni.eth`
+    - Domain: `erc20.proofs.voc.eth`
 - Namespace:
   - Address: `0xC9d39F57a14FadA742c69FF7EDaB2C965e933921`
-  - Domain: `namespaces.vocdoni.eth`
+  - Domain: `namespaces.voc.eth`
 -->
 
 ### Goerli
@@ -433,12 +433,12 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
   - Address: `0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329`
 - Domains:
   - Development
-    - `entities.dev.vocdoni.eth`
-    - `genesis.dev.vocdoni.eth`
-    - `namespaces.dev.vocdoni.eth`
-    - `processes.dev.vocdoni.eth`
-    - `results.dev.vocdoni.eth`
-    - `erc20.proofs.dev.vocdoni.eth`
+    - `entities.dev.voc.eth`
+    - `genesis.dev.voc.eth`
+    - `namespaces.dev.voc.eth`
+    - `processes.dev.voc.eth`
+    - `results.dev.voc.eth`
+    - `erc20.proofs.dev.voc.eth`
 
 ### Rinkeby
 
@@ -448,9 +448,9 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
   - Address: `0xf6305c19e814d2a75429Fd637d01F7ee0E77d615`
 - Domains:
   - Development
-    - `entities.dev.vocdoni.eth`
-    - `genesis.dev.vocdoni.eth`
-    - `namespaces.dev.vocdoni.eth`
-    - `processes.dev.vocdoni.eth`
-    - `results.dev.vocdoni.eth`
-    - `erc20.proofs.dev.vocdoni.eth`
+    - `entities.dev.voc.eth`
+    - `genesis.dev.voc.eth`
+    - `namespaces.dev.voc.eth`
+    - `processes.dev.voc.eth`
+    - `results.dev.voc.eth`
+    - `erc20.proofs.dev.voc.eth`
