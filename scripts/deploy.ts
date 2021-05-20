@@ -49,6 +49,9 @@ else if (config.ethereum.networkId == "sokol") {
     transactionOptions.gasPrice = utils.parseUnits("1", "gwei")
     rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: config.contracts.sokol.ensRegistry }
 }
+else if (config.ethereum.networkId == "matic") {
+    rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: config.contracts.matic.ensRegistry }
+}
 else {
     rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: ENS_GLOBAL_REGISTRY }
 }
@@ -95,7 +98,7 @@ async function deployEnsContracts() {
     console.log("ENS contracts")
 
     // Deploy the ENS registry and resolver (if relevant)
-    if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol") {
+    if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol" || config.ethereum.networkId == "matic") {
         const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
 
         if (config.features.ensRegistry) {
@@ -320,7 +323,7 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
 
     let vocdoniEthNode: string
     // if sokol or xdai set registry owner and register .eth TLD and voc.eth domain
-    if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol") {
+    if (config.ethereum.networkId == "xdai" || config.ethereum.networkId == "sokol" || config.ethereum.networkId == "matic") {
         // Check that the root is registered correctly
         if ((await ensRegistryInstance.owner(rootNode)) != wallet.address) {
             const tx = await ensRegistryInstance.setOwner(rootNode, wallet.address)
