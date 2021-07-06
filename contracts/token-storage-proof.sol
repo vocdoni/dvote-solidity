@@ -23,6 +23,7 @@ contract TokenStorageProof is ITokenStorageProof {
     string private constant ERROR_ALREADY_VERIFIED = "ALREADY_VERIFIED";
     string private constant ERROR_INVALID_ADDRESS = "INVALID_ADDRESS";
     string private constant ERROR_SAME_VALUE = "SAME_VALUE";
+    string private constant ERROR_MISMATCH_VALUE = "MISMATCH_VALUE";
 
     modifier onlyHolder(address tokenAddress) {
         _isHolder(tokenAddress, msg.sender);
@@ -85,8 +86,8 @@ contract TokenStorageProof is ITokenStorageProof {
             balanceMappingPosition
         );
 
-        // Check balance obtained > 0 
-        require(balanceFromTrie > 0, ERROR_NOT_ENOUGH_FUNDS);
+        // Check balance obtained from the proof matches with the balanceOf call
+        require(balanceFromTrie == IERC20(tokenAddress).balanceOf(msg.sender), ERROR_MISMATCH_VALUE);
         
         // Modify storage
         tokens[tokenAddress].verified = true;
