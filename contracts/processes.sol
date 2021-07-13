@@ -48,17 +48,19 @@ contract Processes is IProcessStore, Chained {
     Process Mode flags
     The process mode defines how the process behaves externally. It affects both the Vochain, the contract itself, the metadata and the census origin.
 
-    0b00001111
-          ||||
-          |||`- autoStart
-          ||`-- interruptible
-          |`--- dynamicCensus
-          `---- encryptedMetadata
+    0b00011111
+         |||||
+         ||||`- autoStart
+         |||`-- interruptible
+         ||`--- dynamicCensus
+         |`---- encryptedMetadata
+         `----- preregister
     */
     uint8 internal constant MODE_AUTO_START = 1 << 0;
     uint8 internal constant MODE_INTERRUPTIBLE = 1 << 1;
     uint8 internal constant MODE_DYNAMIC_CENSUS = 1 << 2;
     uint8 internal constant MODE_ENCRYPTED_METADATA = 1 << 3;
+    uint8 internal constant MODE_PREREGISTER = 1 << 4;
 
     /*
     Envelope Type flags
