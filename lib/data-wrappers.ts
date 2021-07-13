@@ -13,7 +13,7 @@ export type IProcessMode = number
 export class ProcessMode {
     private _mode: IProcessMode
     constructor(processMode: IProcessMode) {
-        const allFlags = ProcessMode.AUTO_START | ProcessMode.INTERRUPTIBLE | ProcessMode.DYNAMIC_CENSUS | ProcessMode.ENCRYPTED_METADATA
+        const allFlags = ProcessMode.AUTO_START | ProcessMode.INTERRUPTIBLE | ProcessMode.DYNAMIC_CENSUS | ProcessMode.ENCRYPTED_METADATA | ProcessMode.PREREGISTER
         if (processMode > allFlags) throw new Error("Invalid process mode")
 
         this._mode = processMode
@@ -28,14 +28,17 @@ export class ProcessMode {
     public static DYNAMIC_CENSUS: IProcessMode = 1 << 2
     /** By default, the metadata is not encrypted. If set, clients should fetch the decryption key before trying to display the metadata. */
     public static ENCRYPTED_METADATA: IProcessMode = 1 << 3
+    /** By default, preregister is disabled. If set, clients will need to register their ZK-Snark friendly key before the process starts. */
+    public static PREREGISTER: IProcessMode = 1 << 4
 
     /** Returns the value that represents the given process mode */
-    public static make(flags: { autoStart?: boolean, interruptible?: boolean, dynamicCensus?: boolean, encryptedMetadata?: boolean } = {}): IProcessMode {
+    public static make(flags: { autoStart?: boolean, interruptible?: boolean, dynamicCensus?: boolean, encryptedMetadata?: boolean, preregister?: boolean } = {}): IProcessMode {
         let result = 0
         result |= flags.autoStart ? ProcessMode.AUTO_START : 0
         result |= flags.interruptible ? ProcessMode.INTERRUPTIBLE : 0
         result |= flags.dynamicCensus ? ProcessMode.DYNAMIC_CENSUS : 0
         result |= flags.encryptedMetadata ? ProcessMode.ENCRYPTED_METADATA : 0
+        result |= flags.preregister ? ProcessMode.PREREGISTER : 0
         return result
     }
 
@@ -47,6 +50,8 @@ export class ProcessMode {
     get hasDynamicCensus(): boolean { return (this._mode & ProcessMode.DYNAMIC_CENSUS) != 0 }
     /** Returns true if the process metadata is expected to be encrypted. */
     get hasEncryptedMetadata(): boolean { return (this._mode & ProcessMode.ENCRYPTED_METADATA) != 0 }
+    /** Returns true if voters are required to register before the process starts. */
+    get hasPreregister(): boolean { return (this._mode & ProcessMode.PREREGISTER) != 0 }
 }
 
 // PROCESS ENVELOPE TYPE
@@ -80,7 +85,7 @@ export class ProcessEnvelopeType {
         result |= flags.anonymousVoters ? ProcessEnvelopeType.ANONYMOUS : 0
         result |= flags.encryptedVotes ? ProcessEnvelopeType.ENCRYPTED_VOTES : 0
         result |= flags.uniqueValues ? ProcessEnvelopeType.UNIQUE_VALUES : 0
-        result |= flags.costFromWeight ? ProcessEnvelopeType.COST_FROM_WEIGHT: 0
+        result |= flags.costFromWeight ? ProcessEnvelopeType.COST_FROM_WEIGHT : 0
         return result
     }
 
@@ -93,7 +98,7 @@ export class ProcessEnvelopeType {
     /** Returns true if choices must be unique per question. */
     get hasUniqueValues(): boolean { return (this._type & ProcessEnvelopeType.UNIQUE_VALUES) != 0 }
     /** Returns true if cost from weight is activated */
-    get hasCostFromWeight(): boolean { return (this._type & ProcessEnvelopeType.COST_FROM_WEIGHT) != 0}
+    get hasCostFromWeight(): boolean { return (this._type & ProcessEnvelopeType.COST_FROM_WEIGHT) != 0 }
 }
 
 // PROCESS CENSUS ORIGIN

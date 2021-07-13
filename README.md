@@ -208,12 +208,13 @@ Behaviour is defined by the flags on these variables:
 The process mode affects both the Vochain, the contract itself and even the metadata.
 
 ```
-0b00001111
-      ||||
-      |||`- autoStart
-      ||`-- interruptible
-      |`--- dynamicCensus
-      `---- encryptedMetadata
+0b00011111
+     |||||
+     ||||`- autoStart
+     |||`-- interruptible
+     ||`--- dynamicCensus
+     |`---- encryptedMetadata
+     `----- preregister
 ```
 
 ### autoStart
@@ -243,6 +244,11 @@ The process mode affects both the Vochain, the contract itself and even the meta
 
 It requires a prior process to share the encryption key with the users that will have the rights to read the data. This will be likely be handled by the `User Registry`
 
+### preregister
+
+- `false` ⇒ Eligible voters do not need to preregister a derived key required for anonymous voting, as long as they are part of the census the vote will be casted using each voter public key for signing the envelope. This option is used when anonymous voting is not required.
+- `true` ⇒ Eligible voters need to use a login (ECDSA) key to register a ZK-Snark friendly key before the process starts. The new key will be used when casting the actual vote.
+
 ### JavaScript wrapper
 
 A JavaScript wrapper is available for convenience
@@ -254,21 +260,23 @@ ProcessMode.AUTO_START // => 1
 ProcessMode.INTERRUPTIBLE // => 2
 ProcessMode.DYNAMIC_CENSUS // => 4
 ProcessMode.ENCRYPTED_METADATA // => 8
+ProcessMode.PREREGISTER // => 16
 
 // Also
 mode = ProcessMode.make({})
 // => 0
 mode = ProcessMode.make({ autoStart: false, interruptible: false, dynamicCensus: false, encryptedMetadata: false })
 // => 0
-mode = ProcessMode.make({ autoStart: true, interruptible: true, dynamicCensus: true, encryptedMetadata: true })
-// => 15
+mode = ProcessMode.make({ autoStart: true, interruptible: true, dynamicCensus: true, encryptedMetadata: true, preregister: true })
+// => 31
 
 // And also
-const pMode = new ProcessMode(15)
+const pMode = new ProcessMode(31)
 pMode.isAutoStart // true
 pMode.isInterruptible // true
 pMode.hasDynamicCensus // true
 pMode.hasEncryptedMetadata // true
+pMode.hasPreregister // true
 ```
 
 ## Envelope Type
