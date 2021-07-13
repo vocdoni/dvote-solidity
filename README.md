@@ -246,7 +246,7 @@ It requires a prior process to share the encryption key with the users that will
 
 ### preregister
 
-- `false` ⇒ Eligible voters do not need to preregister a derived key required for anonymous voting, as long as they are part of the census the vote will be casted using each voter public key for signing the envelope. This option is used when anonymous voting is not required.
+- `false` ⇒ Eligible voters can vote right away. As long as they are part of the census, the vote will be casted by signing the envelope. No need to preregister a derived key for anonymous voting. Set this flag to false when anonymous voting is not required.
 - `true` ⇒ Eligible voters need to use a login (ECDSA) key to register a ZK-Snark friendly key before the process starts. The new key will be used when casting the actual vote.
 
 ### JavaScript wrapper
