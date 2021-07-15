@@ -1,12 +1,15 @@
 import { expect } from "chai"
-import { BigNumber, Contract, ContractFactory, ContractTransaction } from "ethers"
+import { BigNumber, Contract, ContractFactory, ContractTransaction, utils } from "ethers"
 import "mocha" // using @types/mocha
 import { abi as tokenStorageProofAbi, bytecode as tokenStorageProofByteCode } from "../../build/token-storage-proof.json"
-import { Erc20StorageProofContractMethods } from "../../lib"
+import { abi as trieProofTestAbi, bytecode as trieProofTestByteCode } from "../../build/test/trie-proof.json"
+import { Erc20StorageProofContractMethods, TrieProofTestContractMethods  } from "../../lib"
 import ERC20MockBuilder from "../builders/erc20Mock"
 import TokenStorageProofBuilder from "../builders/token-storage-proof"
+import { TrieProofTestBuilder } from "../builders/token-storage-proof"
 import { getAccounts, TestAccount } from "../utils"
 import { addCompletionHooks } from "../utils/mocha-hooks"
+import { testProofs } from "../vectors/token-storage-proof"
 
 let accounts: TestAccount[]
 let deployAccount: TestAccount
@@ -143,5 +146,44 @@ describe("TokenStorageProof contract", () => {
         expect(result).to.be.ok
         expect(result.tokenAddress).to.equal(dummyTokenInstance.address)
         expect(result.balanceMappingPosition).to.be.deep.equal(BigNumber.from(5))
+    })
+})
+
+describe("TrieProof library", () => {
+    beforeEach(async () => {
+        accounts = getAccounts()
+        deployAccount = accounts[0]
+    })
+
+    it("should deploy the contract", async () => {
+        const trieProofTestContractInstance = await new TrieProofTestBuilder().build()
+        expect(trieProofTestContractInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+
+        const contractFactory = new ContractFactory(trieProofTestAbi, trieProofTestByteCode, deployAccount.wallet)
+        const localInstance: Contract & TrieProofTestContractMethods = await contractFactory.deploy() as Contract & TrieProofTestContractMethods
+
+        expect(localInstance).to.be.ok
+        expect(localInstance.address).to.match(/^0x[0-9a-fA-F]{40}$/)
+    })
+
+    it("should verify the proofs", async () => {
+        const trieProofTestContractInstance = await new TrieProofTestBuilder().build()
+        for (let i = 0; i < testProofs.length; i++) {
+            const p = testProofs[i]
+
+            const proofRaw = p.proofs.map(node => utils.RLP.decode(node))
+            const proof = utils.RLP.encode(proofRaw)
+            const rootHash = utils.keccak256(utils.RLP.encode(proofRaw[0]))
+            const key = utils.keccak256(p.key)
+            const value = await trieProofTestContractInstance.verify(proof, rootHash, key)
+            if (p.value.length % 2 != 0) {
+                p.value = `0x0${p.value.slice(2)}` // make value even-length
+            }
+            if (p.verify) {
+                expect(value).to.equal(p.value)
+            } else {
+                expect(value).to.not.equal(p.value)
+            }
+        }
     })
 })
