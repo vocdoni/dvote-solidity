@@ -9,10 +9,19 @@ TSC := ./node_modules/.bin/tsc
 TS_SOURCES := $(wildcard lib/*.ts)
 # JS_TARGETS = $(patsubst lib/%.ts, build/%.js, $(TS_SOURCES))
 VOTING_CONTRACTS = $(wildcard contracts/*.sol)
+TEST_CONTRACTS = $(wildcard contracts/test/*.sol)
 ENS_CONTRACTS = $(wildcard contracts/vendor/registry/*.sol contracts/vendor/resolver/*.sol)
 
 # Declare new contract artifacts on `build/solc` here
-ARTIFACT_BASE_NAMES = contracts_vendor_registry_ENSRegistry_sol_ENSRegistry contracts_vendor_resolver_PublicResolver_sol_PublicResolver contracts_genesis_sol_Genesis contracts_namespaces_sol_Namespaces contracts_processes_sol_Processes contracts_results_sol_Results contracts_token-storage-proof_sol_TokenStorageProof
+ARTIFACT_BASE_NAMES = \
+		      contracts_vendor_registry_ENSRegistry_sol_ENSRegistry \
+		      contracts_vendor_resolver_PublicResolver_sol_PublicResolver \
+		      contracts_genesis_sol_Genesis \
+		      contracts_namespaces_sol_Namespaces \
+		      contracts_processes_sol_Processes \
+		      contracts_results_sol_Results \
+		      contracts_token-storage-proof_sol_TokenStorageProof \
+		      contracts_test_trie-proof_sol_TrieProofTest
 
 SOLC_ABI_ARTIFACTS := $(patsubst %, build/solc/%.abi, $(ARTIFACT_BASE_NAMES))
 SOLC_BIN_ARTIFACTS := $(patsubst %, build/solc/%.bin, $(ARTIFACT_BASE_NAMES))
@@ -26,6 +35,7 @@ NAMESPACES_ARTIFACT_PREFIX = $(filter %_sol_Namespaces, $(SOLC_ARTIFACT_PREFIXES
 PROCESSES_ARTIFACT_PREFIX = $(filter %_sol_Processes, $(SOLC_ARTIFACT_PREFIXES))
 RESULTS_ARTIFACT_PREFIX = $(filter %_sol_Results, $(SOLC_ARTIFACT_PREFIXES))
 TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProof, $(SOLC_ARTIFACT_PREFIXES))
+TRIE_PROOF_TEST_ARTIFACT_PREFIX = $(filter %_sol_TrieProofTest, $(SOLC_ARTIFACT_PREFIXES))
 
 #-----------------------------------------------------------------------
 # HELP
@@ -67,10 +77,19 @@ node_modules: package.json
 
 
 # Add new contract target files here
-contract-objects: build/ens-registry.json build/ens-resolver.json build/processes.json build/results.json build/genesis.json build/namespaces.json build/token-storage-proof.json
+contract-objects: \
+	build/ens-registry.json \
+	build/ens-resolver.json \
+	build/processes.json \
+	build/results.json \
+	build/genesis.json \
+	build/namespaces.json \
+	build/token-storage-proof.json \
+	build/test/trie-proof.json
 
 build:
 	@mkdir -p build
+	@mkdir -p build/test
 	@touch $@
 
 javascript: build/index.js
@@ -116,6 +135,11 @@ build/token-storage-proof.json: $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).abi $(TOK
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX).bin)\"}" > $@
 
+build/test/trie-proof.json: $(TRIE_PROOF_TEST_ARTIFACT_PREFIX).abi $(TRIE_PROOF_TEST_ARTIFACT_PREFIX).bin
+	@stat $^ > /dev/null
+	@echo "Building $@"
+	echo "{\"abi\":$$(cat $(TRIE_PROOF_TEST_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(TRIE_PROOF_TEST_ARTIFACT_PREFIX).bin)\"}" > $@
+
 $(SOLC_ABI_ARTIFACTS): build/solc
 $(SOLC_BIN_ARTIFACTS): build/solc
 
@@ -127,10 +151,11 @@ contracts/vendor/openzeppelin: node_modules
 	ln -s ../../node_modules/@openzeppelin/contracts $@
 
 # Intermediate solidity compiled artifacts
-build/solc: $(VOTING_CONTRACTS) $(ENS_CONTRACTS) contracts/vendor
+build/solc: $(VOTING_CONTRACTS) $(TEST_CONTRACTS) $(ENS_CONTRACTS) contracts/vendor
 	@echo "Building contracts"
 	mkdir -p $@
 	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD} $(VOTING_CONTRACTS)
+	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD} $(TEST_CONTRACTS)
 	$(SOLC) --optimize --bin --abi -o $@ --base-path ${PWD}/contracts/vendor $(ENS_CONTRACTS)
 	@touch $@
 
