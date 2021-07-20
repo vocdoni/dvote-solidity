@@ -13,6 +13,7 @@ features:
   proofs:
     erc20: false
   setDomains: true   # update the ENS addresses
+  archiveRecord: "QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd" # process archive record
 contracts:
   xdai:
     ensRegistry: "0x00cEBf9E1E81D3CC17fbA0a49306EBA77a8F26cD"
