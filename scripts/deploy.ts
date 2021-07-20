@@ -462,6 +462,17 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     }
 
     console.log("ENS Text of", entityId, BOOTNODES_KEY, "is", await entityResolverInstance.text(entityId, BOOTNODES_KEY))
+
+    // set the archive key on the entity of Vocdoni
+    const ARCHIVE_KEY = "vnd.vocdoni.archive"
+    if (config.features.archiveRecord != "") {
+        tx = await entityResolverInstance.setText(entityId, ARCHIVE_KEY, config.features.archiveRecord, transactionOptions)
+        await tx.wait()
+    } else {
+        console.log("Process archive record is empty, no ENS text entry will be set")
+    }
+
+    console.log("ENS Text of", entityId, ARCHIVE_KEY, "is", await entityResolverInstance.text(entityId, ARCHIVE_KEY))
 }
 
 /** Creates a (sub) domain within parentNode and returns the registered node hash */

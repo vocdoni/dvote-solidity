@@ -52,6 +52,7 @@ const configSchema = yup.object({
         }),
         /** Ensure that all domains point to the last deployed version */
         setDomains: yup.boolean().required(),
+        archiveRecord: yup.string(),
     }),
     contracts: yup.object({
         xdai: yup.object({
