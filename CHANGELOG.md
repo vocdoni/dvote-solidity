@@ -1,5 +1,10 @@
 # DVote Solidity Changelog
 
+## 1.4.0
+
+- Adding support for Matic/Polygon
+- Adding the `preRegister` flag to the process Mode
+
 ## 1.3.1
 
 - `tokenCount()` TokenStorageProof contract method wrapper returns `number`
