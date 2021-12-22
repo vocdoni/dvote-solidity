@@ -73,11 +73,24 @@ const configSchema = yup.object({
             /** The address of the ENS public resolver contract. If empty or 0x0, a new one has to be deployed. */
             ensResolver: yup.string().optional().nullable(),
         }),
+        avalanche: yup.object({
+            /** The address of the ENS registry contract. If empty or 0x0, a new registry has to be deployed. */
+            ensRegistry: yup.string().optional().nullable(),
+            /** The address of the ENS public resolver contract. If empty or 0x0, a new one has to be deployed. */
+            ensResolver: yup.string().optional().nullable(),
+        }),
+        fuji: yup.object({
+            /** The address of the ENS registry contract. If empty or 0x0, a new registry has to be deployed. */
+            ensRegistry: yup.string().optional().nullable(),
+            /** The address of the ENS public resolver contract. If empty or 0x0, a new one has to be deployed. */
+            ensResolver: yup.string().optional().nullable(),
+        }),
+
         // mainnet, goerli, ropsten, etc use the official ENS contracts
     }),
     ethereum: yup.object({
         /** The Ethereum network ID being used */
-        networkId: yup.string().oneOf(["mainnet", "goerli", "xdai", "sokol", "rinkeby", "matic", "unknown"]).required(),
+        networkId: yup.string().oneOf(["mainnet", "goerli", "xdai", "sokol", "rinkeby", "matic", "unknown", "avalanche", "fuji"]).required(),
         /** The Ethereum chain ID being used */
         chainId: yup.number().min(0).required(),
         /** The Web3 endpoint to use for deploying the contracts */
