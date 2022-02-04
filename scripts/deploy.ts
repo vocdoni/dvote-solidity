@@ -1,5 +1,5 @@
 import * as namehash from "eth-ens-namehash"
-import { Contract, ContractFactory, ContractTransaction, providers, utils, Wallet } from "ethers"
+import { BigNumber, Contract, ContractFactory, ContractTransaction, providers, utils, Wallet } from "ethers"
 import * as readline from 'readline'
 import { keccak256 } from "web3-utils"
 import { ensHashAddress, EnsRegistryContractMethods, EnsResolverContractMethods, Erc20StorageProofContractMethods, GenesisContractMethods, NamespacesContractMethods, ProcessesContractMethods, ResultsContractMethods } from "../lib"
@@ -61,6 +61,18 @@ const wallet = config.wallet.privateKey ?
     new Wallet(config.wallet.privateKey).connect(provider) :
     Wallet.fromMnemonic(config.wallet.mnemonic, config.wallet.hdPath).connect(provider)
 
+// do not use on mainnet if you do not know what you're doing
+async function getTransactionOptions(): Promise<any> {
+    let blockNum = await provider.getBlockNumber()
+    let block = await provider.getBlock(blockNum)
+    let maxPriorityFeePerGas = BigNumber.from("100000000000");
+    block.baseFeePerGas = block.baseFeePerGas.mul(2)
+    transactionOptions.maxPriorityFeePerGas = maxPriorityFeePerGas
+    transactionOptions.maxFeePerGas = block.baseFeePerGas.mul(2).add(maxPriorityFeePerGas)
+    transactionOptions.nonce = await wallet.getTransactionCount()
+    return transactionOptions
+}
+
 // MAIN CODE
 
 async function main() {
@@ -102,7 +114,7 @@ async function deployEnsContracts() {
         const ensRegistryFactory = new ContractFactory(ENSRegistryAbi, ENSRegistryBytecode, wallet)
 
         if (config.features.ensRegistry) {
-            const ensRegistryContract = await ensRegistryFactory.deploy(transactionOptions)
+            const ensRegistryContract = await ensRegistryFactory.deploy(await getTransactionOptions())
             const ensRegistryInstance = await ensRegistryContract.deployed() as Contract & EnsRegistryContractMethods
             ensRegistry = ensRegistryInstance.address
 
@@ -117,7 +129,7 @@ async function deployEnsContracts() {
         if (config.features.ensResolver) {
             // ENS Public resolver
             const ensPublicResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
-            const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistry, transactionOptions)
+            const ensPublicResolverContract = await ensPublicResolverFactory.deploy(ensRegistry, await getTransactionOptions())
             const ensPublicResolverInstance = await ensPublicResolverContract.deployed() as Contract & EnsResolverContractMethods
             ensPublicResolver = ensPublicResolverInstance.address
             console.log("✅ ENS Public Resolver deployed at", ensPublicResolver)
@@ -145,7 +157,7 @@ async function deployEnsContracts() {
     if (config.features.entityResolver) {
         // Entity resolver
         const entityResolverFactory = new ContractFactory(ENSPublicResolverAbi, ENSPublicResolverBytecode, wallet)
-        const entityResolverContract = await entityResolverFactory.deploy(ensRegistry, transactionOptions)
+        const entityResolverContract = await entityResolverFactory.deploy(ensRegistry, await getTransactionOptions())
         const entityResolverInstance = await entityResolverContract.deployed() as Contract & EnsResolverContractMethods
         entityResolver = entityResolverInstance.address
 
@@ -154,7 +166,6 @@ async function deployEnsContracts() {
     else {
         // Using the current domain address
         entityResolver = await provider.resolveName("entities." + ENS_DOMAIN_SUFFIX)
-
         console.log("ℹ️  Using the existing entityResolver at", entityResolver)
     }
 
@@ -177,7 +188,7 @@ async function deployCoreContracts() {
 
         // ERC Storage Proof
         const tokenStorageProofFactory = new ContractFactory(tokenStorageProofAbi, tokenStorageProofBytecode, wallet)
-        const tokenStorageProofContract = await tokenStorageProofFactory.deploy(transactionOptions)
+        const tokenStorageProofContract = await tokenStorageProofFactory.deploy(await getTransactionOptions())
         const tokenStorageProofInstance = await tokenStorageProofContract.deployed() as Contract & Erc20StorageProofContractMethods
         erc20Proofs = tokenStorageProofInstance.address
 
@@ -185,7 +196,6 @@ async function deployCoreContracts() {
     }
     else {
         erc20Proofs = await provider.resolveName("erc20.proofs." + ENS_DOMAIN_SUFFIX)
-
         console.log("ℹ️  Using the existing ERC20 storage proofs at", erc20Proofs)
     }
 
@@ -194,7 +204,7 @@ async function deployCoreContracts() {
         if (!await confirmStep("Do you want to continue?")) process.exit(1)
 
         const genesisFactory = new ContractFactory(genesisAbi, genesisByteCode, wallet)
-        const genesisContract = await genesisFactory.deploy(transactionOptions)
+        const genesisContract = await genesisFactory.deploy(await getTransactionOptions())
         const genesisInstance = await genesisContract.deployed() as Contract & GenesisContractMethods
         genesis = genesisInstance.address
 
@@ -202,7 +212,6 @@ async function deployCoreContracts() {
     }
     else {
         genesis = await provider.resolveName("genesis." + ENS_DOMAIN_SUFFIX)
-
         console.log("ℹ️  Using the existing genesis at", genesis)
     }
 
@@ -211,7 +220,7 @@ async function deployCoreContracts() {
         if (!await confirmStep("Do you want to continue?")) process.exit(1)
 
         const namespacesFactory = new ContractFactory(namespaceAbi, namespaceByteCode, wallet)
-        const namespacesContract = await namespacesFactory.deploy(transactionOptions)
+        const namespacesContract = await namespacesFactory.deploy(await getTransactionOptions())
         const namespacesInstance = await namespacesContract.deployed() as Contract & NamespacesContractMethods
         namespaces = namespacesInstance.address
 
@@ -219,7 +228,6 @@ async function deployCoreContracts() {
     }
     else {
         namespaces = await provider.resolveName("namespaces." + ENS_DOMAIN_SUFFIX)
-
         console.log("ℹ️  Using the existing namespaces at", namespaces)
     }
 
@@ -229,7 +237,7 @@ async function deployCoreContracts() {
         console.warn("\n⚠️  IMPORTANT:\nBy deploying a new Results contract, the currently registered Process results may become unavailable.")
         if (!await confirmStep("Do you want to continue?")) process.exit(1)
 
-        const resultsContract = await resultsFactory.deploy(genesis, transactionOptions)
+        const resultsContract = await resultsFactory.deploy(genesis, await getTransactionOptions())
         resultsInstance = await resultsContract.deployed() as Contract & ResultsContractMethods
         results = resultsInstance.address
 
@@ -264,7 +272,7 @@ async function deployCoreContracts() {
 
         // Process
         const processFactory = new ContractFactory(VotingProcessAbi, VotingProcessBytecode, wallet)
-        const processContract = await processFactory.deploy(predecessorContractAddress, namespaces, results, erc20Proofs, config.ethereum.chainId, DEFAULT_PROCESS_PRICE, transactionOptions)
+        const processContract = await processFactory.deploy(predecessorContractAddress, namespaces, results, erc20Proofs, config.ethereum.chainId, DEFAULT_PROCESS_PRICE, await getTransactionOptions())
         const processInstance = await processContract.deployed() as Contract & ProcessesContractMethods
         processes = processInstance.address
 
@@ -375,31 +383,31 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
 
     // set the resolvers
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(entitiesVocdoniEthNode)) {
-        tx = await ensRegistryInstance.setResolver(entitiesVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        tx = await ensRegistryInstance.setResolver(entitiesVocdoniEthNode, ensPublicResolverInstance.address, await getTransactionOptions())
         await tx.wait()
     }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(processesVocdoniEthNode)) {
-        tx = await ensRegistryInstance.setResolver(processesVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        tx = await ensRegistryInstance.setResolver(processesVocdoniEthNode, ensPublicResolverInstance.address, await getTransactionOptions())
         await tx.wait()
     }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(genesisVocdoniEthNode)) {
-        tx = await ensRegistryInstance.setResolver(genesisVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        tx = await ensRegistryInstance.setResolver(genesisVocdoniEthNode, ensPublicResolverInstance.address, await getTransactionOptions())
         await tx.wait()
     }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(namespacesVocdoniEthNode)) {
-        tx = await ensRegistryInstance.setResolver(namespacesVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        tx = await ensRegistryInstance.setResolver(namespacesVocdoniEthNode, ensPublicResolverInstance.address, await getTransactionOptions())
         await tx.wait()
     }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(resultsVocdoniEthNode)) {
-        tx = await ensRegistryInstance.setResolver(resultsVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        tx = await ensRegistryInstance.setResolver(resultsVocdoniEthNode, ensPublicResolverInstance.address, await getTransactionOptions())
         await tx.wait()
     }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(proofsVocdoniEthNode)) {
-        tx = await ensRegistryInstance.setResolver(proofsVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        tx = await ensRegistryInstance.setResolver(proofsVocdoniEthNode, ensPublicResolverInstance.address, await getTransactionOptions())
         await tx.wait()
     }
     if (ensPublicResolverInstance.address != await ensRegistryInstance.resolver(erc20ProofsVocdoniEthNode)) {
-        tx = await ensRegistryInstance.setResolver(erc20ProofsVocdoniEthNode, ensPublicResolverInstance.address, transactionOptions)
+        tx = await ensRegistryInstance.setResolver(erc20ProofsVocdoniEthNode, ensPublicResolverInstance.address, await getTransactionOptions())
         await tx.wait()
     }
 
@@ -411,27 +419,27 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
         console.log("\n⚠️  WARNING: By updating 'entities." + ENS_DOMAIN_SUFFIX + "', the existing entities will become unreachable.")
         if (!await confirmStep("Do you REALLY want to continue?")) process.exit(1)
 
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.entityResolver, transactionOptions)
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](entitiesVocdoniEthNode, contractAddresses.entityResolver, await getTransactionOptions())
         await tx.wait()
     }
     if (contractAddresses.processes != await ensPublicResolverInstance["addr(bytes32)"](processesVocdoniEthNode)) {
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](processesVocdoniEthNode, contractAddresses.processes, transactionOptions)
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](processesVocdoniEthNode, contractAddresses.processes, await getTransactionOptions())
         await tx.wait()
     }
     if (contractAddresses.genesis != await ensPublicResolverInstance["addr(bytes32)"](genesisVocdoniEthNode)) {
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](genesisVocdoniEthNode, contractAddresses.genesis, transactionOptions)
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](genesisVocdoniEthNode, contractAddresses.genesis, await getTransactionOptions())
         await tx.wait()
     }
     if (contractAddresses.namespaces != await ensPublicResolverInstance["addr(bytes32)"](namespacesVocdoniEthNode)) {
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](namespacesVocdoniEthNode, contractAddresses.namespaces, transactionOptions)
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](namespacesVocdoniEthNode, contractAddresses.namespaces, await getTransactionOptions())
         await tx.wait()
     }
     if (contractAddresses.results != await ensPublicResolverInstance["addr(bytes32)"](resultsVocdoniEthNode)) {
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](resultsVocdoniEthNode, contractAddresses.results, transactionOptions)
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](resultsVocdoniEthNode, contractAddresses.results, await getTransactionOptions())
         await tx.wait()
     }
     if (contractAddresses.proofs.erc20Proofs != await ensPublicResolverInstance["addr(bytes32)"](erc20ProofsVocdoniEthNode)) {
-        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](erc20ProofsVocdoniEthNode, contractAddresses.proofs.erc20Proofs, transactionOptions)
+        tx = await ensPublicResolverInstance.functions["setAddr(bytes32,address)"](erc20ProofsVocdoniEthNode, contractAddresses.proofs.erc20Proofs, await getTransactionOptions())
         await tx.wait()
     }
 
@@ -457,7 +465,7 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     const entityResolverInstance = ensResolverFactory.attach(contractAddresses.entityResolver) as Contract & EnsResolverContractMethods
 
     if (uri != await entityResolverInstance.text(entityId, BOOTNODES_KEY)) {
-        tx = await entityResolverInstance.setText(entityId, BOOTNODES_KEY, uri, transactionOptions)
+        tx = await entityResolverInstance.setText(entityId, BOOTNODES_KEY, uri, await getTransactionOptions())
         await tx.wait()
     }
 
@@ -466,7 +474,7 @@ async function setEnsDomainNames(contractAddresses: { ensRegistry: string, ensPu
     // set the archive key on the entity of Vocdoni
     const ARCHIVE_KEY = "vnd.vocdoni.archive"
     if (config.features.archiveRecord != "") {
-        tx = await entityResolverInstance.setText(entityId, ARCHIVE_KEY, config.features.archiveRecord, transactionOptions)
+        tx = await entityResolverInstance.setText(entityId, ARCHIVE_KEY, config.features.archiveRecord, await getTransactionOptions())
         await tx.wait()
     } else {
         console.log("Process archive record is empty, no ENS text entry will be set")
@@ -485,7 +493,7 @@ async function registerEnsNodeOwner(name: string, parentDomain: string, parentNo
 
     // create <name>
     const nodeLabel = keccak256(name)
-    var tx = await ensRegistryInstance.setSubnodeOwner(parentNode, nodeLabel, wallet.address, transactionOptions)
+    var tx = await ensRegistryInstance.setSubnodeOwner(parentNode, nodeLabel, wallet.address, await getTransactionOptions())
     await tx.wait()
 
     // check domain registered succesfully
