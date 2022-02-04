@@ -461,18 +461,32 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
   - `namespaces.voc.eth`  (`0x30eaA57E289D68E4C25da9b0138b11646618D5C9`)
   - `results.voc.eth`  (`0x5eE6fe3EEc9b40B869C46ca69e839b5b5C268876`)
 
+### Polygon (stg)
+
+- ENS registry:
+  - Address: `0xffe6ef08Eb7770837b3bBBE04e67eE25cC19a12a`
+- ENS Public resolver
+  - Address: `0x833F1975C107cbd7D08F97A483994E8F4c113207`
+- Domains:
+  - `entities.stg.voc.eth`  (`0xE1e2B048a79a9129A3C9115a4659E5CCE0ece366`)
+  - `processes.stg.voc.eth`  (`0xce0E8B7C2bd3817975D0cD3155aCdB1Ae6D57906`)
+  - `erc20.proofs.stg.voc.eth`  (`0x8075f1000220562aEac67a829FD14C437f592A31`)
+  - `genesis.stg.voc.eth`  (`0xF3Eb1C4f1F8a5F1e3e3f81602c48Ebb3F9C10685`)
+  - `namespaces.stg.voc.eth`  (`0x4da3E0Ac6ADa94726827E04b76a3333F495a584D`)
+  - `results.stg.voc.eth`  (`0x6aEbd4562Cadc57641F62bA8AB24811dACadfae0`)
+
 ### Polygon (dev)
 - ENS registry:
-  - Address: `0x841d2f05e00813623edac5f514a21c70e8667b04`
+  - Address: `0xffe6ef08Eb7770837b3bBBE04e67eE25cC19a12a`
 - ENS Public resolver
-  - Address: `0x78098ce571dc592bc6c894ab4c114af8e1cc6f41`
+  - Address: `0x833F1975C107cbd7D08F97A483994E8F4c113207`
 - Domains:
-  - `entities.voc.eth`  (`0x834148B6731044Ad930F63e31fF36729a52dD5C1`)
-  - `processes.voc.eth`  (`0x3C28C73DF120E8A3089bc8AaBfadef79EeB2227a`)
-  - `erc20.proofs.voc.eth`  (`0xb37A571960626CbB48A335aD90d0554027e2f75b`)
-  - `genesis.voc.eth`  (`0x58612cae2b34924C6224952Ba59f270FC56927fB`)
-  - `namespaces.voc.eth`  (`0x0bc459Ade227E82E6c129BA63861381682E1A70C`)
-  - `results.voc.eth`  (`0x4E17eDc59ADa885C60EF1e187f72b6E07812d25b`)
+  - `entities.dev.voc.eth`  (`0x3A86BD70443b419EeaD0B458D3d044011Ad8265A`)
+  - `processes.dev.voc.eth`  (`0xa0B762F2Db3A4C0D627B43382a93c458FE774bd9`)
+  - `erc20.proofs.dev.voc.eth`  (`0x163Cc7Dfb9368bAB4eC0BfF8C8Bf4b3Bd4b230de`)
+  - `genesis.dev.voc.eth`  (`0x8A5332db5b20e74d8295f9ebDEAF6483d2F079c4`)
+  - `namespaces.dev.voc.eth`  (`0x808fe9864347fdCa4693aB91FAe85BaaC1eB0432`)
+  - `results.dev.voc.eth`  (`0x9132ed31fBE729666e5A14B6A637d9E2f80dC383`)
 
 ### Goerli
 
