@@ -433,12 +433,12 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
   - Domain: `namespaces.voc.eth`
 -->
 
-### Goerli
+### Rinkeby
 
 - ENS registry:
   - Address: `0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`
 - ENS public resolver:
-  - Address: `0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329`
+  - Address: `0xf6305c19e814d2a75429Fd637d01F7ee0E77d615`
 - Domains:
   - Development
     - `entities.dev.voc.eth`
@@ -448,12 +448,38 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
     - `results.dev.voc.eth`
     - `erc20.proofs.dev.voc.eth`
 
-### Rinkeby
+### Polygon (prod)
+- ENS registry:
+  - Address: `0xffe6ef08Eb7770837b3bBBE04e67eE25cC19a12a`
+- ENS Public resolver
+  - Address: `0x833F1975C107cbd7D08F97A483994E8F4c113207`
+- Domains:
+  - `entities.voc.eth`  (`0x1811cd36A7fccc53f76F0a724C7697e8a70Ad43b`)
+  - `processes.voc.eth`  (`0x322488d666C581373739c479Fdbb694c0297272D`)
+  - `erc20.proofs.voc.eth`  (`0x388b89E2326F6a4adF2D0D438DEe9015DF557B32`)
+  - `genesis.voc.eth`  (`0xbAF5616856c327d35314D6E0738981d9d01ee6EC`)
+  - `namespaces.voc.eth`  (`0x30eaA57E289D68E4C25da9b0138b11646618D5C9`)
+  - `results.voc.eth`  (`0x5eE6fe3EEc9b40B869C46ca69e839b5b5C268876`)
+
+### Polygon (dev)
+- ENS registry:
+  - Address: `0x841d2f05e00813623edac5f514a21c70e8667b04`
+- ENS Public resolver
+  - Address: `0x78098ce571dc592bc6c894ab4c114af8e1cc6f41`
+- Domains:
+  - `entities.voc.eth`  (`0x834148B6731044Ad930F63e31fF36729a52dD5C1`)
+  - `processes.voc.eth`  (`0x3C28C73DF120E8A3089bc8AaBfadef79EeB2227a`)
+  - `erc20.proofs.voc.eth`  (`0xb37A571960626CbB48A335aD90d0554027e2f75b`)
+  - `genesis.voc.eth`  (`0x58612cae2b34924C6224952Ba59f270FC56927fB`)
+  - `namespaces.voc.eth`  (`0x0bc459Ade227E82E6c129BA63861381682E1A70C`)
+  - `results.voc.eth`  (`0x4E17eDc59ADa885C60EF1e187f72b6E07812d25b`)
+
+### Goerli
 
 - ENS registry:
   - Address: `0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`
 - ENS public resolver:
-  - Address: `0xf6305c19e814d2a75429Fd637d01F7ee0E77d615`
+  - Address: `0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329`
 - Domains:
   - Development
     - `entities.dev.voc.eth`

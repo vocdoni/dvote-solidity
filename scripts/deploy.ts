@@ -49,7 +49,7 @@ else if (config.ethereum.networkId == "sokol") {
     transactionOptions.gasPrice = utils.parseUnits("1", "gwei")
     rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: config.contracts.sokol.ensRegistry }
 }
-else if (config.ethereum.networkId == "matic") {
+else if (config.ethereum.networkId == "matic" || config.ethereum.networkId == "mumbai") {
     rpcParams = { chainId: config.ethereum.chainId, name: config.ethereum.networkId, ensAddress: config.contracts.matic.ensRegistry }
 }
 else {
