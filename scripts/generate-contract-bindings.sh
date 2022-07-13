@@ -13,7 +13,7 @@ abigen --bin=./build/solc/contracts_results_sol_Results.bin --abi=./build/solc/c
 abigen --bin=./build/solc/contracts_token-storage-proof_sol_TokenStorageProof.bin --abi=./build/solc/contracts_token-storage-proof_sol_TokenStorageProof.abi --pkg=TokenStorageProof --out=tokenStorageProof.go || exit 1
 abigen --bin=./build/solc/contracts_vendor_registry_ENSRegistry_sol_ENSRegistry.bin --abi=./build/solc/contracts_vendor_registry_ENSRegistry_sol_ENSRegistry.abi --pkg=EnsRegistryWithFallback --out=ensRegistryWithFallback.go || exit 1
 abigen --bin=./build/solc/contracts_vendor_resolver_PublicResolver_sol_PublicResolver.bin --abi=./build/solc/contracts_vendor_resolver_PublicResolver_sol_PublicResolver.abi --pkg=EntityResolver --out=entityResolver.go || exit 1
-
+abigen --bin=./build/solc/contracts_erc20Info_sol_ERC20Info.bin --abi=./build/solc/contracts_erc20Info_sol_ERC20Info.abi --pkg=ERC20Info --out=erc20Info.go || exit 1
 for i in *.go; do
     sed -i '/package /c\package contracts' $i
 done

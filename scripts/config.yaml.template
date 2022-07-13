@@ -12,6 +12,7 @@ features:
   results: false
   proofs:
     erc20: false
+  erc20Info: false
   setDomains: true   # update the ENS addresses
   archiveRecord: "QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd" # process archive record
 contracts:

@@ -50,6 +50,8 @@ const configSchema = yup.object({
             /** Deploy the ERC20 storage proofs contract */
             erc20: yup.boolean().required(),
         }),
+        /** Deploy ERC20Info */
+        erc20Info: yup.boolean().required(),
         /** Ensure that all domains point to the last deployed version */
         setDomains: yup.boolean().required(),
         archiveRecord: yup.string(),

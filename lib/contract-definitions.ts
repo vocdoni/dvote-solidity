@@ -308,6 +308,22 @@ export interface TrieProofTestContractMethods {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// ERC20INFO TYPES
+///////////////////////////////////////////////////////////////////////////////
+
+/** Smart Contract operations for ERC20Info */
+export interface ERC20InfoContractMethods {
+    /** gets the token decimals if available */
+    decimals(tokenAddress: string): Promise<number>
+    /** gets the token name if available */
+    name(tokenAddress: string): Promise<string>
+    /** gets the token total supply if available */
+    totalSupply(tokenAddress: string): Promise<number | BigNumber>
+    /** gets the token symbol if available */
+    symbol(tokenAddress: string): Promise<string>
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // BASE TYPES
 ///////////////////////////////////////////////////////////////////////////////
 

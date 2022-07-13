@@ -21,7 +21,8 @@ ARTIFACT_BASE_NAMES = \
 		      contracts_processes_sol_Processes \
 		      contracts_results_sol_Results \
 		      contracts_token-storage-proof_sol_TokenStorageProof \
-		      contracts_test_trie-proof_sol_TrieProofTest
+		      contracts_test_trie-proof_sol_TrieProofTest \
+			  contracts_erc20Info_sol_ERC20Info
 
 SOLC_ABI_ARTIFACTS := $(patsubst %, build/solc/%.abi, $(ARTIFACT_BASE_NAMES))
 SOLC_BIN_ARTIFACTS := $(patsubst %, build/solc/%.bin, $(ARTIFACT_BASE_NAMES))
@@ -36,6 +37,7 @@ PROCESSES_ARTIFACT_PREFIX = $(filter %_sol_Processes, $(SOLC_ARTIFACT_PREFIXES))
 RESULTS_ARTIFACT_PREFIX = $(filter %_sol_Results, $(SOLC_ARTIFACT_PREFIXES))
 TOKEN_STORAGE_PROOF_ARTIFACT_PREFIX = $(filter %_sol_TokenStorageProof, $(SOLC_ARTIFACT_PREFIXES))
 TRIE_PROOF_TEST_ARTIFACT_PREFIX = $(filter %_sol_TrieProofTest, $(SOLC_ARTIFACT_PREFIXES))
+ERC20INFO_ARTIFACT_PREFIX = $(filter %_sol_ERC20Info, $(SOLC_ARTIFACT_PREFIXES))
 
 #-----------------------------------------------------------------------
 # HELP
@@ -85,7 +87,8 @@ contract-objects: \
 	build/genesis.json \
 	build/namespaces.json \
 	build/token-storage-proof.json \
-	build/test/trie-proof.json
+	build/test/trie-proof.json \
+	build/erc20Info.json
 
 build:
 	@mkdir -p build
@@ -139,6 +142,11 @@ build/test/trie-proof.json: $(TRIE_PROOF_TEST_ARTIFACT_PREFIX).abi $(TRIE_PROOF_
 	@stat $^ > /dev/null
 	@echo "Building $@"
 	echo "{\"abi\":$$(cat $(TRIE_PROOF_TEST_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(TRIE_PROOF_TEST_ARTIFACT_PREFIX).bin)\"}" > $@
+
+build/erc20Info.json: $(ERC20INFO_ARTIFACT_PREFIX).abi $(ERC20INFO_ARTIFACT_PREFIX).bin
+	@stat $^ > /dev/null
+	@echo "Building $@"
+	echo "{\"abi\":$$(cat $(ERC20INFO_ARTIFACT_PREFIX).abi),\"bytecode\":\"0x$$(cat $(ERC20INFO_ARTIFACT_PREFIX).bin)\"}" > $@
 
 $(SOLC_ABI_ARTIFACTS): build/solc
 $(SOLC_BIN_ARTIFACTS): build/solc
