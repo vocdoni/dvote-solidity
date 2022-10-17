@@ -10,6 +10,8 @@ export type IMethodOverrides = {
     nonce?: number
     value?: BigNumber
     chainId?: number
+    maxFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber
 }
 export declare const defaultMethodOverrides: IMethodOverrides
 
