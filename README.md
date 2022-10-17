@@ -433,21 +433,6 @@ See `scripts/deploy.ts` to deploy your own version. Copy `config.yaml.template` 
   - Domain: `namespaces.voc.eth`
 -->
 
-### Rinkeby
-
-- ENS registry:
-  - Address: `0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`
-- ENS public resolver:
-  - Address: `0xf6305c19e814d2a75429Fd637d01F7ee0E77d615`
-- Domains:
-  - Development
-    - `entities.dev.voc.eth`
-    - `genesis.dev.voc.eth`
-    - `namespaces.dev.voc.eth`
-    - `processes.dev.voc.eth`
-    - `results.dev.voc.eth`
-    - `erc20.proofs.dev.voc.eth`
-
 ### Polygon (prod)
 - ENS registry:
   - Address: `0xffe6ef08Eb7770837b3bBBE04e67eE25cC19a12a`

@@ -11,7 +11,6 @@ const { JsonRpcProvider } = providers
 const ENS_GLOBAL_REGISTRY = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
 const ENS_MAINNET_GLOBAL_PUBLIC_RESOLVER = "0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41"
 const ENS_GOERLI_GLOBAL_PUBLIC_RESOLVER = "0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329"
-const ENS_RINKEBY_GLOBAL_PUBLIC_RESOLVER = "0xf6305c19e814d2a75429Fd637d01F7ee0E77d615"
 // By default creating a process is free
 const DEFAULT_PROCESS_PRICE = utils.parseUnits("0", "ether")
 
@@ -130,9 +129,7 @@ async function deployEnsContracts() {
     }
     else {
         ensRegistry = ENS_GLOBAL_REGISTRY
-        if (config.ethereum.networkId == "rinkeby") { // rinkeby
-            ensPublicResolver = ENS_RINKEBY_GLOBAL_PUBLIC_RESOLVER
-        } else if (config.ethereum.networkId == "goerli") { // goerli 
+        if (config.ethereum.networkId == "goerli") { // goerli 
             ensPublicResolver = ENS_GOERLI_GLOBAL_PUBLIC_RESOLVER
         } else if (config.ethereum.networkId == "mainnet") { //mainnet
             ensPublicResolver = ENS_MAINNET_GLOBAL_PUBLIC_RESOLVER
